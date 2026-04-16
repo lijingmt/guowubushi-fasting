@@ -7,28 +7,16 @@
       "size": "1024x1024"
     },
     {
-      "filename": "AppIcon60x60@2x.png",
+      "filename": "AppIcon20x20@2x.png",
       "idiom": "iphone",
       "scale": "2x",
-      "size": "60x60"
+      "size": "20x20"
     },
     {
-      "filename": "AppIcon60x60@3x.png",
+      "filename": "AppIcon20x20@3x.png",
       "idiom": "iphone",
       "scale": "3x",
-      "size": "60x60"
-    },
-    {
-      "filename": "AppIcon40x40@2x.png",
-      "idiom": "iphone",
-      "scale": "2x",
-      "size": "40x40"
-    },
-    {
-      "filename": "AppIcon40x40@3x.png",
-      "idiom": "iphone",
-      "scale": "3x",
-      "size": "40x40"
+      "size": "20x20"
     },
     {
       "filename": "AppIcon29x29@2x.png",
@@ -43,28 +31,34 @@
       "size": "29x29"
     },
     {
-      "filename": "AppIcon20x20@2x.png",
+      "filename": "AppIcon40x40@2x.png",
       "idiom": "iphone",
-      "scale": "2x",
-      "size": "20x20"
-    },
-    {
-      "filename": "AppIcon20x20@3x.png",
-      "idiom": "iphone",
-      "scale": "3x",
-      "size": "20x20"
-    },
-    {
-      "filename": "AppIcon76x76@2x~ipad.png",
-      "idiom": "ipad",
-      "scale": "2x",
-      "size": "76x76"
-    },
-    {
-      "filename": "AppIcon40x40@2x~ipad.png",
-      "idiom": "ipad",
       "scale": "2x",
       "size": "40x40"
+    },
+    {
+      "filename": "AppIcon40x40@3x.png",
+      "idiom": "iphone",
+      "scale": "3x",
+      "size": "40x40"
+    },
+    {
+      "filename": "AppIcon60x60@2x.png",
+      "idiom": "iphone",
+      "scale": "2x",
+      "size": "60x60"
+    },
+    {
+      "filename": "AppIcon60x60@3x.png",
+      "idiom": "iphone",
+      "scale": "3x",
+      "size": "60x60"
+    },
+    {
+      "filename": "AppIcon20x20@2x~ipad.png",
+      "idiom": "ipad",
+      "scale": "2x",
+      "size": "20x20"
     },
     {
       "filename": "AppIcon29x29@2x~ipad.png",
@@ -73,10 +67,16 @@
       "size": "29x29"
     },
     {
-      "filename": "AppIcon20x20@2x~ipad.png",
+      "filename": "AppIcon40x40@2x~ipad.png",
       "idiom": "ipad",
       "scale": "2x",
-      "size": "20x20"
+      "size": "40x40"
+    },
+    {
+      "filename": "AppIcon76x76@2x~ipad.png",
+      "idiom": "ipad",
+      "scale": "2x",
+      "size": "76x76"
     }
   ],
   "info": {

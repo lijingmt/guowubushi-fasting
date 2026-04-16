@@ -17,7 +17,10 @@
     "production": {
       "ios": {
         "autoIncrement": true,
-        "buildConfiguration": "Release"
+        "buildConfiguration": "Release",
+        "cache": {
+          "disabled": true
+        }
       },
       "android": {
         "buildType": "apk"
