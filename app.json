@@ -18,8 +18,6 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.guowu.fasting",
-      "buildNumber": "1",
-      "icon": "./assets/icon.png",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -51,7 +49,9 @@
           "icon": "./assets/icon.png",
           "color": "#4CAF50"
         }
-      ]
+      ],
+      "./plugins/withCompleteIcons.js",
+      "./plugins/withIconsInfoPlist.js"
     ],
     "extra": {
       "eas": {
