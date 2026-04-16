@@ -41,7 +41,7 @@ const TabNavigator = () => {
         name="Home"
         component={HomeScreen}
         options={{
-          tabBarLabel: '首页',
+          tabBarLabel: t.tabHome,
           tabBarIcon: ({ color }) => (
             <TabIcon name="🏠" color={color} />
           ),
@@ -51,7 +51,7 @@ const TabNavigator = () => {
         name="History"
         component={HistoryScreen}
         options={{
-          tabBarLabel: '历史',
+          tabBarLabel: t.viewHistory,
           tabBarIcon: ({ color }) => (
             <TabIcon name="📅" color={color} />
           ),
@@ -61,7 +61,7 @@ const TabNavigator = () => {
         name="Meals"
         component={MealsScreen}
         options={{
-          tabBarLabel: '饮食',
+          tabBarLabel: t.tabMeals,
           tabBarIcon: ({ color }) => (
             <TabIcon name="🍽️" color={color} />
           ),
@@ -71,7 +71,7 @@ const TabNavigator = () => {
         name="Stats"
         component={StatsScreen}
         options={{
-          tabBarLabel: '统计',
+          tabBarLabel: t.tabStats,
           tabBarIcon: ({ color }) => (
             <TabIcon name="📊" color={color} />
           ),
@@ -81,7 +81,7 @@ const TabNavigator = () => {
         name="Settings"
         component={SettingsScreen}
         options={{
-          tabBarLabel: '设置',
+          tabBarLabel: t.tabSettings,
           tabBarIcon: ({ color }) => (
             <TabIcon name="⚙️" color={color} />
           ),
