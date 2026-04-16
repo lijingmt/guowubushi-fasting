@@ -51,14 +51,6 @@
           "icon": "./assets/icon.png",
           "color": "#4CAF50"
         }
-      ],
-      [
-        "expo-build-properties",
-        {
-          "ios": {
-            "usesNonExemptEncryption": false
-          }
-        }
       ]
     ],
     "extra": {
