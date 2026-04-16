@@ -1,0 +1,60 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF9800"/>
+      <stop offset="50%" style="stop-color:#FF5722"/>
+      <stop offset="100%" style="stop-color:#E64A19"/>
+    </linearGradient>
+    <linearGradient id="sunGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFD54F"/>
+      <stop offset="100%" style="stop-color:#FFB300"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle with rounded corners -->
+  <rect width="1024" height="1024" rx="180" ry="180" fill="url(#bgGradient)"/>
+
+  <!-- Sun symbol (morning/noon) -->
+  <circle cx="512" cy="380" r="100" fill="url(#sunGradient)"/>
+
+  <!-- Sun rays -->
+  <g stroke="#FFD54F" stroke-width="12" stroke-linecap="round">
+    <line x1="512" y1="240" x2="512" y2="200"/>
+    <line x1="512" y1="520" x2="512" y2="560"/>
+    <line x1="372" y1="380" x2="332" y2="380"/>
+    <line x1="652" y1="380" x2="692" y2="380"/>
+    <line x1="413" y1="281" x2="384" y2="252"/>
+    <line x1="611" y1="479" x2="640" y2="508"/>
+    <line x1="413" y1="479" x2="384" y2="508"/>
+    <line x1="611" y1="281" x2="640" y2="252"/>
+  </g>
+
+  <!-- Clock face showing noon (12:00) -->
+  <circle cx="512" cy="380" r="85" fill="none" stroke="#FFF" stroke-width="6"/>
+  <!-- Clock hands pointing to 12 -->
+  <line x1="512" y1="380" x2="512" y2="320" stroke="#FFF" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="512" cy="380" r="8" fill="#FFF"/>
+
+  <!-- Moon symbol (evening fasting starts) -->
+  <g transform="translate(512, 620)">
+    <path d="M 0,-80 A 80,80 0 1,1 0,80 A 60,60 0 1,0 0,-80 Z" fill="#FFF3E0" opacity="0.9"/>
+    <!-- Stars -->
+    <circle cx="-120" cy="-40" r="8" fill="#FFF"/>
+    <circle cx="100" cy="-60" r="6" fill="#FFF"/>
+    <circle cx="-90" cy="50" r="5" fill="#FFF"/>
+    <circle cx="110" cy="40" r="7" fill="#FFF"/>
+  </g>
+
+  <!-- X mark over food (no eating after noon) -->
+  <g transform="translate(512, 750)">
+    <!-- Plate -->
+    <ellipse cx="0" cy="0" rx="100" ry="30" fill="none" stroke="#FFF" stroke-width="8"/>
+    <!-- X -->
+    <line x1="-40" y1="-40" x2="40" y2="40" stroke="#FFF" stroke-width="12" stroke-linecap="round"/>
+    <line x1="40" y1="-40" x2="-40" y2="40" stroke="#FFF" stroke-width="12" stroke-linecap="round"/>
+  </g>
+
+  <!-- Water drop (hydration reminder) -->
+  <path d="M 850,200 Q 850,170 830,170 Q 810,170 810,200 Q 810,230 830,250 Q 850,230 850,200 Z" fill="#64B5F6" opacity="0.9"/>
+</svg>

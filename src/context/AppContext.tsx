@@ -1,0 +1,472 @@
+import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import * as Notifications from 'expo-notifications';
+import {
+  UserSettings,
+  DailyCheckIn,
+  MealRecord,
+  WeightRecord,
+  WaterRecord,
+  UserStats,
+  HealthSyncStatus,
+} from '../types';
+import { DEFAULT_SETTINGS, DINNER_CALORIES } from '../constants/achievements';
+import {
+  getSettings,
+  saveSettings,
+  getCheckInRecords,
+  saveCheckInRecord,
+  getTodayCheckIn,
+  isTodayCheckedIn,
+  getMealRecords,
+  saveMealRecord,
+  deleteMealRecord,
+  getTodayMeals,
+  getTodayCalories,
+  getWeightRecords,
+  saveWeightRecord,
+  getWaterRecords,
+  saveWaterRecord,
+  getTodayWaterIntake,
+  getHealthSyncStatus,
+  saveHealthSyncStatus,
+} from '../services/storage';
+import { translations } from '../i18n/translations';
+
+// 配置通知行为
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
+interface AppContextType {
+  // 设置
+  settings: UserSettings;
+  updateSettings: (settings: Partial<UserSettings>) => Promise<void>;
+  language: 'zh' | 'en' | 'es';
+  t: typeof translations.zh;
+
+  // 打卡
+  checkInRecords: DailyCheckIn[];
+  todayCheckIn: DailyCheckIn | null;
+  hasCheckedToday: boolean;
+  dailyCheckIn: (completed: boolean, notes?: string) => Promise<void>;
+
+  // 饮食
+  mealRecords: MealRecord[];
+  todayMeals: MealRecord[];
+  todayCalories: number;
+  addMeal: (meal: Omit<MealRecord, 'id' | 'date'>) => Promise<void>;
+  removeMeal: (id: string) => Promise<void>;
+
+  // 体重
+  weightRecords: WeightRecord[];
+  addWeight: (weight: number, date?: string, note?: string) => Promise<void>;
+  removeWeight: (id: string) => Promise<void>;
+
+  // 饮水
+  waterRecords: WaterRecord[];
+  todayWater: number;
+  addWater: (amount: number) => Promise<void>;
+
+  // 统计
+  stats: UserStats;
+  refreshStats: () => Promise<void>;
+
+  // 健康同步
+  healthSync: HealthSyncStatus;
+  updateHealthSync: (status: Partial<HealthSyncStatus>) => Promise<void>;
+
+  // 加载状态
+  isLoading: boolean;
+}
+
+const AppContext = createContext<AppContextType | undefined>(undefined);
+
+export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  // 设置
+  const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
+  const [language, setLanguage] = useState<'zh' | 'en' | 'es'>('zh');
+
+  // 打卡
+  const [checkInRecords, setCheckInRecords] = useState<DailyCheckIn[]>([]);
+  const [todayCheckIn, setTodayCheckIn] = useState<DailyCheckIn | null>(null);
+  const [hasCheckedToday, setHasCheckedToday] = useState(false);
+
+  // 饮食
+  const [mealRecords, setMealRecords] = useState<MealRecord[]>([]);
+  const [todayMeals, setTodayMeals] = useState<MealRecord[]>([]);
+  const [todayCalories, setTodayCalories] = useState(0);
+
+  // 体重
+  const [weightRecords, setWeightRecords] = useState<WeightRecord[]>([]);
+
+  // 饮水
+  const [waterRecords, setWaterRecords] = useState<WaterRecord[]>([]);
+  const [todayWater, setTodayWater] = useState(0);
+
+  // 统计
+  const [stats, setStats] = useState<UserStats>({
+    totalCheckInDays: 0,
+    completedDays: 0,
+    currentStreak: 0,
+    longestStreak: 0,
+    totalMealsSkipped: 0,
+    totalCaloriesSaved: 0,
+    totalWeightLost: 0,
+    achievements: [],
+    completionRate: 0,
+    totalHoursSaved: 0,
+    currentAbstinenceStreak: 0,
+    longestAbstinenceStreak: 0,
+  });
+
+  // 健康同步
+  const [healthSync, setHealthSync] = useState<HealthSyncStatus>({
+    healthKitEnabled: false,
+    googleFitEnabled: false,
+  });
+
+  const [isLoading, setIsLoading] = useState(true);
+
+  // 初始化数据
+  useEffect(() => {
+    initializeData();
+    setupNotifications();
+    scheduleDailyReminder();
+  }, []);
+
+  // 计算统计数据
+  useEffect(() => {
+    calculateStats();
+  }, [checkInRecords, weightRecords]);
+
+  // 设置改变时重新调度提醒
+  useEffect(() => {
+    if (settings.enableNotifications) {
+      scheduleDailyReminder();
+    }
+  }, [settings.reminderTime, settings.enableNotifications]);
+
+  const initializeData = async () => {
+    try {
+      // 加载设置
+      const savedSettings = await getSettings();
+      setSettings(savedSettings);
+      setLanguage(savedSettings.language);
+
+      // 加载打卡记录
+      const savedCheckIns = await getCheckInRecords();
+      setCheckInRecords(savedCheckIns);
+      const todayRecord = await getTodayCheckIn();
+      setTodayCheckIn(todayRecord);
+      setHasCheckedToday(todayRecord !== null);
+
+      // 加载饮食记录
+      const savedMeals = await getMealRecords();
+      setMealRecords(savedMeals);
+      const todayMealList = await getTodayMeals();
+      setTodayMeals(todayMealList);
+      const calories = await getTodayCalories();
+      setTodayCalories(calories);
+
+      // 加载体重记录
+      const savedWeights = await getWeightRecords();
+      setWeightRecords(savedWeights);
+
+      // 加载饮水记录
+      const savedWater = await getWaterRecords();
+      setWaterRecords(savedWater);
+      const water = await getTodayWaterIntake();
+      setTodayWater(water);
+
+      // 加载健康同步状态
+      const savedHealthSync = await getHealthSyncStatus();
+      setHealthSync(savedHealthSync);
+    } catch (error) {
+      console.error('Error initializing data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const setupNotifications = async () => {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    if (existingStatus !== 'granted') {
+      await Notifications.requestPermissionsAsync();
+    }
+  };
+
+  const scheduleDailyReminder = async () => {
+    if (!settings.enableNotifications) return;
+
+    // 取消所有已安排的通知
+    await Notifications.cancelAllScheduledNotificationsAsync();
+
+    const [hours, minutes] = settings.reminderTime.split(':').map(Number);
+
+    // 安排每日重复提醒
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: language === 'zh' ? '过午不食打卡' : 'Daily Check-In',
+        body: language === 'zh'
+          ? '今天过午不食完成了吗？快来打卡吧！'
+          : 'Did you complete your fasting today? Check in now!',
+        sound: 'default',
+        priority: Notifications.AndroidNotificationPriority.HIGH,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
+        hour: hours,
+        minute: minutes,
+      } as any,
+    });
+  };
+
+  const calculateStats = async () => {
+    const totalDays = checkInRecords.length;
+    const completedDays = checkInRecords.filter((r) => r.completed).length;
+
+    // 计算连续天数
+    let currentStreak = 0;
+    let longestStreak = 0;
+
+    // 计算禁欲连续天数
+    let currentAbstinenceStreak = 0;
+    let longestAbstinenceStreak = 0;
+
+    const sortedRecords = [...checkInRecords].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+
+    const today = new Date().toISOString().split('T')[0];
+    let checkingDate = new Date(today);
+    let abstinenceDate = new Date(today);
+
+    for (const record of sortedRecords) {
+      const recordDate = record.date;
+      if (record.completed) {
+        const checkDateStr = checkingDate.toISOString().split('T')[0];
+        if (recordDate === checkDateStr) {
+          currentStreak++;
+          checkingDate.setDate(checkingDate.getDate() - 1);
+        } else {
+          longestStreak = Math.max(longestStreak, currentStreak);
+          currentStreak = 1;
+          checkingDate = new Date(recordDate);
+          checkingDate.setDate(checkingDate.getDate() - 1);
+        }
+
+        // 检查是否禁欲完成
+        const hasAbstinence = record.notes && record.notes.includes('禁欲完成');
+        if (hasAbstinence) {
+          const abstinenceDateStr = abstinenceDate.toISOString().split('T')[0];
+          if (recordDate === abstinenceDateStr) {
+            currentAbstinenceStreak++;
+            abstinenceDate.setDate(abstinenceDate.getDate() - 1);
+          } else {
+            longestAbstinenceStreak = Math.max(longestAbstinenceStreak, currentAbstinenceStreak);
+            currentAbstinenceStreak = 1;
+            abstinenceDate = new Date(recordDate);
+            abstinenceDate.setDate(abstinenceDate.getDate() - 1);
+          }
+        } else {
+          // 如果当天没有禁欲，重置当前禁欲连胜
+          longestAbstinenceStreak = Math.max(longestAbstinenceStreak, currentAbstinenceStreak);
+          currentAbstinenceStreak = 0;
+        }
+      }
+    }
+
+    longestStreak = Math.max(longestStreak, currentStreak);
+    longestAbstinenceStreak = Math.max(longestAbstinenceStreak, currentAbstinenceStreak);
+
+    // 计算节省的卡路里、少吃顿数和时间
+    const totalCaloriesSaved = completedDays * DINNER_CALORIES;
+    const totalMealsSkipped = completedDays;
+
+    // 每天节约：吃饭1小时 + 做饭1小时 = 2小时
+    const totalHoursSaved = completedDays * 2;
+
+    // 计算减重
+    let weightLoss = 0;
+    if (weightRecords.length >= 2) {
+      const firstWeight = weightRecords[0].weight;
+      const lastWeight = weightRecords[weightRecords.length - 1].weight;
+      weightLoss = firstWeight - lastWeight;
+    }
+
+    // 计算完成率
+    const completionRate = totalDays > 0 ? Math.round((completedDays / totalDays) * 100) : 0;
+
+    setStats({
+      totalCheckInDays: totalDays,
+      completedDays,
+      currentStreak,
+      longestStreak,
+      totalMealsSkipped,
+      totalCaloriesSaved,
+      totalWeightLost: weightLoss > 0 ? weightLoss : 0,
+      achievements: [],
+      completionRate,
+      totalHoursSaved,
+      currentAbstinenceStreak,
+      longestAbstinenceStreak,
+    });
+  };
+
+  const updateSettings = async (newSettings: Partial<UserSettings>) => {
+    const updated = { ...settings, ...newSettings };
+    setSettings(updated);
+    await saveSettings(updated);
+    if (newSettings.language) {
+      setLanguage(newSettings.language);
+    }
+  };
+
+  const dailyCheckIn = async (completed: boolean, notes?: string) => {
+    const today = new Date().toISOString().split('T')[0];
+
+    const record: DailyCheckIn = {
+      id: `checkin_${Date.now()}`,
+      date: today,
+      completed,
+      brokeAfterNoon: !completed,
+      checkInTime: Date.now(),
+      notes,
+    };
+
+    await saveCheckInRecord(record);
+    setTodayCheckIn(record);
+    setHasCheckedToday(true);
+
+    const updatedRecords = await getCheckInRecords();
+    setCheckInRecords(updatedRecords);
+  };
+
+  const addMeal = async (meal: Omit<MealRecord, 'id' | 'date'>) => {
+    const today = new Date().toISOString().split('T')[0];
+    const newMeal: MealRecord = {
+      ...meal,
+      id: `meal_${Date.now()}`,
+      date: today,
+    };
+
+    await saveMealRecord(newMeal);
+    const updatedRecords = await getMealRecords();
+    setMealRecords(updatedRecords);
+    const todayMealList = await getTodayMeals();
+    setTodayMeals(todayMealList);
+    const calories = await getTodayCalories();
+    setTodayCalories(calories);
+  };
+
+  const removeMeal = async (id: string) => {
+    await deleteMealRecord(id);
+    const updatedRecords = await getMealRecords();
+    setMealRecords(updatedRecords);
+    const todayMealList = await getTodayMeals();
+    setTodayMeals(todayMealList);
+    const calories = await getTodayCalories();
+    setTodayCalories(calories);
+  };
+
+  const addWeight = async (weight: number, date?: string, note?: string) => {
+    const recordDate = date || new Date().toISOString().split('T')[0];
+    const newRecord: WeightRecord = {
+      id: `weight_${Date.now()}`,
+      date: recordDate,
+      weight,
+      note,
+    };
+    await saveWeightRecord(newRecord);
+    const updatedRecords = await getWeightRecords();
+    setWeightRecords(updatedRecords);
+  };
+
+  const removeWeight = async (id: string) => {
+    const updatedRecords = weightRecords.filter((r) => r.id !== id);
+    setWeightRecords(updatedRecords);
+    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+    await AsyncStorage.setItem(
+      '@guowu_weight_records',
+      JSON.stringify(updatedRecords)
+    );
+  };
+
+  const addWater = async (amount: number) => {
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    const newRecord: WaterRecord = {
+      id: `water_${Date.now()}`,
+      date: today,
+      amount,
+      time,
+    };
+
+    await saveWaterRecord(newRecord);
+    const updatedRecords = await getWaterRecords();
+    setWaterRecords(updatedRecords);
+    const water = await getTodayWaterIntake();
+    setTodayWater(water);
+  };
+
+  const refreshStats = async () => {
+    await calculateStats();
+  };
+
+  const updateHealthSync = async (status: Partial<HealthSyncStatus>) => {
+    const updated = { ...healthSync, ...status, lastSyncTime: Date.now() };
+    setHealthSync(updated);
+    await saveHealthSyncStatus(updated);
+  };
+
+  const t = translations[language];
+
+  return (
+    <AppContext.Provider
+      value={{
+        settings,
+        updateSettings,
+        language,
+        t,
+        checkInRecords,
+        todayCheckIn,
+        hasCheckedToday,
+        dailyCheckIn,
+        mealRecords,
+        todayMeals,
+        todayCalories,
+        addMeal,
+        removeMeal,
+        weightRecords,
+        addWeight,
+        removeWeight,
+        waterRecords,
+        todayWater,
+        addWater,
+        stats,
+        refreshStats,
+        healthSync,
+        updateHealthSync,
+        isLoading,
+      }}
+    >
+      {children}
+    </AppContext.Provider>
+  );
+};
+
+export const useApp = () => {
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error('useApp must be used within AppProvider');
+  }
+  return context;
+};
