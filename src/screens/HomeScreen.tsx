@@ -16,6 +16,7 @@ export const HomeScreen: React.FC = () => {
     addWater,
     hasCheckedToday,
     todayCheckIn,
+    colors,
   } = useApp();
 
   const [flameAnimation] = useState(false);
@@ -50,27 +51,27 @@ export const HomeScreen: React.FC = () => {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={styles.greeting}>{t.welcome}</Text>
-        <Text style={styles.subtitle}>{t.appName}</Text>
+        <Text style={[styles.greeting, { color: colors.text }]}>{t.welcome}</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t.appName}</Text>
       </View>
 
       <CheckInCard />
 
       {/* 分享按钮 */}
       {hasCheckedToday && todayCheckIn?.completed && (
-        <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
+        <TouchableOpacity style={[styles.shareButton, { backgroundColor: colors.primary }]} onPress={handleShare}>
           <Text style={styles.shareButtonText}>📱 分享到朋友圈</Text>
         </TouchableOpacity>
       )}
 
       {/* 连胜统计卡片 */}
-      <View style={styles.streakCard}>
+      <View style={[styles.streakCard, { backgroundColor: colors.card }]}>
         <Text style={styles.streakEmoji}>{getFlameEmoji()}</Text>
-        <Text style={styles.streakTitle}>当前连胜</Text>
-        <Text style={styles.streakCount}>{stats.currentStreak}</Text>
-        <Text style={styles.streakLabel}>天</Text>
+        <Text style={[styles.streakTitle, { color: colors.textSecondary }]}>当前连胜</Text>
+        <Text style={[styles.streakCount, { color: colors.primary }]}>{stats.currentStreak}</Text>
+        <Text style={[styles.streakLabel, { color: colors.textSecondary }]}>天</Text>
       </View>
 
       <View style={styles.statsRow}>
@@ -126,35 +127,34 @@ export const HomeScreen: React.FC = () => {
 
       <Card style={styles.waterCard}>
         <View style={styles.waterHeader}>
-          <Text style={styles.waterTitle}>{t.waterIntake}</Text>
-          <Text style={styles.waterAmount}>
+          <Text style={[styles.waterTitle, { color: colors.info }]}>{t.waterIntake}</Text>
+          <Text style={[styles.waterAmount, { color: colors.info }]}>
             {todayWater} <Text style={styles.waterUnit}>ml</Text>
           </Text>
         </View>
-        <View style={styles.progressBar}>
+        <View style={[styles.progressBar, { backgroundColor: colors.divider }]}>
           <View
             style={[
               styles.progressFill,
-              { width: `${Math.min((todayWater / 2000) * 100, 100)}%` },
+              { backgroundColor: colors.info, width: `${Math.min((todayWater / 2000) * 100, 100)}%` },
             ]}
           />
         </View>
-        <TouchableOpacity style={styles.waterButton} onPress={handleAddWater}>
+        <TouchableOpacity style={[styles.waterButton, { backgroundColor: colors.info }]} onPress={handleAddWater}>
           <Text style={styles.waterButtonText}>+ 250ml</Text>
         </TouchableOpacity>
       </Card>
 
       <Card style={styles.calorieCard}>
-        <Text style={styles.calorieTitle}>{t.totalCalories}</Text>
-        <Text style={styles.calorieAmount}>
+        <Text style={[styles.calorieTitle, { color: colors.warning }]}>{t.totalCalories}</Text>
+        <Text style={[styles.calorieAmount, { color: colors.warning }]}>
           {todayCalories} <Text style={styles.calorieUnit}>/ {settings.dailyCalorieGoal} kcal</Text>
         </Text>
-        <View style={styles.progressBar}>
+        <View style={[styles.progressBar, { backgroundColor: colors.divider }]}>
           <View
             style={[
               styles.progressFill,
-              styles.calorieProgress,
-              { width: `${Math.min((todayCalories / settings.dailyCalorieGoal) * 100, 100)}%` },
+              { backgroundColor: colors.warning, width: `${Math.min((todayCalories / settings.dailyCalorieGoal) * 100, 100)}%` },
             ]}
           />
         </View>

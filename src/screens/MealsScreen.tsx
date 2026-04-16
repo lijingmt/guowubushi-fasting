@@ -21,6 +21,7 @@ export const MealsScreen: React.FC = () => {
     settings,
     addMeal,
     removeMeal,
+    colors,
   } = useApp();
   const [showAddModal, setShowAddModal] = useState(false);
   const [mealName, setMealName] = useState('');
@@ -65,18 +66,18 @@ export const MealsScreen: React.FC = () => {
   const todayMealCards = todayMeals.map((meal) => (
     <Card key={meal.id} style={styles.mealCard}>
       <View style={styles.mealHeader}>
-        <Text style={styles.mealName}>{meal.name}</Text>
-        <Text style={styles.mealCalories}>{meal.calories} kcal</Text>
+        <Text style={[styles.mealName, { color: colors.text }]}>{meal.name}</Text>
+        <Text style={[styles.mealCalories, { color: colors.textSecondary }]}>{meal.calories} kcal</Text>
       </View>
       <View style={styles.mealDetails}>
-        <Text style={styles.mealTime}>{meal.time}</Text>
-        {meal.notes && <Text style={styles.mealNotes}>{meal.notes}</Text>}
+        <Text style={[styles.mealTime, { color: colors.textLight }]}>{meal.time}</Text>
+        {meal.notes && <Text style={[styles.mealNotes, { color: colors.textSecondary }]}>{meal.notes}</Text>}
       </View>
       <TouchableOpacity
-        style={styles.deleteButton}
+        style={[styles.deleteButton, { borderColor: colors.border }]}
         onPress={() => removeMeal(meal.id)}
       >
-        <Text style={styles.deleteButtonText}>{t.delete}</Text>
+        <Text style={[styles.deleteButtonText, { color: colors.error }]}>{t.delete}</Text>
       </TouchableOpacity>
     </Card>
   ));
@@ -85,10 +86,10 @@ export const MealsScreen: React.FC = () => {
   const isOverGoal = todayCalories > settings.dailyCalorieGoal;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={styles.title}>{t.meals}</Text>
-        <Text style={styles.date}>
+        <Text style={[styles.title, { color: colors.text }]}>{t.meals}</Text>
+        <Text style={[styles.date, { color: colors.textSecondary }]}>
           {new Date().toLocaleDateString('zh-CN', {
             month: 'long',
             day: 'numeric',
@@ -97,17 +98,17 @@ export const MealsScreen: React.FC = () => {
       </View>
 
       <Card style={styles.summaryCard}>
-        <Text style={styles.summaryLabel}>{t.totalCalories}</Text>
+        <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>{t.totalCalories}</Text>
         <View style={styles.calorieRow}>
           <Text
-            style={[styles.calorieAmount, isOverGoal && styles.calorieOver]}
+            style={[styles.calorieAmount, { color: isOverGoal ? colors.error : colors.warning }, isOverGoal && styles.calorieOver]}
           >
             {todayCalories}
           </Text>
-          <Text style={styles.calorieSeparator}> / </Text>
-          <Text style={styles.calorieGoal}>{settings.dailyCalorieGoal}</Text>
+          <Text style={[styles.calorieSeparator, { color: colors.textSecondary }]}> / </Text>
+          <Text style={[styles.calorieGoal, { color: colors.textLight }]}>{settings.dailyCalorieGoal}</Text>
         </View>
-        <Text style={styles.remainingLabel}>
+        <Text style={[styles.remainingLabel, { color: isOverGoal ? colors.error : colors.success }]}>
           {isOverGoal ? t.overGoal : t.remainingCalories}: {Math.abs(remainingCalories)} kcal
         </Text>
       </Card>
@@ -116,12 +117,12 @@ export const MealsScreen: React.FC = () => {
         <View style={styles.mealsContainer}>{todayMealCards}</View>
       ) : (
         <Card style={styles.emptyCard}>
-          <Text style={styles.emptyText}>{t.noMealsToday}</Text>
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t.noMealsToday}</Text>
         </Card>
       )}
 
       <TouchableOpacity
-        style={styles.addButton}
+        style={[styles.addButton, { backgroundColor: colors.primary }]}
         onPress={() => setShowAddModal(true)}
       >
         <Text style={styles.addButtonText}>+ {t.addMeal}</Text>
@@ -134,34 +135,37 @@ export const MealsScreen: React.FC = () => {
         onRequestClose={() => setShowAddModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
             <ScrollView>
-              <Text style={styles.modalTitle}>{t.addMeal}</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{t.addMeal}</Text>
 
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: colors.text, backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
                 placeholder={t.mealName}
+                placeholderTextColor={colors.textLight}
                 value={mealName}
                 onChangeText={setMealName}
               />
 
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: colors.text, backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
                 placeholder={t.calories}
+                placeholderTextColor={colors.textLight}
                 value={mealCalories}
                 onChangeText={setMealCalories}
                 keyboardType="numeric"
               />
 
               <TextInput
-                style={[styles.input, styles.textArea]}
+                style={[styles.input, styles.textArea, { color: colors.text, backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
                 placeholder={t.notes}
+                placeholderTextColor={colors.textLight}
                 value={mealNotes}
                 onChangeText={setMealNotes}
                 multiline
               />
 
-              <Text style={styles.quickAddTitle}>快速添加</Text>
+              <Text style={[styles.quickAddTitle, { color: colors.textSecondary }]}>快速添加</Text>
               <ScrollView
                 horizontal
                 style={styles.quickAddScroll}
@@ -171,11 +175,11 @@ export const MealsScreen: React.FC = () => {
                   ([name, calories]) => (
                     <TouchableOpacity
                       key={name}
-                      style={styles.quickAddChip}
+                      style={[styles.quickAddChip, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
                       onPress={() => handleQuickAdd(name, calories)}
                     >
-                      <Text style={styles.quickAddChipText}>{name}</Text>
-                      <Text style={styles.quickAddChipCalories}>
+                      <Text style={[styles.quickAddChipText, { color: colors.text }]}>{name}</Text>
+                      <Text style={[styles.quickAddChipCalories, { color: colors.textLight }]}>
                         {calories}
                       </Text>
                     </TouchableOpacity>
@@ -185,16 +189,16 @@ export const MealsScreen: React.FC = () => {
 
               <View style={styles.modalButtons}>
                 <TouchableOpacity
-                  style={[styles.modalButton, styles.modalButtonCancel]}
+                  style={[styles.modalButton, styles.modalButtonCancel, { backgroundColor: colors.divider }]}
                   onPress={() => setShowAddModal(false)}
                 >
-                  <Text style={styles.modalButtonText}>{t.cancel}</Text>
+                  <Text style={[styles.modalButtonText, { color: colors.text }]}>{t.cancel}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.modalButton, styles.modalButtonConfirm]}
+                  style={[styles.modalButton, styles.modalButtonConfirm, { backgroundColor: colors.primary }]}
                   onPress={handleAddMeal}
                 >
-                  <Text style={styles.modalButtonText}>{t.ok}</Text>
+                  <Text style={[styles.modalButtonText, { color: '#fff' }]}>{t.ok}</Text>
                 </TouchableOpacity>
               </View>
             </ScrollView>

@@ -21,9 +21,13 @@ export const SettingsScreen: React.FC = () => {
     updateSettings,
     healthSync,
     updateHealthSync,
+    colors,
+    isDarkMode,
   } = useApp();
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [tempTime, setTempTime] = useState(settings.reminderTime);
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+  const [showThemePicker, setShowThemePicker] = useState(false);
 
   const handleToggleNotifications = async (value: boolean) => {
     if (value) {
@@ -57,27 +61,27 @@ export const SettingsScreen: React.FC = () => {
       onPress={onPress}
       disabled={!onPress}
     >
-      <Text style={styles.settingLabel}>{label}</Text>
-      {value && <Text style={styles.settingValue}>{value}</Text>}
+      <Text style={[styles.settingLabel, { color: colors.text }]}>{label}</Text>
+      {value && <Text style={[styles.settingValue, { color: colors.textLight }]}>{value}</Text>}
       {rightElement}
     </TouchableOpacity>
   );
 
-  const Divider = () => <View style={styles.divider} />;
+  const Divider = () => <View style={[styles.divider, { backgroundColor: colors.divider }]} />;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>{t.settings}</Text>
+    <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={styles.content}>
+      <Text style={[styles.title, { color: colors.text }]}>{t.settings}</Text>
 
       {/* 打卡提醒设置 */}
-      <Text style={styles.sectionTitle}>打卡提醒</Text>
+      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>打卡提醒</Text>
       <Card>
         <View style={styles.settingItem}>
-          <Text style={styles.settingLabel}>启用每日提醒</Text>
+          <Text style={[styles.settingLabel, { color: colors.text }]}>启用每日提醒</Text>
           <Switch
             value={settings.enableNotifications}
             onValueChange={handleToggleNotifications}
-            trackColor={{ false: '#ccc', true: '#FF5722' }}
+            trackColor={{ false: '#ccc', true: colors.primary }}
             thumbColor="#fff"
           />
         </View>
@@ -97,7 +101,7 @@ export const SettingsScreen: React.FC = () => {
       </Card>
 
       {/* 目标设置 */}
-      <Text style={styles.sectionTitle}>目标设置</Text>
+      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>目标设置</Text>
       <Card>
         <SettingItem
           label="每日卡路里目标"
@@ -113,7 +117,7 @@ export const SettingsScreen: React.FC = () => {
       </Card>
 
       {/* 通用设置 */}
-      <Text style={styles.sectionTitle}>{t.generalSettings}</Text>
+      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t.generalSettings}</Text>
       <Card>
         <SettingItem
           label={t.language}
@@ -125,28 +129,7 @@ export const SettingsScreen: React.FC = () => {
               : 'Español'
           }
           onPress={() => {
-            Alert.alert(
-              t.language,
-              '',
-              [
-                {
-                  text: '中文',
-                  onPress: () => updateSettings({ language: 'zh' }),
-                },
-                {
-                  text: 'English',
-                  onPress: () => updateSettings({ language: 'en' }),
-                },
-                {
-                  text: 'Español',
-                  onPress: () => updateSettings({ language: 'es' }),
-                },
-                {
-                  text: t.cancel,
-                  style: 'cancel',
-                },
-              ]
-            );
+            setShowLanguagePicker(true);
           }}
         />
         <Divider />
@@ -160,39 +143,18 @@ export const SettingsScreen: React.FC = () => {
               : '自动'
           }
           onPress={() => {
-            Alert.alert(
-              t.theme,
-              '',
-              [
-                {
-                  text: '浅色',
-                  onPress: () => updateSettings({ theme: 'light' }),
-                },
-                {
-                  text: '深色',
-                  onPress: () => updateSettings({ theme: 'dark' }),
-                },
-                {
-                  text: '自动',
-                  onPress: () => updateSettings({ theme: 'auto' }),
-                },
-                {
-                  text: t.cancel,
-                  style: 'cancel',
-                },
-              ]
-            );
+            setShowThemePicker(true);
           }}
         />
       </Card>
 
       {/* 健康同步 */}
-      <Text style={styles.sectionTitle}>{t.dataSync}</Text>
+      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t.dataSync}</Text>
       <Card>
         <View style={styles.settingItem}>
           <View>
-            <Text style={styles.settingLabel}>Apple Health</Text>
-            <Text style={styles.settingDesc}>
+            <Text style={[styles.settingLabel, { color: colors.text }]}>Apple Health</Text>
+            <Text style={[styles.settingDesc, { color: colors.textLight }]}>
               {healthSync.healthKitEnabled ? '已启用' : '未启用'}
             </Text>
           </View>
@@ -201,14 +163,14 @@ export const SettingsScreen: React.FC = () => {
             onValueChange={(value) =>
               updateHealthSync({ healthKitEnabled: value })
             }
-            trackColor={{ false: '#ccc', true: '#4CAF50' }}
+            trackColor={{ false: '#ccc', true: colors.success }}
             thumbColor="#fff"
           />
         </View>
       </Card>
 
       {/* 关于 */}
-      <Text style={styles.sectionTitle}>{t.about}</Text>
+      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t.about}</Text>
       <Card>
         <SettingItem label={t.version} value="1.0.0" />
       </Card>
@@ -221,12 +183,12 @@ export const SettingsScreen: React.FC = () => {
         onRequestClose={() => setShowTimePicker(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>设置提醒时间</Text>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>设置提醒时间</Text>
 
             <View style={styles.timeInputContainer}>
               <TextInput
-                style={styles.timeInput}
+                style={[styles.timeInput, { color: colors.text, borderColor: colors.primary }]}
                 value={tempTime.split(':')[0]}
                 onChangeText={(text) => {
                   const mins = tempTime.split(':')[1];
@@ -239,9 +201,9 @@ export const SettingsScreen: React.FC = () => {
                 keyboardType="numeric"
                 maxLength={2}
               />
-              <Text style={styles.timeSeparator}>:</Text>
+              <Text style={[styles.timeSeparator, { color: colors.textSecondary }]}>:</Text>
               <TextInput
-                style={styles.timeInput}
+                style={[styles.timeInput, { color: colors.text, borderColor: colors.primary }]}
                 value={tempTime.split(':')[1]}
                 onChangeText={(text) => {
                   const hrs = tempTime.split(':')[0];
@@ -258,18 +220,126 @@ export const SettingsScreen: React.FC = () => {
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonCancel]}
+                style={[styles.modalButton, styles.modalButtonCancel, { backgroundColor: colors.divider }]}
                 onPress={() => setShowTimePicker(false)}
               >
-                <Text style={styles.modalButtonText}>{t.cancel}</Text>
+                <Text style={[styles.modalButtonText, { color: colors.text }]}>{t.cancel}</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonConfirm]}
+                style={[styles.modalButton, styles.modalButtonConfirm, { backgroundColor: colors.primary }]}
                 onPress={handleSaveTime}
               >
-                <Text style={styles.modalButtonText}>{t.ok}</Text>
+                <Text style={[styles.modalButtonText, { color: '#fff' }]}>{t.ok}</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 语言选择器 */}
+      <Modal
+        visible={showLanguagePicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLanguagePicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{t.language}</Text>
+
+            <TouchableOpacity
+              style={[styles.optionButton, { backgroundColor: colors.backgroundSecondary }]}
+              onPress={async () => {
+                await updateSettings({ language: 'zh' });
+                setShowLanguagePicker(false);
+              }}
+            >
+              <Text style={[styles.optionText, { color: colors.text }]}>中文</Text>
+              {settings.language === 'zh' && <Text style={[styles.checkIcon, { color: colors.primary }]}>✓</Text>}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.optionButton, { backgroundColor: colors.backgroundSecondary }]}
+              onPress={async () => {
+                await updateSettings({ language: 'en' });
+                setShowLanguagePicker(false);
+              }}
+            >
+              <Text style={[styles.optionText, { color: colors.text }]}>English</Text>
+              {settings.language === 'en' && <Text style={[styles.checkIcon, { color: colors.primary }]}>✓</Text>}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.optionButton, { backgroundColor: colors.backgroundSecondary }]}
+              onPress={async () => {
+                await updateSettings({ language: 'es' });
+                setShowLanguagePicker(false);
+              }}
+            >
+              <Text style={[styles.optionText, { color: colors.text }]}>Español</Text>
+              {settings.language === 'es' && <Text style={[styles.checkIcon, { color: colors.primary }]}>✓</Text>}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.modalButton, styles.modalButtonCancel, { backgroundColor: colors.divider }]}
+              onPress={() => setShowLanguagePicker(false)}
+            >
+              <Text style={[styles.modalButtonText, { color: colors.text }]}>{t.cancel}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 主题选择器 */}
+      <Modal
+        visible={showThemePicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowThemePicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{t.theme}</Text>
+
+            <TouchableOpacity
+              style={[styles.optionButton, { backgroundColor: colors.backgroundSecondary }]}
+              onPress={async () => {
+                await updateSettings({ theme: 'light' });
+                setShowThemePicker(false);
+              }}
+            >
+              <Text style={[styles.optionText, { color: colors.text }]}>🌞 浅色模式</Text>
+              {settings.theme === 'light' && <Text style={[styles.checkIcon, { color: colors.primary }]}>✓</Text>}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.optionButton, { backgroundColor: colors.backgroundSecondary }]}
+              onPress={async () => {
+                await updateSettings({ theme: 'dark' });
+                setShowThemePicker(false);
+              }}
+            >
+              <Text style={[styles.optionText, { color: colors.text }]}>🌙 深色模式</Text>
+              {settings.theme === 'dark' && <Text style={[styles.checkIcon, { color: colors.primary }]}>✓</Text>}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.optionButton, { backgroundColor: colors.backgroundSecondary }]}
+              onPress={async () => {
+                await updateSettings({ theme: 'auto' });
+                setShowThemePicker(false);
+              }}
+            >
+              <Text style={[styles.optionText, { color: colors.text }]}>🔄 跟随系统</Text>
+              {settings.theme === 'auto' && <Text style={[styles.checkIcon, { color: colors.primary }]}>✓</Text>}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.modalButton, styles.modalButtonCancel, { backgroundColor: colors.divider }]}
+              onPress={() => setShowThemePicker(false)}
+            >
+              <Text style={[styles.modalButtonText, { color: colors.text }]}>{t.cancel}</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -389,5 +459,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
+  },
+  optionButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    marginBottom: 10,
+    backgroundColor: '#F5F5F5',
+  },
+  optionText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  checkIcon: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FF5722',
   },
 });

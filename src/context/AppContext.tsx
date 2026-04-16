@@ -1,4 +1,5 @@
 import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import { useColorScheme } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import {
   UserSettings,
@@ -31,6 +32,7 @@ import {
   saveHealthSyncStatus,
 } from '../services/storage';
 import { translations } from '../i18n/translations';
+import { Colors, lightColors, darkColors } from '../theme/colors';
 
 // 配置通知行为
 Notifications.setNotificationHandler({
@@ -44,6 +46,11 @@ Notifications.setNotificationHandler({
 });
 
 interface AppContextType {
+  // 主题
+  colors: Colors;
+  isDarkMode: boolean;
+  toggleTheme: () => void;
+
   // 设置
   settings: UserSettings;
   updateSettings: (settings: Partial<UserSettings>) => Promise<void>;
@@ -88,9 +95,21 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  // 主题
+  const systemColorScheme = useColorScheme();
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
   // 设置
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
   const [language, setLanguage] = useState<'zh' | 'en' | 'es'>('zh');
+
+  // 根据主题设置确定颜色
+  const colors: Colors = (() => {
+    if (settings.theme === 'auto') {
+      return systemColorScheme === 'dark' ? darkColors : lightColors;
+    }
+    return settings.theme === 'dark' ? darkColors : lightColors;
+  })();
 
   // 打卡
   const [checkInRecords, setCheckInRecords] = useState<DailyCheckIn[]>([]);
@@ -328,6 +347,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
+  const toggleTheme = async () => {
+    const themeCycle: Record<'light' | 'dark' | 'auto', 'light' | 'dark' | 'auto'> = {
+      light: 'dark',
+      dark: 'auto',
+      auto: 'light',
+    };
+    const newTheme = themeCycle[settings.theme];
+    await updateSettings({ theme: newTheme });
+  };
+
   const dailyCheckIn = async (completed: boolean, notes?: string) => {
     const today = new Date().toISOString().split('T')[0];
 
@@ -432,6 +461,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   return (
     <AppContext.Provider
       value={{
+        colors,
+        isDarkMode,
+        toggleTheme,
         settings,
         updateSettings,
         language,

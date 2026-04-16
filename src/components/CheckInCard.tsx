@@ -5,7 +5,7 @@ import * as Haptics from 'expo-haptics';
 import { useApp } from '../context/AppContext';
 
 export const CheckInCard: React.FC = () => {
-  const { t, hasCheckedToday, todayCheckIn, dailyCheckIn, stats, addWeight, addWater } = useApp();
+  const { t, hasCheckedToday, todayCheckIn, dailyCheckIn, stats, addWeight, addWater, colors } = useApp();
   const [showModal, setShowModal] = useState(false);
   const [notes, setNotes] = useState('');
   const [weight, setWeight] = useState('');
@@ -105,39 +105,39 @@ export const CheckInCard: React.FC = () => {
         onRequestClose={() => setShowModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>今日打卡</Text>
-            <Text style={styles.modalQuestion}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>今日打卡</Text>
+            <Text style={[styles.modalQuestion, { color: colors.text }]}>
               今天过午不食完成了吗？
             </Text>
-            <Text style={styles.modalHint}>
+            <Text style={[styles.modalHint, { color: colors.textSecondary }]}>
               （过了中午后没有再吃东西）
             </Text>
 
             {/* 体重输入 */}
-            <View style={styles.weightSection}>
-              <Text style={styles.weightLabel}>今日体重（可选）</Text>
+            <View style={[styles.weightSection, { backgroundColor: colors.backgroundSecondary }]}>
+              <Text style={[styles.weightLabel, { color: colors.textSecondary }]}>今日体重（可选）</Text>
               <View style={styles.weightInputRow}>
                 <TextInput
-                  style={styles.weightInput}
+                  style={[styles.weightInput, { color: colors.text }]}
                   placeholder="60.5"
                   value={weight}
                   onChangeText={setWeight}
                   keyboardType="decimal-pad"
-                  placeholderTextColor="#999"
+                  placeholderTextColor={colors.textLight}
                 />
-                <Text style={styles.weightUnit}>kg</Text>
+                <Text style={[styles.weightUnit, { color: colors.textLight }]}>kg</Text>
               </View>
             </View>
 
             {/* 禁欲勾选 */}
-            <View style={styles.abstinenceSection}>
+            <View style={[styles.abstinenceSection, { backgroundColor: colors.backgroundSecondary }]}>
               <View style={styles.abstinenceRow}>
-                <Text style={styles.abstinenceLabel}>🙏 今日禁欲</Text>
+                <Text style={[styles.abstinenceLabel, { color: colors.text }]}>🙏 今日禁欲</Text>
                 <Switch
                   value={isAbstinence}
                   onValueChange={setIsAbstinence}
-                  trackColor={{ false: '#ccc', true: '#9C27B0' }}
+                  trackColor={{ false: colors.divider, true: colors.primary }}
                   thumbColor="#fff"
                 />
               </View>
@@ -145,13 +145,14 @@ export const CheckInCard: React.FC = () => {
 
             {/* 饮水量选择 */}
             <View style={styles.waterSection}>
-              <Text style={styles.waterLabel}>💧 今日饮水（可选）</Text>
+              <Text style={[styles.waterLabel, { color: colors.textSecondary }]}>💧 今日饮水（可选）</Text>
               <View style={styles.waterOptionsContainer}>
                 {waterOptions.map((option) => (
                   <TouchableOpacity
                     key={option.value}
                     style={[
                       styles.waterOption,
+                      { backgroundColor: colors.backgroundSecondary, borderColor: colors.border },
                       selectedWater === option.value && styles.waterOptionSelected,
                     ]}
                     onPress={() =>
@@ -161,7 +162,8 @@ export const CheckInCard: React.FC = () => {
                     <Text
                       style={[
                         styles.waterOptionText,
-                        selectedWater === option.value && styles.waterOptionTextSelected,
+                        { color: colors.textSecondary },
+                        selectedWater === option.value && [styles.waterOptionTextSelected, { color: colors.primary }],
                       ]}
                     >
                       {option.label}
@@ -172,8 +174,9 @@ export const CheckInCard: React.FC = () => {
             </View>
 
             <TextInput
-              style={styles.notesInput}
+              style={[styles.notesInput, { color: colors.text, backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
               placeholder="添加备注（可选）"
+              placeholderTextColor={colors.textLight}
               value={notes}
               onChangeText={setNotes}
               multiline
@@ -182,13 +185,13 @@ export const CheckInCard: React.FC = () => {
 
             <View style={styles.buttonRow}>
               <TouchableOpacity
-                style={[styles.modalButton, styles.noButton]}
+                style={[styles.modalButton, styles.noButton, { backgroundColor: colors.divider }]}
                 onPress={() => handleCheckIn(false)}
               >
-                <Text style={styles.noButtonText}>没完成 😔</Text>
+                <Text style={[styles.noButtonText, { color: colors.text }]}>没完成 😔</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalButton, styles.yesButton]}
+                style={[styles.modalButton, styles.yesButton, { backgroundColor: colors.success }]}
                 onPress={() => handleCheckIn(true)}
               >
                 <Text style={styles.yesButtonText}>完成了 🔥</Text>
@@ -205,7 +208,7 @@ export const CheckInCard: React.FC = () => {
                 setShowModal(false);
               }}
             >
-              <Text style={styles.cancelButtonText}>取消</Text>
+              <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>取消</Text>
             </TouchableOpacity>
           </View>
         </View>

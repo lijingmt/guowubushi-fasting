@@ -15,7 +15,7 @@ import { ACHIEVEMENTS } from '../constants/achievements';
 const { width } = Dimensions.get('window');
 
 export const StatsScreen: React.FC = () => {
-  const { t, stats, checkInRecords, weightRecords } = useApp();
+  const { t, stats, checkInRecords, weightRecords, colors } = useApp();
   const [viewMode, setViewMode] = useState<'overview' | 'weight' | 'achievements'>('overview');
 
   // 准备图表数据 - 最近7天的打卡记录
@@ -57,34 +57,37 @@ export const StatsScreen: React.FC = () => {
   );
 
   const chartConfig = {
-    backgroundColor: '#ffffff',
-    backgroundGradientFrom: '#ffffff',
-    backgroundGradientTo: '#ffffff',
+    backgroundColor: colors.background,
+    backgroundGradientFrom: colors.background,
+    backgroundGradientTo: colors.background,
     decimalPlaces: 0,
-    color: (opacity = 1) => `rgba(255, 87, 34, ${opacity})`,
-    labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+    color: (opacity = 1) => colors.primary.replace(')', `, ${opacity})`).replace('rgb', 'rgba').replace('#', 'rgba(255, 87, 34,'),
+    labelColor: (opacity = 1) => isDarkMode ? `rgba(255, 255, 255, ${opacity})` : `rgba(0, 0, 0, ${opacity})`,
     style: {
       borderRadius: 16,
     },
     propsForDots: {
       r: '4',
       strokeWidth: '2',
-      stroke: '#FF5722',
+      stroke: colors.primary,
     },
   };
 
-  return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>{t.statistics}</Text>
+  const isDarkMode = colors.background === '#121212';
 
-      <View style={styles.tabContainer}>
+  return (
+    <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={styles.content}>
+      <Text style={[styles.title, { color: colors.text }]}>{t.statistics}</Text>
+
+      <View style={[styles.tabContainer, { backgroundColor: colors.card }]}>
         <TouchableOpacity
-          style={[styles.tab, viewMode === 'overview' && styles.tabActive]}
+          style={[styles.tab, viewMode === 'overview' && [styles.tabActive, { backgroundColor: colors.primary }]]}
           onPress={() => setViewMode('overview')}
         >
           <Text
             style={[
               styles.tabText,
+              { color: colors.textSecondary },
               viewMode === 'overview' && styles.tabTextActive,
             ]}
           >
@@ -92,12 +95,13 @@ export const StatsScreen: React.FC = () => {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, viewMode === 'weight' && styles.tabActive]}
+          style={[styles.tab, viewMode === 'weight' && [styles.tabActive, { backgroundColor: colors.primary }]]}
           onPress={() => setViewMode('weight')}
         >
           <Text
             style={[
               styles.tabText,
+              { color: colors.textSecondary },
               viewMode === 'weight' && styles.tabTextActive,
             ]}
           >
@@ -105,12 +109,13 @@ export const StatsScreen: React.FC = () => {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, viewMode === 'achievements' && styles.tabActive]}
+          style={[styles.tab, viewMode === 'achievements' && [styles.tabActive, { backgroundColor: colors.primary }]]}
           onPress={() => setViewMode('achievements')}
         >
           <Text
             style={[
               styles.tabText,
+              { color: colors.textSecondary },
               viewMode === 'achievements' && styles.tabTextActive,
             ]}
           >
@@ -122,7 +127,7 @@ export const StatsScreen: React.FC = () => {
       {viewMode === 'overview' && (
         <>
           <Card style={styles.chartCard}>
-            <Text style={styles.chartTitle}>本周完成情况</Text>
+            <Text style={[styles.chartTitle, { color: colors.text }]}>本周完成情况</Text>
             <BarChart
               data={{
                 labels: weekData.labels,
@@ -143,43 +148,43 @@ export const StatsScreen: React.FC = () => {
 
           <View style={styles.statsGrid}>
             <Card style={styles.statItem}>
-              <Text style={styles.statValue}>{stats.completedDays}</Text>
-              <Text style={styles.statLabel}>总完成天数</Text>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{stats.completedDays}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>总完成天数</Text>
             </Card>
             <Card style={styles.statItem}>
-              <Text style={styles.statValue}>{stats.currentStreak}</Text>
-              <Text style={styles.statLabel}>当前连胜</Text>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{stats.currentStreak}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>当前连胜</Text>
             </Card>
             <Card style={styles.statItem}>
-              <Text style={styles.statValue}>{stats.longestStreak}</Text>
-              <Text style={styles.statLabel}>最长连胜</Text>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{stats.longestStreak}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>最长连胜</Text>
             </Card>
             <Card style={styles.statItem}>
-              <Text style={styles.statValue}>{stats.completionRate}%</Text>
-              <Text style={styles.statLabel}>完成率</Text>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{stats.completionRate}%</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>完成率</Text>
             </Card>
           </View>
 
           <View style={styles.statsGrid}>
             <Card style={styles.statItem}>
-              <Text style={styles.statValue}>{stats.totalCaloriesSaved}</Text>
-              <Text style={styles.statLabel}>节省卡路里</Text>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{stats.totalCaloriesSaved}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>节省卡路里</Text>
             </Card>
             <Card style={styles.statItem}>
-              <Text style={styles.statValue}>{stats.totalMealsSkipped}</Text>
-              <Text style={styles.statLabel}>少吃晚饭</Text>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{stats.totalMealsSkipped}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>少吃晚饭</Text>
             </Card>
           </View>
 
           <View style={styles.statsGrid}>
             <Card style={styles.statItem}>
               <Text style={styles.statIcon}>🙏</Text>
-              <Text style={styles.statValue}>{stats.longestAbstinenceStreak}</Text>
-              <Text style={styles.statLabel}>最长禁欲</Text>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{stats.longestAbstinenceStreak}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>最长禁欲</Text>
             </Card>
             <Card style={styles.statItem}>
-              <Text style={styles.statValue}>{stats.totalHoursSaved}</Text>
-              <Text style={styles.statLabel}>节约小时</Text>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{stats.totalHoursSaved}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>节约小时</Text>
             </Card>
           </View>
         </>
@@ -189,7 +194,7 @@ export const StatsScreen: React.FC = () => {
         <>
           {weightRecords.length >= 2 ? (
             <Card style={styles.chartCard}>
-              <Text style={styles.chartTitle}>体重变化趋势</Text>
+              <Text style={[styles.chartTitle, { color: colors.text }]}>体重变化趋势</Text>
               <LineChart
                 data={{
                   labels: weightData.labels,
@@ -211,21 +216,21 @@ export const StatsScreen: React.FC = () => {
             </Card>
           ) : (
             <Card style={styles.emptyCard}>
-              <Text style={styles.emptyText}>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
                 需要至少2条体重记录才能显示趋势图
               </Text>
             </Card>
           )}
 
-          <Text style={styles.sectionTitle}>体重记录</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>体重记录</Text>
           {weightRecords.slice(-10).reverse().map((record) => (
             <Card key={record.id} style={styles.weightRecordCard}>
               <View style={styles.weightRecordRow}>
-                <Text style={styles.weightDate}>{record.date}</Text>
-                <Text style={styles.weightValue}>{record.weight} kg</Text>
+                <Text style={[styles.weightDate, { color: colors.textSecondary }]}>{record.date}</Text>
+                <Text style={[styles.weightValue, { color: colors.text }]}>{record.weight} kg</Text>
               </View>
               {record.note && (
-                <Text style={styles.weightNote}>{record.note}</Text>
+                <Text style={[styles.weightNote, { color: colors.textLight }]}>{record.note}</Text>
               )}
             </Card>
           ))}
@@ -235,10 +240,10 @@ export const StatsScreen: React.FC = () => {
       {viewMode === 'achievements' && (
         <>
           <Card style={styles.achievementSummary}>
-            <Text style={styles.achievementCount}>
+            <Text style={[styles.achievementCount, { color: colors.primary }]}>
               {unlockedAchievements.length} / {ACHIEVEMENTS.length}
             </Text>
-            <Text style={styles.achievementLabel}>已解锁成就</Text>
+            <Text style={[styles.achievementLabel, { color: colors.textSecondary }]}>已解锁成就</Text>
           </Card>
 
           {ACHIEVEMENTS.map((achievement) => {
@@ -246,9 +251,9 @@ export const StatsScreen: React.FC = () => {
             return (
               <Card
                 key={achievement.id}
-                style={isUnlocked ? styles.achievementCard : styles.achievementCardLocked}
+                style={isUnlocked ? styles.achievementCard : [styles.achievementCardLocked, { opacity: 0.6 }]}
               >
-                <View style={styles.achievementIconContainer}>
+                <View style={[styles.achievementIconContainer, { backgroundColor: colors.backgroundSecondary }]}>
                   <Text style={styles.achievementIcon}>
                     {isUnlocked ? achievement.icon : '🔒'}
                   </Text>
@@ -257,7 +262,8 @@ export const StatsScreen: React.FC = () => {
                   <Text
                     style={[
                       styles.achievementTitle,
-                      !isUnlocked && styles.achievementTitleLocked,
+                      { color: colors.text },
+                      !isUnlocked && { color: colors.textLight },
                     ]}
                   >
                     {achievement.title}
@@ -265,14 +271,15 @@ export const StatsScreen: React.FC = () => {
                   <Text
                     style={[
                       styles.achievementDesc,
-                      !isUnlocked && styles.achievementDescLocked,
+                      { color: colors.textSecondary },
+                      !isUnlocked && { color: colors.textLight },
                     ]}
                   >
                     {achievement.description}
                   </Text>
                 </View>
                 {isUnlocked && (
-                  <Text style={styles.achievementUnlocked}>✓</Text>
+                  <Text style={[styles.achievementUnlocked, { color: colors.success }]}>✓</Text>
                 )}
               </Card>
             );

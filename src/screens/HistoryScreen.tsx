@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext';
 import { Card } from '../components/Card';
 
 export const HistoryScreen: React.FC = () => {
-  const { checkInRecords } = useApp();
+  const { checkInRecords, colors } = useApp();
 
   const sortedRecords = [...checkInRecords].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -24,32 +24,34 @@ export const HistoryScreen: React.FC = () => {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>打卡历史</Text>
+    <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={styles.content}>
+      <Text style={[styles.title, { color: colors.text }]}>打卡历史</Text>
 
       {sortedRecords.length === 0 ? (
         <Card style={styles.emptyCard}>
-          <Text style={styles.emptyText}>还没有打卡记录</Text>
-          <Text style={styles.emptyHint}>开始你的第一天过午不食吧！</Text>
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>还没有打卡记录</Text>
+          <Text style={[styles.emptyHint, { color: colors.textLight }]}>开始你的第一天过午不食吧！</Text>
         </Card>
       ) : (
         sortedRecords.map((record) => (
           <Card key={record.id} style={styles.recordCard}>
             <View style={styles.recordHeader}>
-              <Text style={styles.recordDate}>{formatDate(record.date)}</Text>
+              <Text style={[styles.recordDate, { color: colors.text }]}>
+                {formatDate(record.date)}
+              </Text>
               <View
                 style={[
                   styles.statusBadge,
-                  record.completed ? styles.statusCompleted : styles.statusFailed,
+                  { backgroundColor: record.completed ? colors.success : colors.divider },
                 ]}
               >
-                <Text style={styles.statusText}>
+                <Text style={[styles.statusText, { color: record.completed ? '#fff' : colors.textSecondary }]}>
                   {record.completed ? '✅ 已完成' : '😔 未完成'}
                 </Text>
               </View>
             </View>
             {record.notes && (
-              <Text style={styles.recordNotes}>{record.notes}</Text>
+              <Text style={[styles.recordNotes, { color: colors.textSecondary }]}>{record.notes}</Text>
             )}
           </Card>
         ))

@@ -14,22 +14,22 @@ const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 const TabNavigator = () => {
-  const { t } = useApp();
+  const { t, colors } = useApp();
 
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#fff',
+          backgroundColor: colors.tabBar,
           borderTopWidth: 1,
-          borderTopColor: '#E0E0E0',
+          borderTopColor: colors.border,
           height: 70,
           paddingBottom: 5,
           paddingTop: 10,
         },
-        tabBarActiveTintColor: '#FF5722',
-        tabBarInactiveTintColor: '#999',
+        tabBarActiveTintColor: colors.tabBarActive,
+        tabBarInactiveTintColor: colors.tabBarInactive,
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '500',
