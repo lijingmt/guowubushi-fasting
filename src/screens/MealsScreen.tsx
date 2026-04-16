@@ -165,7 +165,7 @@ export const MealsScreen: React.FC = () => {
                 multiline
               />
 
-              <Text style={[styles.quickAddTitle, { color: colors.textSecondary }]}>快速添加</Text>
+              <Text style={[styles.quickAddTitle, { color: colors.textSecondary }]}>{t.quickAdd}</Text>
               <ScrollView
                 horizontal
                 style={styles.quickAddScroll}

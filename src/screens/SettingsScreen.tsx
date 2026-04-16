@@ -33,7 +33,7 @@ export const SettingsScreen: React.FC = () => {
     if (value) {
       const { status } = await Notifications.requestPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('权限需要', '需要通知权限来发送每日提醒');
+        Alert.alert(t.permissionNeeded, t.notificationPermissionNeeded);
         return;
       }
     }
@@ -74,10 +74,10 @@ export const SettingsScreen: React.FC = () => {
       <Text style={[styles.title, { color: colors.text }]}>{t.settings}</Text>
 
       {/* 打卡提醒设置 */}
-      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>打卡提醒</Text>
+      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t.checkInReminder}</Text>
       <Card>
         <View style={styles.settingItem}>
-          <Text style={[styles.settingLabel, { color: colors.text }]}>启用每日提醒</Text>
+          <Text style={[styles.settingLabel, { color: colors.text }]}>{t.enableDailyReminder}</Text>
           <Switch
             value={settings.enableNotifications}
             onValueChange={handleToggleNotifications}
@@ -89,7 +89,7 @@ export const SettingsScreen: React.FC = () => {
           <>
             <Divider />
             <SettingItem
-              label="提醒时间"
+              label={t.notificationTime}
               value={tempTime}
               onPress={() => {
                 setTempTime(settings.reminderTime);
@@ -101,16 +101,16 @@ export const SettingsScreen: React.FC = () => {
       </Card>
 
       {/* 目标设置 */}
-      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>目标设置</Text>
+      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t.goalSettings}</Text>
       <Card>
         <SettingItem
-          label="每日卡路里目标"
+          label={t.dailyCalorieGoal}
           value={`${settings.dailyCalorieGoal} kcal`}
           onPress={() => {
             Alert.alert(
-              '卡路里目标',
-              '建议每天摄入1500-2000卡路里',
-              [{ text: '知道了' }]
+              t.calorieGoalTitle,
+              t.calorieGoalHint,
+              [{ text: t.know }]
             );
           }}
         />
@@ -121,13 +121,7 @@ export const SettingsScreen: React.FC = () => {
       <Card>
         <SettingItem
           label={t.language}
-          value={
-            settings.language === 'zh'
-              ? '中文'
-              : settings.language === 'en'
-              ? 'English'
-              : 'Español'
-          }
+          value={settings.language === 'zh' ? t.langZh : settings.language === 'en' ? t.langEn : t.langEs}
           onPress={() => {
             setShowLanguagePicker(true);
           }}
@@ -137,10 +131,10 @@ export const SettingsScreen: React.FC = () => {
           label={t.theme}
           value={
             settings.theme === 'light'
-              ? '浅色'
+              ? t.themeLight
               : settings.theme === 'dark'
-              ? '深色'
-              : '自动'
+              ? t.themeDark
+              : t.themeAuto
           }
           onPress={() => {
             setShowThemePicker(true);
@@ -153,9 +147,9 @@ export const SettingsScreen: React.FC = () => {
       <Card>
         <View style={styles.settingItem}>
           <View>
-            <Text style={[styles.settingLabel, { color: colors.text }]}>Apple Health</Text>
+            <Text style={[styles.settingLabel, { color: colors.text }]}>{t.appleHealth}</Text>
             <Text style={[styles.settingDesc, { color: colors.textLight }]}>
-              {healthSync.healthKitEnabled ? '已启用' : '未启用'}
+              {healthSync.healthKitEnabled ? t.enabled : t.notEnabled}
             </Text>
           </View>
           <Switch
@@ -184,7 +178,7 @@ export const SettingsScreen: React.FC = () => {
       >
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>设置提醒时间</Text>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{t.setReminderTime}</Text>
 
             <View style={styles.timeInputContainer}>
               <TextInput
@@ -254,7 +248,7 @@ export const SettingsScreen: React.FC = () => {
                 setShowLanguagePicker(false);
               }}
             >
-              <Text style={[styles.optionText, { color: colors.text }]}>中文</Text>
+              <Text style={[styles.optionText, { color: colors.text }]}>{t.langZh}</Text>
               {settings.language === 'zh' && <Text style={[styles.checkIcon, { color: colors.primary }]}>✓</Text>}
             </TouchableOpacity>
 
@@ -265,7 +259,7 @@ export const SettingsScreen: React.FC = () => {
                 setShowLanguagePicker(false);
               }}
             >
-              <Text style={[styles.optionText, { color: colors.text }]}>English</Text>
+              <Text style={[styles.optionText, { color: colors.text }]}>{t.langEn}</Text>
               {settings.language === 'en' && <Text style={[styles.checkIcon, { color: colors.primary }]}>✓</Text>}
             </TouchableOpacity>
 
@@ -276,7 +270,7 @@ export const SettingsScreen: React.FC = () => {
                 setShowLanguagePicker(false);
               }}
             >
-              <Text style={[styles.optionText, { color: colors.text }]}>Español</Text>
+              <Text style={[styles.optionText, { color: colors.text }]}>{t.langEs}</Text>
               {settings.language === 'es' && <Text style={[styles.checkIcon, { color: colors.primary }]}>✓</Text>}
             </TouchableOpacity>
 
@@ -308,7 +302,7 @@ export const SettingsScreen: React.FC = () => {
                 setShowThemePicker(false);
               }}
             >
-              <Text style={[styles.optionText, { color: colors.text }]}>🌞 浅色模式</Text>
+              <Text style={[styles.optionText, { color: colors.text }]}>🌞 {t.themeLightFull}</Text>
               {settings.theme === 'light' && <Text style={[styles.checkIcon, { color: colors.primary }]}>✓</Text>}
             </TouchableOpacity>
 
@@ -319,7 +313,7 @@ export const SettingsScreen: React.FC = () => {
                 setShowThemePicker(false);
               }}
             >
-              <Text style={[styles.optionText, { color: colors.text }]}>🌙 深色模式</Text>
+              <Text style={[styles.optionText, { color: colors.text }]}>🌙 {t.themeDarkFull}</Text>
               {settings.theme === 'dark' && <Text style={[styles.checkIcon, { color: colors.primary }]}>✓</Text>}
             </TouchableOpacity>
 
@@ -330,7 +324,7 @@ export const SettingsScreen: React.FC = () => {
                 setShowThemePicker(false);
               }}
             >
-              <Text style={[styles.optionText, { color: colors.text }]}>🔄 跟随系统</Text>
+              <Text style={[styles.optionText, { color: colors.text }]}>🔄 {t.themeAutoFull}</Text>
               {settings.theme === 'auto' && <Text style={[styles.checkIcon, { color: colors.primary }]}>✓</Text>}
             </TouchableOpacity>
 

@@ -28,13 +28,19 @@ export const HomeScreen: React.FC = () => {
 
   const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const message = hasCheckedToday && todayCheckIn?.completed
-      ? `🔥 我已连续${stats.currentStreak}天完成过午不食！\n累计完成${stats.completedDays}天，节省${stats.totalCaloriesSaved}卡路里\n\n一起来过午不食吧！`
-      : `🔥 我正在坚持过午不食！\n已累计完成${stats.completedDays}天\n\n一起来过午不食吧！`;
+    const getMessage = () => {
+      if (hasCheckedToday && todayCheckIn?.completed) {
+        return t.shareMessage1
+          .replace('{{streak}}', stats.currentStreak.toString())
+          .replace('{{days}}', stats.completedDays.toString())
+          .replace('{{calories}}', stats.totalCaloriesSaved.toString());
+      }
+      return t.shareMessage2.replace('{{days}}', stats.completedDays.toString());
+    };
 
     try {
       await Share.share({
-        message: message,
+        message: `🔥 ${getMessage()}`,
       });
     } catch (error) {
       console.error('Error sharing:', error);
@@ -59,31 +65,31 @@ export const HomeScreen: React.FC = () => {
 
       <CheckInCard />
 
-      {/* 分享按钮 */}
+      {/* Share button */}
       {hasCheckedToday && todayCheckIn?.completed && (
         <TouchableOpacity style={[styles.shareButton, { backgroundColor: colors.primary }]} onPress={handleShare}>
-          <Text style={styles.shareButtonText}>📱 分享到朋友圈</Text>
+          <Text style={styles.shareButtonText}>📱 {t.shareToMoments}</Text>
         </TouchableOpacity>
       )}
 
-      {/* 连胜统计卡片 */}
+      {/* Streak card */}
       <View style={[styles.streakCard, { backgroundColor: colors.card }]}>
         <Text style={styles.streakEmoji}>{getFlameEmoji()}</Text>
-        <Text style={[styles.streakTitle, { color: colors.textSecondary }]}>当前连胜</Text>
+        <Text style={[styles.streakTitle, { color: colors.textSecondary }]}>{t.currentStreak}</Text>
         <Text style={[styles.streakCount, { color: colors.primary }]}>{stats.currentStreak}</Text>
-        <Text style={[styles.streakLabel, { color: colors.textSecondary }]}>天</Text>
+        <Text style={[styles.streakLabel, { color: colors.textSecondary }]}>{t.dayUnit}</Text>
       </View>
 
       <View style={styles.statsRow}>
         <StatCard
-          title={t.totalFastingDays}
+          title={t.totalCompletedDays}
           value={stats.completedDays}
           unit={t.days}
           icon="📅"
           colors={['#FF9800', '#F44336']}
         />
         <StatCard
-          title={t.longestStreak}
+          title={t.longestStreakLabel}
           value={stats.longestStreak}
           unit={t.days}
           icon="🏆"
@@ -93,16 +99,16 @@ export const HomeScreen: React.FC = () => {
 
       <View style={styles.statsRow}>
         <StatCard
-          title="节省卡路里"
+          title={t.totalCaloriesSaved}
           value={stats.totalCaloriesSaved}
-          unit="kcal"
+          unit={t.kcal}
           icon="💪"
           colors={['#4CAF50', '#8BC34A']}
         />
         <StatCard
-          title="少吃晚饭"
+          title={t.totalMealsSkipped}
           value={stats.totalMealsSkipped}
-          unit="顿"
+          unit={t.mealsUnit}
           icon="🍽️"
           colors={['#2196F3', '#03A9F4']}
         />
@@ -110,16 +116,16 @@ export const HomeScreen: React.FC = () => {
 
       <View style={styles.statsRow}>
         <StatCard
-          title="最长禁欲"
+          title={t.longestAbstinenceStreak}
           value={stats.longestAbstinenceStreak}
-          unit="天"
+          unit={t.dayUnit}
           icon="🙏"
           colors={['#9C27B0', '#7B1FA2']}
         />
         <StatCard
-          title="节约小时"
+          title={t.totalHoursSaved}
           value={stats.totalHoursSaved}
-          unit="小时"
+          unit={t.hoursUnit}
           icon="⏰"
           colors={['#FF9800', '#F57C00']}
         />

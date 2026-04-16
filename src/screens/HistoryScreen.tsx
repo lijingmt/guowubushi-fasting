@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext';
 import { Card } from '../components/Card';
 
 export const HistoryScreen: React.FC = () => {
-  const { checkInRecords, colors } = useApp();
+  const { checkInRecords, colors, t } = useApp();
 
   const sortedRecords = [...checkInRecords].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -15,9 +15,9 @@ export const HistoryScreen: React.FC = () => {
       const d = new Date(dateStr);
       const month = d.getMonth() + 1;
       const day = d.getDate();
-      const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-      const weekday = weekdays[d.getDay()];
-      return `${month}月${day}日 ${weekday}`;
+      const weekday = t.weekdayFull[d.getDay()];
+      const monthDay = t.monthDay.replace('{{month}}', month.toString()).replace('{{day}}', day.toString());
+      return `${monthDay} ${weekday}`;
     } catch {
       return dateStr;
     }
@@ -25,12 +25,12 @@ export const HistoryScreen: React.FC = () => {
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={styles.content}>
-      <Text style={[styles.title, { color: colors.text }]}>打卡历史</Text>
+      <Text style={[styles.title, { color: colors.text }]}>{t.checkInHistory}</Text>
 
       {sortedRecords.length === 0 ? (
         <Card style={styles.emptyCard}>
-          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>还没有打卡记录</Text>
-          <Text style={[styles.emptyHint, { color: colors.textLight }]}>开始你的第一天过午不食吧！</Text>
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t.noCheckInRecords}</Text>
+          <Text style={[styles.emptyHint, { color: colors.textLight }]}>{t.startFirstDay}</Text>
         </Card>
       ) : (
         sortedRecords.map((record) => (
@@ -46,7 +46,7 @@ export const HistoryScreen: React.FC = () => {
                 ]}
               >
                 <Text style={[styles.statusText, { color: record.completed ? '#fff' : colors.textSecondary }]}>
-                  {record.completed ? '✅ 已完成' : '😔 未完成'}
+                  {record.completed ? `✅ ${t.completed}` : `😔 ${t.notCompletedLabel}`}
                 </Text>
               </View>
             </View>

@@ -5,14 +5,14 @@ import * as Haptics from 'expo-haptics';
 import { useApp } from '../context/AppContext';
 
 export const CheckInCard: React.FC = () => {
-  const { t, hasCheckedToday, todayCheckIn, dailyCheckIn, stats, addWeight, addWater, colors } = useApp();
+  const { t, hasCheckedToday, todayCheckIn, dailyCheckIn, stats, addWeight, addWater, colors, language } = useApp();
   const [showModal, setShowModal] = useState(false);
   const [notes, setNotes] = useState('');
   const [weight, setWeight] = useState('');
-  const [isAbstinence, setIsAbstinence] = useState(false); // 是否禁欲
+  const [isAbstinence, setIsAbstinence] = useState(false);
   const [selectedWater, setSelectedWater] = useState<number | null>(null);
 
-  // 饮水选项
+  // Water options
   const waterOptions = [
     { label: '500ml', value: 500 },
     { label: '1000ml', value: 1000 },
@@ -21,27 +21,36 @@ export const CheckInCard: React.FC = () => {
     { label: '>2000ml', value: 2500 },
   ];
 
+  const getAbstinenceNote = () => {
+    if (language === 'en') return '🙏 Abstinence Completed';
+    if (language === 'es') return '🙏 Abstinencia Completada';
+    return '🙏 禁欲完成';
+  };
+
+  const getWaterNote = (waterText: string) => {
+    if (language === 'en') return `💧 Water ${waterText}`;
+    if (language === 'es') return `💧 Agua ${waterText}`;
+    return `💧 饮水 ${waterText}`;
+  };
+
   const handleCheckIn = async (completed: boolean) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
-    // 如果输入了体重，保存体重记录
     if (weight && parseFloat(weight) > 0) {
       await addWeight(parseFloat(weight));
     }
 
-    // 如果选择了饮水量，保存饮水记录
     if (selectedWater) {
       await addWater(selectedWater);
     }
 
-    // 将禁欲状态和饮水量添加到备注中
     let finalNotes = notes;
     if (isAbstinence) {
-      finalNotes = finalNotes ? `${finalNotes}\n🙏 禁欲完成` : '🙏 禁欲完成';
+      finalNotes = finalNotes ? `${finalNotes}\n${getAbstinenceNote()}` : getAbstinenceNote();
     }
     if (selectedWater) {
       const waterText = selectedWater >= 2500 ? '>2000ml' : `${selectedWater}ml`;
-      finalNotes = finalNotes ? `${finalNotes}\n💧 饮水 ${waterText}` : `💧 饮水 ${waterText}`;
+      finalNotes = finalNotes ? `${finalNotes}\n${getWaterNote(waterText)}` : getWaterNote(waterText);
     }
 
     await dailyCheckIn(completed, finalNotes || undefined);
@@ -53,7 +62,6 @@ export const CheckInCard: React.FC = () => {
   };
 
   if (hasCheckedToday && todayCheckIn) {
-    // 已打卡，显示状态
     return (
       <LinearGradient
         colors={todayCheckIn.completed ? ['#FF9800', '#FF5722'] : ['#9E9E9E', '#757575']}
@@ -65,12 +73,12 @@ export const CheckInCard: React.FC = () => {
           {todayCheckIn.completed ? '🔥' : '😔'}
         </Text>
         <Text style={styles.completedTitle}>
-          {todayCheckIn.completed ? '今日已完成' : '今日未完成'}
+          {todayCheckIn.completed ? t.todayCompleted : t.todayNotCompleted}
         </Text>
         <View style={styles.streakRow}>
-          <Text style={styles.streakLabel}>连胜</Text>
+          <Text style={styles.streakLabel}>{t.streak}</Text>
           <Text style={styles.streakValue}>{stats.currentStreak}</Text>
-          <Text style={styles.streakDays}>天</Text>
+          <Text style={styles.streakDays}>{t.dayUnit}</Text>
         </View>
         {todayCheckIn.notes && (
           <Text style={styles.notes}>{todayCheckIn.notes}</Text>
@@ -79,7 +87,6 @@ export const CheckInCard: React.FC = () => {
     );
   }
 
-  // 未打卡，显示打卡按钮
   return (
     <>
       <TouchableOpacity
@@ -93,8 +100,8 @@ export const CheckInCard: React.FC = () => {
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         >
-          <Text style={styles.checkInTitle}>今日打卡</Text>
-          <Text style={styles.checkInSubtitle}>今天过午不食完成了吗？</Text>
+          <Text style={styles.checkInTitle}>{t.checkInToday}</Text>
+          <Text style={styles.checkInSubtitle}>{t.checkInQuestion}</Text>
         </LinearGradient>
       </TouchableOpacity>
 
@@ -106,17 +113,17 @@ export const CheckInCard: React.FC = () => {
       >
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>今日打卡</Text>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{t.checkInToday}</Text>
             <Text style={[styles.modalQuestion, { color: colors.text }]}>
-              今天过午不食完成了吗？
+              {t.checkInQuestion}
             </Text>
             <Text style={[styles.modalHint, { color: colors.textSecondary }]}>
-              （过了中午后没有再吃东西）
+              {t.checkInHint}
             </Text>
 
-            {/* 体重输入 */}
+            {/* Weight input */}
             <View style={[styles.weightSection, { backgroundColor: colors.backgroundSecondary }]}>
-              <Text style={[styles.weightLabel, { color: colors.textSecondary }]}>今日体重（可选）</Text>
+              <Text style={[styles.weightLabel, { color: colors.textSecondary }]}>{t.todaysWeight}</Text>
               <View style={styles.weightInputRow}>
                 <TextInput
                   style={[styles.weightInput, { color: colors.text }]}
@@ -126,14 +133,14 @@ export const CheckInCard: React.FC = () => {
                   keyboardType="decimal-pad"
                   placeholderTextColor={colors.textLight}
                 />
-                <Text style={[styles.weightUnit, { color: colors.textLight }]}>kg</Text>
+                <Text style={[styles.weightUnit, { color: colors.textLight }]}>{t.kg}</Text>
               </View>
             </View>
 
-            {/* 禁欲勾选 */}
+            {/* Abstinence toggle */}
             <View style={[styles.abstinenceSection, { backgroundColor: colors.backgroundSecondary }]}>
               <View style={styles.abstinenceRow}>
-                <Text style={[styles.abstinenceLabel, { color: colors.text }]}>🙏 今日禁欲</Text>
+                <Text style={[styles.abstinenceLabel, { color: colors.text }]}>🙏 {t.todaysAbstinence}</Text>
                 <Switch
                   value={isAbstinence}
                   onValueChange={setIsAbstinence}
@@ -143,9 +150,9 @@ export const CheckInCard: React.FC = () => {
               </View>
             </View>
 
-            {/* 饮水量选择 */}
+            {/* Water selection */}
             <View style={styles.waterSection}>
-              <Text style={[styles.waterLabel, { color: colors.textSecondary }]}>💧 今日饮水（可选）</Text>
+              <Text style={[styles.waterLabel, { color: colors.textSecondary }]}>💧 {t.todaysWater}</Text>
               <View style={styles.waterOptionsContainer}>
                 {waterOptions.map((option) => (
                   <TouchableOpacity
@@ -175,7 +182,7 @@ export const CheckInCard: React.FC = () => {
 
             <TextInput
               style={[styles.notesInput, { color: colors.text, backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
-              placeholder="添加备注（可选）"
+              placeholder={t.addNote}
               placeholderTextColor={colors.textLight}
               value={notes}
               onChangeText={setNotes}
@@ -188,13 +195,13 @@ export const CheckInCard: React.FC = () => {
                 style={[styles.modalButton, styles.noButton, { backgroundColor: colors.divider }]}
                 onPress={() => handleCheckIn(false)}
               >
-                <Text style={[styles.noButtonText, { color: colors.text }]}>没完成 😔</Text>
+                <Text style={[styles.noButtonText, { color: colors.text }]}>{t.notCompleted} 😔</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.yesButton, { backgroundColor: colors.success }]}
                 onPress={() => handleCheckIn(true)}
               >
-                <Text style={styles.yesButtonText}>完成了 🔥</Text>
+                <Text style={styles.yesButtonText}>{t.completed} 🔥</Text>
               </TouchableOpacity>
             </View>
 
@@ -208,7 +215,7 @@ export const CheckInCard: React.FC = () => {
                 setShowModal(false);
               }}
             >
-              <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>取消</Text>
+              <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>{t.cancel}</Text>
             </TouchableOpacity>
           </View>
         </View>

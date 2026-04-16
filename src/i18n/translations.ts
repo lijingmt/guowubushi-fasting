@@ -9,6 +9,7 @@ export const translations = {
     edit: '编辑',
     today: '今天',
     yesterday: '昨天',
+    know: '知道了',
 
     // 底部导航
     tabHome: '首页',
@@ -20,13 +21,42 @@ export const translations = {
     // 首页
     welcome: '欢迎回来',
     currentStreak: '当前连续',
+    streak: '连胜',
     days: '天',
+    dayUnit: '天',
     fastingTime: '禁食时间',
     nextMeal: '下一餐',
     brokeRule: '今天已进食',
     keepFasting: '继续保持',
     waterIntake: '今日饮水',
     waterMl: '毫升',
+    shareToMoments: '分享到朋友圈',
+    shareMessage1: '我已连续{{streak}}天完成过午不食！\n累计完成{{days}}天，节省{{calories}}卡路里\n\n一起来过午不食吧！',
+    shareMessage2: '我正在坚持过午不食！\n已累计完成{{days}}天\n\n一起来过午不食吧！',
+    totalCompletedDays: '总完成天数',
+    totalCaloriesSaved: '节省卡路里',
+    kcal: 'kcal',
+    totalMealsSkipped: '少吃晚饭',
+    mealsUnit: '顿',
+    longestAbstinenceStreak: '最长禁欲',
+    totalHoursSaved: '节约小时',
+    hoursUnit: '小时',
+
+    // 打卡
+    checkInToday: '今日打卡',
+    checkInQuestion: '今天过午不食完成了吗？',
+    checkInHint: '（过了中午后没有再吃东西）',
+    todayCompleted: '今日已完成',
+    todayNotCompleted: '今日未完成',
+    completed: '完成了',
+    notCompleted: '没完成',
+    addNote: '添加备注（可选）',
+    todaysWeight: '今日体重（可选）',
+    todaysAbstinence: '今日禁欲',
+    todaysWater: '今日饮水（可选）',
+    kg: 'kg',
+    abstinenceCompleted: '禁欲完成',
+    waterRecord: '饮水',
 
     // 禁食页面
     fastingStatus: '禁食状态',
@@ -54,18 +84,42 @@ export const translations = {
     totalCalories: '总卡路里',
     remainingCalories: '剩余',
     overGoal: '超标',
+    quickAdd: '快速添加',
 
     // 统计页面
     statistics: '数据统计',
+    overview: '概览',
+    weight: '体重',
+    achievements: '成就',
     weeklyReport: '本周报告',
     monthlyReport: '本月报告',
     totalFastingDays: '总过午不食天数',
     longestStreak: '最长连续',
+    currentStreakLabel: '当前连胜',
+    longestStreakLabel: '最长连胜',
+    completionRate: '完成率',
     totalSaved: '节省卡路里',
     weightChange: '体重变化',
     achievement: '成就',
-    achievements: '成就列表',
+    achievementList: '成就列表',
     viewHistory: '查看历史',
+    weeklyProgress: '本周完成情况',
+    weightTrend: '体重变化趋势',
+    weightRecords: '体重记录',
+    needMoreWeightRecords: '需要至少2条体重记录才能显示趋势图',
+    unlockedAchievements: '已解锁成就',
+
+    // 周几
+    weekdayShort: ['日', '一', '二', '三', '四', '五', '六'],
+    weekdayFull: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'],
+    monthDay: '{{month}}月{{day}}日',
+
+    // 历史页面
+    checkInHistory: '打卡历史',
+    noCheckInRecords: '还没有打卡记录',
+    startFirstDay: '开始你的第一天过午不食吧！',
+    completed: '已完成',
+    notCompletedLabel: '未完成',
 
     // 设置页面
     settings: '设置',
@@ -74,6 +128,7 @@ export const translations = {
     calorieGoal: '卡路里目标',
     notifications: '通知提醒',
     enableNotifications: '启用通知',
+    enableDailyReminder: '启用每日提醒',
     notificationTime: '提醒时间',
     notificationTimes: '提醒时间',
     addReminder: '添加提醒',
@@ -85,6 +140,34 @@ export const translations = {
     syncData: '同步数据',
     about: '关于',
     version: '版本',
+    dailyCalorieGoal: '每日卡路里目标',
+    calorieGoalTitle: '卡路里目标',
+    calorieGoalHint: '建议每天摄入1500-2000卡路里',
+    checkInReminder: '打卡提醒',
+    goalSettings: '目标设置',
+    setReminderTime: '设置提醒时间',
+
+    // 主题选项
+    themeLight: '浅色',
+    themeDark: '深色',
+    themeAuto: '自动',
+    themeLightFull: '浅色模式',
+    themeDarkFull: '深色模式',
+    themeAutoFull: '跟随系统',
+
+    // 语言选项
+    langZh: '中文',
+    langEn: 'English',
+    langEs: 'Español',
+
+    // 健康同步
+    appleHealth: 'Apple Health',
+    enabled: '已启用',
+    notEnabled: '未启用',
+
+    // 权限
+    permissionNeeded: '权限需要',
+    notificationPermissionNeeded: '需要通知权限来发送每日提醒',
 
     // 成就相关
     achievementUnlocked: '成就解锁！',
@@ -120,6 +203,7 @@ export const translations = {
     edit: 'Edit',
     today: 'Today',
     yesterday: 'Yesterday',
+    know: 'Got it',
 
     // Tab Navigation
     tabHome: 'Home',
@@ -131,13 +215,42 @@ export const translations = {
     // Home
     welcome: 'Welcome Back',
     currentStreak: 'Current Streak',
+    streak: 'Streak',
     days: 'days',
+    dayUnit: 'days',
     fastingTime: 'Fasting Time',
     nextMeal: 'Next Meal',
     brokeRule: 'Ate Today',
     keepFasting: 'Keep Going',
     waterIntake: 'Water Today',
     waterMl: 'ml',
+    shareToMoments: 'Share to Moments',
+    shareMessage1: "I've completed {{streak}} consecutive days of intermittent fasting!\nTotal {{days}} days completed, {{calories}} calories saved\n\nJoin me!",
+    shareMessage2: "I'm practicing intermittent fasting!\nCompleted {{days}} days total\n\nJoin me!",
+    totalCompletedDays: 'Total Days',
+    totalCaloriesSaved: 'Calories Saved',
+    kcal: 'kcal',
+    totalMealsSkipped: 'Meals Skipped',
+    mealsUnit: 'meals',
+    longestAbstinenceStreak: 'Longest Abstinence',
+    totalHoursSaved: 'Hours Saved',
+    hoursUnit: 'hours',
+
+    // Check In
+    checkInToday: 'Check In Today',
+    checkInQuestion: 'Did you complete your fasting today?',
+    checkInHint: '(No eating after noon)',
+    todayCompleted: 'Completed Today',
+    todayNotCompleted: 'Not Completed Today',
+    completed: 'Completed',
+    notCompleted: 'Not Done',
+    addNote: 'Add note (optional)',
+    todaysWeight: 'Today\'s Weight (optional)',
+    todaysAbstinence: 'Today\'s Abstinence',
+    todaysWater: 'Today\'s Water (optional)',
+    kg: 'kg',
+    abstinenceCompleted: 'Abstinence Completed',
+    waterRecord: 'Water',
 
     // Fasting
     fastingStatus: 'Fasting Status',
@@ -165,18 +278,42 @@ export const translations = {
     totalCalories: 'Total Calories',
     remainingCalories: 'Remaining',
     overGoal: 'Over Goal',
+    quickAdd: 'Quick Add',
 
     // Stats
     statistics: 'Statistics',
+    overview: 'Overview',
+    weight: 'Weight',
+    achievements: 'Achievements',
     weeklyReport: 'Weekly Report',
     monthlyReport: 'Monthly Report',
     totalFastingDays: 'Total Fasting Days',
     longestStreak: 'Longest Streak',
+    currentStreakLabel: 'Current Streak',
+    longestStreakLabel: 'Longest Streak',
+    completionRate: 'Completion Rate',
     totalSaved: 'Calories Saved',
     weightChange: 'Weight Change',
     achievement: 'Achievement',
-    achievements: 'Achievements',
+    achievementList: 'Achievements',
     viewHistory: 'View History',
+    weeklyProgress: 'Weekly Progress',
+    weightTrend: 'Weight Trend',
+    weightRecords: 'Weight Records',
+    needMoreWeightRecords: 'Need at least 2 weight records to show trend',
+    unlockedAchievements: 'Unlocked Achievements',
+
+    // Weekdays
+    weekdayShort: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
+    weekdayFull: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    monthDay: '{{month}}/{{day}}',
+
+    // History
+    checkInHistory: 'Check-In History',
+    noCheckInRecords: 'No check-in records yet',
+    startFirstDay: 'Start your first day of fasting!',
+    completed: 'Completed',
+    notCompletedLabel: 'Not Completed',
 
     // Settings
     settings: 'Settings',
@@ -185,6 +322,7 @@ export const translations = {
     calorieGoal: 'Calorie Goal',
     notifications: 'Notifications',
     enableNotifications: 'Enable Notifications',
+    enableDailyReminder: 'Enable Daily Reminder',
     notificationTime: 'Reminder Time',
     notificationTimes: 'Reminder Times',
     addReminder: 'Add Reminder',
@@ -196,6 +334,34 @@ export const translations = {
     syncData: 'Sync Data',
     about: 'About',
     version: 'Version',
+    dailyCalorieGoal: 'Daily Calorie Goal',
+    calorieGoalTitle: 'Calorie Goal',
+    calorieGoalHint: 'Recommended daily intake: 1500-2000 calories',
+    checkInReminder: 'Check-In Reminder',
+    goalSettings: 'Goal Settings',
+    setReminderTime: 'Set Reminder Time',
+
+    // Theme options
+    themeLight: 'Light',
+    themeDark: 'Dark',
+    themeAuto: 'Auto',
+    themeLightFull: 'Light Mode',
+    themeDarkFull: 'Dark Mode',
+    themeAutoFull: 'Follow System',
+
+    // Language options
+    langZh: '中文',
+    langEn: 'English',
+    langEs: 'Español',
+
+    // Health Sync
+    appleHealth: 'Apple Health',
+    enabled: 'Enabled',
+    notEnabled: 'Not Enabled',
+
+    // Permissions
+    permissionNeeded: 'Permission Required',
+    notificationPermissionNeeded: 'Notification permission required for daily reminders',
 
     // Achievements
     achievementUnlocked: 'Achievement Unlocked!',
@@ -231,6 +397,7 @@ export const translations = {
     edit: 'Editar',
     today: 'Hoy',
     yesterday: 'Ayer',
+    know: 'Entendido',
 
     // Tab Navigation
     tabHome: 'Inicio',
@@ -242,13 +409,42 @@ export const translations = {
     // Home
     welcome: 'Bienvenido',
     currentStreak: 'Racha Actual',
+    streak: 'Racha',
     days: 'días',
+    dayUnit: 'días',
     fastingTime: 'Tiempo de Ayuno',
     nextMeal: 'Próxima Comida',
     brokeRule: 'Comió Hoy',
     keepFasting: 'Continúa Así',
     waterIntake: 'Agua de Hoy',
     waterMl: 'ml',
+    shareToMoments: 'Compartir',
+    shareMessage1: '¡He completado {{streak}} días consecutivos de ayuno intermitente!\nTotal {{days}} días, {{calories}} calorías ahorradas\n\n¡Únete a mí!',
+    shareMessage2: '¡Estoy practicando ayuno intermitente!\nCompletado {{days}} días en total\n\n¡Únete a mí!',
+    totalCompletedDays: 'Días Totales',
+    totalCaloriesSaved: 'Calorías Ahorradas',
+    kcal: 'kcal',
+    totalMealsSkipped: 'Comidas Saltadas',
+    mealsUnit: 'comidas',
+    longestAbstinenceStreak: 'Abstinencia Más Larga',
+    totalHoursSaved: 'Horas Ahorradas',
+    hoursUnit: 'horas',
+
+    // Check In
+    checkInToday: 'Registrar Hoy',
+    checkInQuestion: '¿Completaste tu ayuno hoy?',
+    checkInHint: '(Sin comer después del mediodía)',
+    todayCompleted: 'Completado Hoy',
+    todayNotCompleted: 'No Completado Hoy',
+    completed: 'Completado',
+    notCompleted: 'No Hecho',
+    addNote: 'Añadir nota (opcional)',
+    todaysWeight: 'Peso de Hoy (opcional)',
+    todaysAbstinence: 'Abstinencia de Hoy',
+    todaysWater: 'Agua de Hoy (opcional)',
+    kg: 'kg',
+    abstinenceCompleted: 'Abstinencia Completada',
+    waterRecord: 'Agua',
 
     // Fasting
     fastingStatus: 'Estado del Ayuno',
@@ -276,18 +472,42 @@ export const translations = {
     totalCalories: 'Calorías Totales',
     remainingCalories: 'Restantes',
     overGoal: 'Exceso',
+    quickAdd: 'Agregar Rápido',
 
     // Stats
     statistics: 'Estadísticas',
+    overview: 'Resumen',
+    weight: 'Peso',
+    achievements: 'Logros',
     weeklyReport: 'Reporte Semanal',
     monthlyReport: 'Reporte Mensual',
     totalFastingDays: 'Días Totales de Ayuno',
     longestStreak: 'Racha Más Larga',
+    currentStreakLabel: 'Racha Actual',
+    longestStreakLabel: 'Racha Más Larga',
+    completionRate: 'Tasa de Finalización',
     totalSaved: 'Calorías Ahorradas',
     weightChange: 'Cambio de Peso',
     achievement: 'Logro',
-    achievements: 'Logros',
+    achievementList: 'Logros',
     viewHistory: 'Ver Historial',
+    weeklyProgress: 'Progreso Semanal',
+    weightTrend: 'Tendencia de Peso',
+    weightRecords: 'Registros de Peso',
+    needMoreWeightRecords: 'Se necesitan al menos 2 registros de peso para mostrar la tendencia',
+    unlockedAchievements: 'Logros Desbloqueados',
+
+    // Weekdays
+    weekdayShort: ['D', 'L', 'M', 'X', 'J', 'V', 'S'],
+    weekdayFull: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'],
+    monthDay: '{{month}}/{{day}}',
+
+    // History
+    checkInHistory: 'Historial de Registro',
+    noCheckInRecords: 'Aún no hay registros',
+    startFirstDay: '¡Comienza tu primer día de ayuno!',
+    completed: 'Completado',
+    notCompletedLabel: 'No Completado',
 
     // Settings
     settings: 'Ajustes',
@@ -296,6 +516,7 @@ export const translations = {
     calorieGoal: 'Meta de Calorías',
     notifications: 'Notificaciones',
     enableNotifications: 'Activar Notificaciones',
+    enableDailyReminder: 'Activar Recordatorio Diario',
     notificationTime: 'Hora de Recordatorio',
     notificationTimes: 'Recordatorios',
     addReminder: 'Agregar Recordatorio',
@@ -307,6 +528,34 @@ export const translations = {
     syncData: 'Sincronizar Datos',
     about: 'Acerca de',
     version: 'Versión',
+    dailyCalorieGoal: 'Meta Diaria de Calorías',
+    calorieGoalTitle: 'Meta de Calorías',
+    calorieGoalHint: 'Ingesta diaria recomendada: 1500-2000 calorías',
+    checkInReminder: 'Recordatorio de Registro',
+    goalSettings: 'Configuración de Metas',
+    setReminderTime: 'Configurar Hora de Recordatorio',
+
+    // Theme options
+    themeLight: 'Claro',
+    themeDark: 'Oscuro',
+    themeAuto: 'Auto',
+    themeLightFull: 'Modo Claro',
+    themeDarkFull: 'Modo Oscuro',
+    themeAutoFull: 'Seguir Sistema',
+
+    // Language options
+    langZh: '中文',
+    langEn: 'English',
+    langEs: 'Español',
+
+    // Health Sync
+    appleHealth: 'Apple Health',
+    enabled: 'Activado',
+    notEnabled: 'No Activado',
+
+    // Permissions
+    permissionNeeded: 'Permiso Requerido',
+    notificationPermissionNeeded: 'Se requiere permiso de notificación para recordatorios diarios',
 
     // Achievements
     achievementUnlocked: '¡Logro Desbloqueado!',
