@@ -193,7 +193,7 @@ export const layout = {
     default: rs(16),
   }),
   // 模态框宽度
-  modalWidth: responsive({
+  modalWidth: responsive<string | number>({
     small: '90%',
     medium: '85%',
     large: '85%',
@@ -201,7 +201,7 @@ export const layout = {
     default: '85%',
   }),
   // 模态框最大宽度
-  modalMaxWidth: responsive({
+  modalMaxWidth: responsive<number>({
     small: 340,
     medium: 380,
     tablet: 500,

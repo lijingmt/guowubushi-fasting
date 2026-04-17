@@ -1,0 +1,13 @@
+{
+  "name": "guowu-p2p-discovery",
+  "version": "1.0.0",
+  "description": "P2P Peer Discovery Service for Guowu Fasting App",
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel"
+  },
+  "dependencies": {
+    "@vercel/kv": "^1.0.1"
+  }
+}

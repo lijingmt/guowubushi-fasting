@@ -849,8 +849,8 @@ const createResponsiveStyles = () => {
         tablet: rs(40),
         default: rs(28),
       }),
-      width: layout.modalWidth as string | number,
-      maxWidth: layout.modalMaxWidth as number,
+      width: layout.modalWidth as any,
+      maxWidth: layout.modalMaxWidth as any,
       maxHeight: '85%',
     },
     modalScroll: {

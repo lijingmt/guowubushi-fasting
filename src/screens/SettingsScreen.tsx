@@ -531,4 +531,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FF5722',
   },
+  cancelButton: {
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });

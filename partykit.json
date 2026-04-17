@@ -1,0 +1,6 @@
+{
+  "$schema": "https://cdn.partykit.io/schema/v1.json",
+  "name": "guowu-fasting-leaderboard",
+  "main": "partykit/server.ts",
+  "compatibilityDate": "2024-01-01"
+}

@@ -251,7 +251,10 @@ export const StatsScreen: React.FC = () => {
             return (
               <Card
                 key={achievement.id}
-                style={isUnlocked ? styles.achievementCard : [styles.achievementCardLocked, { opacity: 0.6 }]}
+                style={StyleSheet.flatten([
+                  isUnlocked ? styles.achievementCard : styles.achievementCardLocked,
+                  !isUnlocked ? { opacity: 0.6 } : {},
+                ])}
               >
                 <View style={[styles.achievementIconContainer, { backgroundColor: colors.backgroundSecondary }]}>
                   <Text style={styles.achievementIcon}>
