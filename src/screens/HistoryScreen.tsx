@@ -51,7 +51,9 @@ export const HistoryScreen: React.FC = () => {
               </View>
             </View>
             {record.notes && (
-              <Text style={[styles.recordNotes, { color: colors.textSecondary }]}>{record.notes}</Text>
+              <Text style={[styles.recordNotes, { color: colors.textSecondary }]}>
+                {typeof record.notes === 'string' ? record.notes : JSON.stringify(record.notes)}
+              </Text>
             )}
           </Card>
         ))

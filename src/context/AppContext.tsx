@@ -30,11 +30,13 @@ import {
   saveWeightRecord,
   getWaterRecords,
   saveWaterRecord,
+  deleteTodayWaterRecords,
   getTodayWaterIntake,
   getHealthSyncStatus,
   saveHealthSyncStatus,
   getPracticeRecords,
   savePracticeRecord,
+  deleteTodayPracticeRecords,
 } from '../services/storage';
 import { translations } from '../i18n/translations';
 import { Colors, lightColors, darkColors } from '../theme/colors';
@@ -486,21 +488,43 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const dailyCheckIn = async (completed: boolean, notes?: string) => {
     const today = new Date().toISOString().split('T')[0];
 
-    const record: DailyCheckIn = {
-      id: `checkin_${Date.now()}`,
-      date: today,
-      completed,
-      brokeAfterNoon: !completed,
-      checkInTime: Date.now(),
-      notes,
-    };
+    // Check if there's already a check-in for today
+    const existingRecord = todayCheckIn || checkInRecords.find(r => r.date === today);
 
-    await saveCheckInRecord(record);
-    setTodayCheckIn(record);
-    setHasCheckedToday(true);
+    if (existingRecord) {
+      // Update existing record
+      const updatedRecord: DailyCheckIn = {
+        ...existingRecord,
+        completed,
+        brokeAfterNoon: !completed,
+        notes,
+        // Keep original checkInTime but update the check-in time on edit
+        checkInTime: Date.now(),
+      };
 
-    const updatedRecords = await getCheckInRecords();
-    setCheckInRecords(updatedRecords);
+      await saveCheckInRecord(updatedRecord);
+      setTodayCheckIn(updatedRecord);
+
+      const updatedRecords = await getCheckInRecords();
+      setCheckInRecords(updatedRecords);
+    } else {
+      // Create new record
+      const record: DailyCheckIn = {
+        id: `checkin_${Date.now()}`,
+        date: today,
+        completed,
+        brokeAfterNoon: !completed,
+        checkInTime: Date.now(),
+        notes,
+      };
+
+      await saveCheckInRecord(record);
+      setTodayCheckIn(record);
+      setHasCheckedToday(true);
+
+      const updatedRecords = await getCheckInRecords();
+      setCheckInRecords(updatedRecords);
+    }
   };
 
   const addMeal = async (meal: Omit<MealRecord, 'id' | 'date'>) => {
@@ -599,6 +623,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setPracticeRecords(updatedRecords);
   };
 
+  const deleteTodayPracticeAndWater = async () => {
+    await deleteTodayPracticeRecords();
+    await deleteTodayWaterRecords();
+    const updatedPractices = await getPracticeRecords();
+    const updatedWater = await getWaterRecords();
+    setPracticeRecords(updatedPractices);
+    setWaterRecords(updatedWater);
+  };
+
   const refreshStats = async () => {
     await calculateStats();
   };
@@ -677,6 +710,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         updateHealthSync,
         practiceRecords,
         addPractice,
+        deleteTodayPracticeAndWater,
         p2pEnabled,
         toggleP2P,
         publishToLeaderboard,

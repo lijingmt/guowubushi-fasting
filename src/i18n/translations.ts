@@ -13,31 +13,31 @@ export const translations = {
 
     // 底部导航
     tabHome: '首页',
-    tabFasting: '禁食',
+    tabHistory: '历史',
     tabMeals: '饮食',
     tabStats: '统计',
-    tabLeaderboard: '排行榜',
     tabSettings: '设置',
 
-    // 排行榜
+    // 排行榜（暂时禁用）
     leaderboard: '修行排行榜',
     leaderboardTitle: '全球修行者',
     enableP2P: '参与排行榜',
-    enableP2PDesc: '启用后将公开您的连胜天数、完成天数和功德值到P2P网络',
-    p2pPrivacyNote: '隐私说明：体重、禁欲等私密数据仅在本地存储，不会同步',
+    enableP2PDesc: '排行榜功能暂时禁用，敬请期待后续更新',
+    p2pPrivacyNote: '隐私说明：本应用所有数据仅存储在您的设备本地，我们不收集、上传或分享任何个人信息',
     rank: '排名',
     nickname: '昵称',
     leaderboardStreak: '连胜',
     completedDays: '完成天数',
     leaderboardMerit: '功德',
     loading: '加载中...',
-    noLeaderboardData: '暂无排行榜数据',
+    noLeaderboardData: '排行榜功能即将上线，敬请期待',
     you: '您',
     setNickname: '设置昵称',
     nicknamePlaceholder: '请输入昵称',
-    leaderboardDisabled: '排行榜已禁用',
+    leaderboardDisabled: '排行榜暂时禁用',
     enableLeaderboard: '启用排行榜',
     disableLeaderboard: '禁用排行榜',
+    leaderboardTemporarilyDisabled: '排行榜功能暂时禁用，将在后续版本中重新上线',
 
     // 首页
     welcome: '欢迎回来',
@@ -176,6 +176,7 @@ export const translations = {
     appearance: '外观',
     theme: '主题',
     language: '语言',
+    weightUnit: '体重单位',
     dataSync: '数据同步',
     healthKit: '健康数据同步',
     syncData: '同步数据',
@@ -187,6 +188,8 @@ export const translations = {
     checkInReminder: '打卡提醒',
     goalSettings: '目标设置',
     setReminderTime: '设置提醒时间',
+    kg: 'kg',
+    lb: '磅',
 
     // 主题选项
     themeLight: '浅色',
@@ -304,31 +307,31 @@ export const translations = {
 
     // Tab Navigation
     tabHome: 'Home',
-    tabFasting: 'Fasting',
+    tabHistory: 'History',
     tabMeals: 'Meals',
     tabStats: 'Stats',
-    tabLeaderboard: 'Leaderboard',
     tabSettings: 'Settings',
 
-    // Leaderboard
+    // Leaderboard (temporarily disabled)
     leaderboard: 'Practice Leaderboard',
     leaderboardTitle: 'Global Practitioners',
     enableP2P: 'Join Leaderboard',
-    enableP2PDesc: 'When enabled, your streak, completed days, and merit will be shared on the P2P network',
-    p2pPrivacyNote: 'Privacy: Weight, abstinence and other private data are stored locally only',
+    enableP2PDesc: 'Leaderboard feature is temporarily disabled, coming soon in future updates',
+    p2pPrivacyNote: 'Privacy: All app data is stored locally on your device. We do not collect, upload, or share any personal information',
     rank: 'Rank',
     nickname: 'Nickname',
     leaderboardStreak: 'Streak',
     completedDays: 'Days',
     leaderboardMerit: 'Merit',
     loading: 'Loading...',
-    noLeaderboardData: 'No leaderboard data available',
+    noLeaderboardData: 'Leaderboard feature coming soon, stay tuned',
     you: 'You',
     setNickname: 'Set Nickname',
     nicknamePlaceholder: 'Enter nickname',
-    leaderboardDisabled: 'Leaderboard disabled',
+    leaderboardDisabled: 'Leaderboard temporarily disabled',
     enableLeaderboard: 'Enable Leaderboard',
     disableLeaderboard: 'Disable Leaderboard',
+    leaderboardTemporarilyDisabled: 'Leaderboard feature temporarily disabled, will return in future updates',
 
     // Home
     welcome: 'Welcome Back',
@@ -371,6 +374,7 @@ export const translations = {
     todaysAbstinence: 'Today\'s Abstinence',
     todaysWater: 'Today\'s Water (optional)',
     kg: 'kg',
+    lb: 'lb',
     abstinenceCompleted: 'Abstinence Completed',
     waterRecord: 'Water',
 
@@ -467,6 +471,7 @@ export const translations = {
     appearance: 'Appearance',
     theme: 'Theme',
     language: 'Language',
+    weightUnit: 'Weight Unit',
     dataSync: 'Data Sync',
     healthKit: 'Health Data Sync',
     syncData: 'Sync Data',
@@ -595,31 +600,31 @@ export const translations = {
 
     // Tab Navigation
     tabHome: 'Inicio',
-    tabFasting: 'Ayuno',
+    tabHistory: 'Historial',
     tabMeals: 'Comidas',
     tabStats: 'Estadísticas',
-    tabLeaderboard: 'Tabla',
     tabSettings: 'Ajustes',
 
-    // Leaderboard
+    // Leaderboard (temporarily disabled)
     leaderboard: 'Tabla de Practicantes',
     leaderboardTitle: 'Practicantes Globales',
     enableP2P: 'Unirse a la Tabla',
-    enableP2PDesc: 'Al habilitar, tu racha, días completados y mérito se compartirán en la red P2P',
-    p2pPrivacyNote: 'Privacidad: Peso, abstinencia y otros datos privados se almacenan solo localmente',
+    enableP2PDesc: 'La función de tabla está temporalmente deshabilitada, próximamente en futuras actualizaciones',
+    p2pPrivacyNote: 'Privacidad: Todos los datos de la aplicación se almacenan localmente en su dispositivo. No recopilamos, cargamos ni compartimos ninguna información personal',
     rank: 'Rango',
     nickname: 'Apodo',
     leaderboardStreak: 'Racha',
     completedDays: 'Días',
     leaderboardMerit: 'Mérito',
     loading: 'Cargando...',
-    noLeaderboardData: 'No hay datos disponibles',
+    noLeaderboardData: 'Función de tabla próximamente, mantente atento',
     you: 'Tú',
     setNickname: 'Establecer Apodo',
     nicknamePlaceholder: 'Ingresa apodo',
-    leaderboardDisabled: 'Tabla deshabilitada',
+    leaderboardDisabled: 'Tabla temporalmente deshabilitada',
     enableLeaderboard: 'Habilitar Tabla',
     disableLeaderboard: 'Deshabilitar Tabla',
+    leaderboardTemporarilyDisabled: 'La función de tabla está temporalmente deshabilitada, volverá en futuras actualizaciones',
 
     // Home
     welcome: 'Bienvenido',
@@ -662,6 +667,7 @@ export const translations = {
     todaysAbstinence: 'Abstinencia de Hoy',
     todaysWater: 'Agua de Hoy (opcional)',
     kg: 'kg',
+    lb: 'lb',
     abstinenceCompleted: 'Abstinencia Completada',
     waterRecord: 'Agua',
 
@@ -758,6 +764,7 @@ export const translations = {
     appearance: 'Apariencia',
     theme: 'Tema',
     language: 'Idioma',
+    weightUnit: 'Unidad de Peso',
     dataSync: 'Sincronización',
     healthKit: 'Sincronización de Salud',
     syncData: 'Sincronizar Datos',

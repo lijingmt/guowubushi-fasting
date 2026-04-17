@@ -18,16 +18,27 @@ const KEYS = {
   WATER_RECORDS: '@guowu_water_records',
   HEALTH_SYNC: '@guowu_health_sync',
   PRACTICE_RECORDS: '@guowu_practice_records',
+  LAST_WEIGHT: '@guowu_last_weight', // 上次选择的体重
 };
 
 // 设置相关
 export const getSettings = async (): Promise<UserSettings> => {
   try {
     const data = await AsyncStorage.getItem(KEYS.SETTINGS);
-    if (!data) return DEFAULT_SETTINGS;
-    const saved = JSON.parse(data);
+    let saved: UserSettings | null = null;
+    if (data) {
+      saved = JSON.parse(data);
+    }
+
     // 合并默认设置，处理新增字段
-    return { ...DEFAULT_SETTINGS, ...saved };
+    const merged = { ...DEFAULT_SETTINGS, ...saved };
+
+    // 如果没有设置体重单位，根据语言设置默认值
+    if (!saved || !saved.weightUnit) {
+      merged.weightUnit = merged.language === 'en' ? 'lb' : 'kg';
+    }
+
+    return merged;
   } catch (error) {
     console.error('Error getting settings:', error);
     return DEFAULT_SETTINGS;
@@ -205,6 +216,27 @@ export const saveWaterRecord = async (record: WaterRecord): Promise<void> => {
   }
 };
 
+export const deleteWaterRecord = async (id: string): Promise<void> => {
+  try {
+    const records = await getWaterRecords();
+    const filtered = records.filter((r) => r.id !== id);
+    await AsyncStorage.setItem(KEYS.WATER_RECORDS, JSON.stringify(filtered));
+  } catch (error) {
+    console.error('Error deleting water record:', error);
+  }
+};
+
+export const deleteTodayWaterRecords = async (): Promise<void> => {
+  try {
+    const records = await getWaterRecords();
+    const today = new Date().toISOString().split('T')[0];
+    const filtered = records.filter((r) => r.date !== today);
+    await AsyncStorage.setItem(KEYS.WATER_RECORDS, JSON.stringify(filtered));
+  } catch (error) {
+    console.error('Error deleting today water records:', error);
+  }
+};
+
 export const getTodayWaterIntake = async (): Promise<number> => {
   try {
     const records = await getWaterRecords();
@@ -272,6 +304,27 @@ export const savePracticeRecord = async (record: PracticeRecord): Promise<void> 
   }
 };
 
+export const deletePracticeRecord = async (id: string): Promise<void> => {
+  try {
+    const records = await getPracticeRecords();
+    const filtered = records.filter((r) => r.id !== id);
+    await AsyncStorage.setItem(KEYS.PRACTICE_RECORDS, JSON.stringify(filtered));
+  } catch (error) {
+    console.error('Error deleting practice record:', error);
+  }
+};
+
+export const deleteTodayPracticeRecords = async (): Promise<void> => {
+  try {
+    const records = await getPracticeRecords();
+    const today = new Date().toISOString().split('T')[0];
+    const filtered = records.filter((r) => r.date !== today);
+    await AsyncStorage.setItem(KEYS.PRACTICE_RECORDS, JSON.stringify(filtered));
+  } catch (error) {
+    console.error('Error deleting today practice records:', error);
+  }
+};
+
 export const getTodayPracticeRecords = async (): Promise<PracticeRecord[]> => {
   try {
     const records = await getPracticeRecords();
@@ -280,6 +333,25 @@ export const getTodayPracticeRecords = async (): Promise<PracticeRecord[]> => {
   } catch (error) {
     console.error('Error getting today practice records:', error);
     return [];
+  }
+};
+
+// 上次选择的体重
+export const getLastWeight = async (): Promise<number | null> => {
+  try {
+    const data = await AsyncStorage.getItem(KEYS.LAST_WEIGHT);
+    return data ? parseFloat(data) : null;
+  } catch (error) {
+    console.error('Error getting last weight:', error);
+    return null;
+  }
+};
+
+export const saveLastWeight = async (weight: number): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(KEYS.LAST_WEIGHT, weight.toString());
+  } catch (error) {
+    console.error('Error saving last weight:', error);
   }
 };
 
@@ -294,6 +366,7 @@ export const clearAllData = async (): Promise<void> => {
       KEYS.WATER_RECORDS,
       KEYS.HEALTH_SYNC,
       KEYS.PRACTICE_RECORDS,
+      KEYS.LAST_WEIGHT,
     ];
     for (const key of keys) {
       await AsyncStorage.removeItem(key);

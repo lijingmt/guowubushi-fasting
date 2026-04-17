@@ -1,4 +1,3 @@
-import Gun from 'gun';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserStats } from '../types';
 
@@ -7,18 +6,8 @@ const USER_NICKNAME_KEY = '@guowu_nickname';
 const USER_LANGUAGE_KEY = '@guowu_language';
 const P2P_ENABLED_KEY = '@guowu_p2p_enabled';
 
-// 免费的公共 GunDB 中继节点
-const PEERS = [
-  'https://gun-manhattan.herokuapp.com/gun',
-  'https://gun-us.herokuapp.com/gun',
-  'https://gun-eu.herokuapp.com/gun',
-];
-
-// 初始化 GunDB
-export const gun = Gun({
-  peers: PEERS,
-  localStorage: false, // 不使用 localStorage，用 AsyncStorage
-});
+// P2P 功能已暂时禁用 - 等待 Firebase 集成
+const P2P_DISABLED = true;
 
 // 用户公开数据类型（用于排行榜）
 export interface PublicUserData {
@@ -28,7 +17,7 @@ export interface PublicUserData {
   completedDays: number;
   totalMerit: number;
   lastUpdate: number;
-  rank?: number; // 排名（仅在Top 1000榜单中使用）
+  rank?: number;
 }
 
 // 排行榜数据回调类型
@@ -106,6 +95,9 @@ export const getDisplayName = async (userId: string, storedNickname?: string): P
  * 检查 P2P 是否已启用
  */
 export const isP2PEnabled = async (): Promise<boolean> => {
+  if (P2P_DISABLED) {
+    return false;
+  }
   const enabled = await AsyncStorage.getItem(P2P_ENABLED_KEY);
   return enabled === 'true';
 };
@@ -114,6 +106,9 @@ export const isP2PEnabled = async (): Promise<boolean> => {
  * 启用 P2P 同步
  */
 export const enableP2P = async (): Promise<void> => {
+  if (P2P_DISABLED) {
+    return;
+  }
   await AsyncStorage.setItem(P2P_ENABLED_KEY, 'true');
 };
 
@@ -126,144 +121,42 @@ export const disableP2P = async (): Promise<void> => {
 
 /**
  * 发布用户统计数据到 P2P 网络
- * 只发布公开的排行榜数据，隐私数据（体重、禁欲等）不同步
+ * P2P 功能已暂时禁用
  */
 export const publishUserStats = async (
   stats: UserStats
 ): Promise<void> => {
-  const enabled = await isP2PEnabled();
-  if (!enabled) {
-    return;
-  }
-
-  const userId = await getOrCreateUserId();
-  const storedNickname = await AsyncStorage.getItem(USER_NICKNAME_KEY);
-  // 使用生成的匿名昵称（如果没有设置昵称）
-  const nickname = await getDisplayName(userId, storedNickname || undefined);
-
-  const publicData: PublicUserData = {
-    userId,
-    nickname,
-    streak: stats.currentStreak,
-    completedDays: stats.completedDays,
-    totalMerit: stats.totalMerit,
-    lastUpdate: Date.now(),
-  };
-
-  // 发布到 GunDB 网络
-  gun.get('fasting_leaderboard')
-     .get(userId)
-     .put(publicData);
-
-  // 同时更新 Top 1000 榜单
-  updateTop1000(publicData);
-};
-
-/**
- * 更新 Top 1000 榜单
- */
-const updateTop1000 = async (userData: PublicUserData): Promise<void> => {
-  const TOP1000_KEY = 'fasting_top1000';
-
-  gun.get(TOP1000_KEY).once((data: any) => {
-    const currentTop1000: PublicUserData[] = data
-      ? Object.values(data as Record<string, PublicUserData>)
-      : [];
-
-    // 合并当前用户数据
-    const updated = currentTop1000.filter(u => u.userId !== userData.userId);
-    updated.push(userData);
-
-    // 按 streak 排序，取 Top 1000
-    const sorted = updated
-      .sort((a, b) => b.streak - a.streak || b.completedDays - a.completedDays)
-      .slice(0, 1000);
-
-    // 存储为对象格式 (GunDB 更好处理)
-    const top1000Obj: Record<string, PublicUserData> = {};
-    sorted.forEach((user, index) => {
-      top1000Obj[user.userId] = { ...user, rank: index + 1 };
-    });
-
-    gun.get(TOP1000_KEY).put(top1000Obj);
-  });
+  // P2P 功能已禁用
+  return;
 };
 
 /**
  * 订阅排行榜数据
- * @param callback 接收排行榜数据的回调
- * @param limit 返回前N名，默认100
+ * P2P 功能已暂时禁用
  */
 export const subscribeLeaderboard = (
   callback: LeaderboardCallback,
   limit: number = 100
 ): (() => void) => {
-  const TOP1000_KEY = 'fasting_top1000';
-
-  const listener = gun.get(TOP1000_KEY).on((data: any, key: string) => {
-    if (data) {
-      const top1000 = Object.values(data as Record<string, any>)
-        .filter((u: any) => u.userId) // 过滤掉元数据
-        .sort((a: any, b: any) =>
-          (b.streak || 0) - (a.streak || 0) ||
-          (b.completedDays || 0) - (a.completedDays || 0)
-        )
-        .slice(0, limit);
-
-      callback(top1000);
-    }
-  });
-
-  // 返回取消订阅函数
-  return () => {
-    listener.off();
-  };
+  // 返回空订阅函数
+  return () => {};
 };
 
 /**
  * 获取用户的当前排名
+ * P2P 功能已暂时禁用
  */
 export const getUserRank = async (
   stats: UserStats
 ): Promise<number> => {
-  const userId = await getOrCreateUserId();
-  const userStreak = stats.currentStreak;
-
-  return new Promise((resolve) => {
-    const timeout = setTimeout(() => {
-      resolve(-1); // 超时返回-1
-    }, 3000);
-
-    // 使用 any 避免 GunDB 类型问题
-    const mapCallback: any = (data: any, id: string) => {
-      if (id && data && id !== 'fasting_leaderboard') {
-        const users: PublicUserData[] = Object.values(data as Record<string, PublicUserData>)
-          .filter(u => u.userId);
-
-        // 找出 streak 比当前用户多的数量
-        const betterCount = users.filter(u => u.streak > userStreak).length;
-        clearTimeout(timeout);
-        resolve(betterCount + 1);
-      }
-    };
-    gun.get('fasting_leaderboard').map(mapCallback);
-  });
+  return -1;
 };
 
 /**
- * 从 P2P 网络中移除用户数据（数据删除功能）
+ * 从 P2P 网络中移除用户数据
+ * P2P 功能已暂时禁用
  */
 export const removeUserFromP2P = async (): Promise<void> => {
-  const userId = await getOrCreateUserId();
-
-  gun.get('fasting_leaderboard').get(userId).put(null);
-
-  // 从 Top 1000 中移除
-  gun.get('fasting_top1000').once((data: any) => {
-    if (data) {
-      const top1000Obj: Record<string, any> = { ...data };
-      delete top1000Obj[userId];
-      gun.get('fasting_top1000').put(top1000Obj);
-    }
-  });
+  // P2P 功能已禁用
+  return;
 };

@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, Switch, ScrollView } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, Switch, ScrollView, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useApp } from '../context/AppContext';
 import { responsiveSize, fs, rs, vs, layout, responsive } from '../theme/responsive';
 import { MeditationType } from '../types';
+import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
+import { getLastWeight, saveLastWeight } from '../services/storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Time options for meditation and standing meditation
 const TIME_OPTIONS = [
@@ -17,11 +20,15 @@ const TIME_OPTIONS = [
   { label: '60', value: 60 },
 ];
 
-// Weight options (dropdown style) - 1kg steps
-const WEIGHT_OPTIONS = Array.from({ length: 61 }, (_, i) => ({
-  label: `${40 + i}`,
-  value: 40 + i,
-}));
+// Weight ranges
+const WEIGHT_KG_MIN = 40;
+const WEIGHT_KG_MAX = 120;
+const WEIGHT_LB_MIN = 88;  // ~40kg
+const WEIGHT_LB_MAX = 264; // ~120kg
+
+// Conversion functions
+const kgToLb = (kg: number) => Math.round(kg * 2.20462);
+const lbToKg = (lb: number) => Math.round(lb / 2.20462);
 
 export const CheckInCard: React.FC = () => {
   const {
@@ -33,15 +40,53 @@ export const CheckInCard: React.FC = () => {
     addWeight,
     addWater,
     addPractice,
+    deleteTodayPracticeAndWater,
     colors,
     language,
+    settings,
+    updateSettings,
+    weightRecords,
+    practiceRecords,
+    waterRecords,
   } = useApp();
 
+  const weightUnit = settings.weightUnit; // 'kg' or 'lb'
+  const weightMin = weightUnit === 'lb' ? WEIGHT_LB_MIN : WEIGHT_KG_MIN;
+  const weightMax = weightUnit === 'lb' ? WEIGHT_LB_MAX : WEIGHT_KG_MAX;
+
   const [showModal, setShowModal] = useState(false);
+  const [showWeightPicker, setShowWeightPicker] = useState(false);
   const [notes, setNotes] = useState('');
   const [weight, setWeight] = useState('');
+  const [lastWeightKg, setLastWeightKg] = useState<number | null>(null);
+  const [tempWeight, setTempWeight] = useState(weightMin);
   const [isAbstinence, setIsAbstinence] = useState(false);
   const [selectedWater, setSelectedWater] = useState<number | null>(null);
+
+  // Load last weight on mount
+  useEffect(() => {
+    loadLastWeight();
+  }, []);
+
+  const loadLastWeight = async () => {
+    const lastWeight = await getLastWeight();
+    if (lastWeight) {
+      setLastWeightKg(lastWeight);
+      // Convert to current unit
+      const displayWeight = weightUnit === 'lb' ? kgToLb(lastWeight) : lastWeight;
+      setWeight(displayWeight.toString());
+      setTempWeight(displayWeight);
+    }
+  };
+
+  // Update displayed weight when unit changes
+  useEffect(() => {
+    if (lastWeightKg) {
+      const displayWeight = weightUnit === 'lb' ? kgToLb(lastWeightKg) : lastWeightKg;
+      setWeight(displayWeight.toString());
+      setTempWeight(displayWeight);
+    }
+  }, [weightUnit]);
 
   // Practice states
   const [isMeditation, setIsMeditation] = useState(false);
@@ -113,8 +158,94 @@ export const CheckInCard: React.FC = () => {
   };
 
   const openEditModal = () => {
-    // Reset form for fresh input - user can re-do their check-in
+    // Reset form first
     resetForm();
+
+    // Load existing check-in data when editing
+    if (todayCheckIn) {
+      // Extract user notes only (remove auto-generated practice/water/abstinence notes)
+      if (todayCheckIn.notes) {
+        const notesStr = typeof todayCheckIn.notes === 'string' ? todayCheckIn.notes : JSON.stringify(todayCheckIn.notes);
+        // Filter out auto-generated notes (they start with emojis: 🙏, 💧, 🧘, 🧍, 📿, 🎧)
+        const userNotes = notesStr
+          .split('\n')
+          .filter(line =>
+            !line.startsWith('🙏') &&
+            !line.startsWith('💧') &&
+            !line.startsWith('🧘') &&
+            !line.startsWith('🧍') &&
+            !line.startsWith('📿') &&
+            !line.startsWith('🎧')
+          )
+          .join('\n')
+          .trim();
+        setNotes(userNotes);
+
+        // Check for abstinence in original notes to set the checkbox
+        const notesLower = notesStr.toLowerCase();
+        const hasAbstinence = notesLower.includes('炼丹') || notesLower.includes('禁欲') ||
+                            notesLower.includes('abstinence') || notesLower.includes('abstinencia');
+        setIsAbstinence(hasAbstinence);
+      }
+
+      // Load today's practice records
+      const today = new Date().toISOString().split('T')[0];
+      const todayPractices = practiceRecords.filter(r => r.date === today);
+
+      for (const practice of todayPractices) {
+        switch (practice.type) {
+          case 'meditation':
+            setIsMeditation(true);
+            setMeditationType(practice.subtype || 'cross_leg');
+            setSelectedMeditationTime(practice.duration || null);
+            break;
+          case 'standing_meditation':
+            setIsStandingMeditation(true);
+            setSelectedStandingTime(practice.duration || null);
+            break;
+          case 'scripture_chanting':
+            setIsScriptureChanting(true);
+            break;
+          case 'scripture_listening':
+            setIsScriptureListening(true);
+            break;
+        }
+      }
+
+      // Load today's water records
+      const todayWaterTotal = waterRecords
+        .filter(r => r.date === today)
+        .reduce((sum, r) => sum + r.amount, 0);
+
+      if (todayWaterTotal > 0) {
+        // Map to available options
+        if ([500, 1000, 1500, 2000].includes(todayWaterTotal)) {
+          setSelectedWater(todayWaterTotal);
+        } else if (todayWaterTotal >= 2500) {
+          setSelectedWater(2500);
+        }
+      }
+
+      // Load today's weight if exists
+      const todayWeightRecord = weightRecords.find(r => r.date === today);
+      if (todayWeightRecord) {
+        const weightInKg = todayWeightRecord.weight;
+        setLastWeightKg(weightInKg);
+        const displayWeight = weightUnit === 'lb' ? kgToLb(weightInKg) : weightInKg;
+        setWeight(displayWeight.toString());
+        setTempWeight(displayWeight);
+      } else {
+        // Use last weight if no today's record
+        const lastWeightRec = weightRecords.length > 0 ? weightRecords[weightRecords.length - 1] : null;
+        if (lastWeightRec) {
+          const weightInKg = lastWeightRec.weight;
+          setLastWeightKg(weightInKg);
+          const displayWeight = weightUnit === 'lb' ? kgToLb(weightInKg) : weightInKg;
+          setWeight(displayWeight.toString());
+          setTempWeight(displayWeight);
+        }
+      }
+    }
     setShowModal(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   };
@@ -122,8 +253,21 @@ export const CheckInCard: React.FC = () => {
   const handleCheckIn = async (completed: boolean) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
+    // If editing, delete today's practice and water records first to avoid duplicates
+    if (hasCheckedToday) {
+      await deleteTodayPracticeAndWater();
+    }
+
     if (weight && parseFloat(weight) > 0) {
-      await addWeight(parseFloat(weight));
+      let weightInKg = parseFloat(weight);
+      // Convert to kg if current unit is lb
+      if (weightUnit === 'lb') {
+        weightInKg = lbToKg(weightInKg);
+      }
+      await addWeight(weightInKg);
+      // Save as last weight (always in kg)
+      await saveLastWeight(weightInKg);
+      setLastWeightKg(weightInKg);
     }
 
     if (selectedWater) {
@@ -173,47 +317,50 @@ export const CheckInCard: React.FC = () => {
   // 响应式样式
   const styles = createResponsiveStyles();
 
-  if (hasCheckedToday && todayCheckIn) {
+  // 渲染主内容（根据是否已打卡）
+  const renderMainContent = () => {
+    if (hasCheckedToday && todayCheckIn) {
+      return (
+        <>
+          <LinearGradient
+            colors={todayCheckIn.completed ? ['#FF9800', '#FF5722'] : ['#9E9E9E', '#757575']}
+            style={styles.completedContainer}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <Text style={styles.completedIcon}>
+              {todayCheckIn.completed ? '🔥' : '😔'}
+            </Text>
+            <Text style={styles.completedTitle}>
+              {todayCheckIn.completed ? t.todayCompleted : t.todayNotCompleted}
+            </Text>
+            <View style={styles.streakRow}>
+              <Text style={styles.streakLabel}>{t.streak}</Text>
+              <Text style={styles.streakValue}>{stats.currentStreak}</Text>
+              <Text style={styles.streakDays}>{t.dayUnit}</Text>
+            </View>
+            {todayCheckIn.notes && (
+              <Text style={styles.notes}>
+                {typeof todayCheckIn.notes === 'string' ? todayCheckIn.notes : JSON.stringify(todayCheckIn.notes)}
+              </Text>
+            )}
+          </LinearGradient>
+
+          {/* Edit/Re-check button */}
+          <TouchableOpacity
+            style={[styles.editCheckInButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={openEditModal}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.editCheckInButtonText, { color: colors.textSecondary }]}>
+              ✏️ {language === 'zh' ? '修改打卡' : language === 'es' ? 'Editar registro' : 'Edit Check-in'}
+            </Text>
+          </TouchableOpacity>
+        </>
+      );
+    }
+
     return (
-      <>
-        <LinearGradient
-          colors={todayCheckIn.completed ? ['#FF9800', '#FF5722'] : ['#9E9E9E', '#757575']}
-          style={styles.completedContainer}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <Text style={styles.completedIcon}>
-            {todayCheckIn.completed ? '🔥' : '😔'}
-          </Text>
-          <Text style={styles.completedTitle}>
-            {todayCheckIn.completed ? t.todayCompleted : t.todayNotCompleted}
-          </Text>
-          <View style={styles.streakRow}>
-            <Text style={styles.streakLabel}>{t.streak}</Text>
-            <Text style={styles.streakValue}>{stats.currentStreak}</Text>
-            <Text style={styles.streakDays}>{t.dayUnit}</Text>
-          </View>
-          {todayCheckIn.notes && (
-            <Text style={styles.notes}>{todayCheckIn.notes}</Text>
-          )}
-        </LinearGradient>
-
-        {/* Edit/Re-check button */}
-        <TouchableOpacity
-          style={[styles.editCheckInButton, { backgroundColor: colors.card, borderColor: colors.border }]}
-          onPress={openEditModal}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.editCheckInButtonText, { color: colors.textSecondary }]}>
-            ✏️ {language === 'zh' ? '修改打卡' : language === 'es' ? 'Editar registro' : 'Edit Check-in'}
-          </Text>
-        </TouchableOpacity>
-      </>
-    );
-  }
-
-  return (
-    <>
       <TouchableOpacity
         style={styles.checkInButton}
         onPress={() => setShowModal(true)}
@@ -229,6 +376,12 @@ export const CheckInCard: React.FC = () => {
           <Text style={styles.checkInSubtitle}>{t.checkInQuestion}</Text>
         </LinearGradient>
       </TouchableOpacity>
+    );
+  };
+
+  return (
+    <>
+      {renderMainContent()}
 
       <Modal
         visible={showModal}
@@ -247,34 +400,23 @@ export const CheckInCard: React.FC = () => {
                 {t.checkInHint}
               </Text>
 
-              {/* Weight dropdown selector */}
-              <View style={[styles.weightSection, { backgroundColor: colors.backgroundSecondary }]}>
+              {/* Weight selector */}
+              <TouchableOpacity
+                style={[styles.weightSection, { backgroundColor: colors.backgroundSecondary }]}
+                onPress={() => {
+                  setTempWeight(weight ? parseInt(weight) : weightMin);
+                  setShowWeightPicker(true);
+                }}
+              >
                 <Text style={[styles.weightLabel, { color: colors.textSecondary }]}>{t.todaysWeight}</Text>
-                <View style={styles.weightDropdownContainer}>
-                  {WEIGHT_OPTIONS.map((option) => (
-                    <TouchableOpacity
-                      key={option.value}
-                      style={[
-                        styles.weightOption,
-                        { backgroundColor: colors.divider, borderColor: colors.border },
-                        weight === option.value.toString() && styles.weightOptionSelected,
-                      ]}
-                      onPress={() => setWeight(option.value.toString())}
-                    >
-                      <Text
-                        style={[
-                          styles.weightOptionText,
-                          { color: colors.textSecondary },
-                          weight === option.value.toString() && [styles.weightOptionTextSelected, { color: colors.primary }],
-                        ]}
-                      >
-                        {option.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                <View style={styles.weightSelectorButton}>
+                  <Text style={[styles.weightSelectorText, { color: weight ? colors.text : colors.textLight }]}>
+                    {weight || `${weightMin}`}
+                  </Text>
+                  <Text style={[styles.weightUnitLabel, { color: colors.textLight }]}>{weightUnit === 'lb' ? 'lb' : t.kg}</Text>
+                  <Text style={[styles.weightSelectorArrow, { color: colors.textLight }]}>▼</Text>
                 </View>
-                <Text style={[styles.weightUnitLabel, { color: colors.textLight }]}>{t.kg}</Text>
-              </View>
+              </TouchableOpacity>
 
               {/* Abstinence toggle */}
               <View style={[styles.abstinenceSection, { backgroundColor: colors.backgroundSecondary }]}>
@@ -523,6 +665,81 @@ export const CheckInCard: React.FC = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Weight Picker Modal */}
+      <Modal
+        visible={showWeightPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowWeightPicker(false)}
+      >
+        <View style={styles.pickerOverlay}>
+          <View style={[styles.pickerContent, { backgroundColor: colors.card }]}>
+            <View style={styles.pickerHeader}>
+              <TouchableOpacity onPress={() => setShowWeightPicker(false)}>
+                <Text style={[styles.pickerCancelText, { color: colors.textSecondary }]}>{t.cancel}</Text>
+              </TouchableOpacity>
+              <Text style={[styles.pickerTitle, { color: colors.text }]}>{t.todaysWeight}</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setWeight(tempWeight.toString());
+                  setShowWeightPicker(false);
+                }}
+              >
+                <Text style={[styles.pickerConfirmText, { color: colors.primary }]}>{t.ok}</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.wheelPickerContainer}>
+              {/* Selected value highlight */}
+              <View style={[styles.wheelPickerHighlight, { borderColor: colors.divider }]} />
+
+              {/* Wheel picker */}
+              <GestureScrollView
+                style={styles.wheelPickerScroll}
+                contentContainerStyle={styles.wheelPickerContent}
+                showsVerticalScrollIndicator={false}
+                snapToInterval={rs(50)}
+                decelerationRate="fast"
+                onMomentumScrollEnd={(event) => {
+                  const index = Math.round(event.nativeEvent.contentOffset.y / rs(50));
+                  const newWeight = weightMin + index;
+                  if (newWeight >= weightMin && newWeight <= weightMax) {
+                    setTempWeight(newWeight);
+                  }
+                }}
+                scrollEventThrottle={16}
+              >
+                {/* Top padding for centering */}
+                <View style={{ height: rs(100) }} />
+
+                {/* Weight values */}
+                {Array.from({ length: weightMax - weightMin + 1 }, (_, i) => {
+                  const value = weightMin + i;
+                  return (
+                    <TouchableOpacity
+                      key={value}
+                      style={styles.wheelPickerItem}
+                      onPress={() => setTempWeight(value)}
+                    >
+                      <Text style={[
+                        styles.wheelPickerItemText,
+                        { color: value === tempWeight ? colors.text : colors.textLight },
+                        value === tempWeight && styles.wheelPickerItemSelectedText
+                      ]}>
+                        {value} {weightUnit === 'lb' ? 'lb' : t.kg}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+
+                {/* Bottom padding for centering */}
+                <View style={{ height: rs(100) }} />
+              </GestureScrollView>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 };
@@ -679,38 +896,8 @@ const createResponsiveStyles = () => {
       textAlign: 'left',
       width: '100%',
     },
-    weightDropdownContainer: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: rs(6),
-      marginBottom: rs(8),
-    },
-    weightOption: {
-      flex: 1,
-      minWidth: rs(50),
-      paddingVertical: vs(8),
-      paddingHorizontal: rs(10),
-      borderRadius: responsiveSize.borderRadius.sm,
-      alignItems: 'center',
-      borderWidth: 1,
-      borderColor: 'transparent',
-    },
-    weightOptionSelected: {
-      backgroundColor: '#E3F2FD',
-      borderColor: '#2196F3',
-    },
-    weightOptionText: {
-      fontSize: responsiveSize.fontSize.sm,
-      color: '#666',
-      fontWeight: '500',
-    },
-    weightOptionTextSelected: {
-      color: '#2196F3',
-      fontWeight: 'bold',
-    },
     weightUnitLabel: {
       fontSize: responsiveSize.fontSize.sm,
-      textAlign: 'center',
     },
     abstinenceSection: {
       width: '100%',
@@ -921,6 +1108,91 @@ const createResponsiveStyles = () => {
         default: fs(14),
       }),
       fontWeight: '500',
+    },
+
+    // Weight selector button styles
+    weightSelectorButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: vs(12),
+      paddingHorizontal: rs(16),
+      borderRadius: responsiveSize.borderRadius.md,
+    },
+    weightSelectorText: {
+      fontSize: responsiveSize.fontSize.xl,
+      fontWeight: '600',
+    },
+    weightSelectorArrow: {
+      fontSize: responsiveSize.fontSize.sm,
+      marginLeft: rs(8),
+    },
+
+    // Wheel Picker Modal styles
+    pickerOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'flex-end',
+    },
+    pickerContent: {
+      borderTopLeftRadius: rs(20),
+      borderTopRightRadius: rs(20),
+      paddingBottom: vs(40),
+    },
+    pickerHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: vs(16),
+      paddingHorizontal: rs(20),
+      borderBottomWidth: 1,
+      borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+    },
+    pickerCancelText: {
+      fontSize: responsiveSize.fontSize.lg,
+    },
+    pickerTitle: {
+      fontSize: responsiveSize.fontSize.xl,
+      fontWeight: '600',
+    },
+    pickerConfirmText: {
+      fontSize: responsiveSize.fontSize.lg,
+      fontWeight: '600',
+    },
+    wheelPickerContainer: {
+      height: rs(250),
+      position: 'relative',
+      overflow: 'hidden',
+    },
+    wheelPickerHighlight: {
+      position: 'absolute',
+      top: rs(75),
+      left: 0,
+      right: 0,
+      height: rs(50),
+      borderTopWidth: 1,
+      borderBottomWidth: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.05)',
+      zIndex: 1,
+    },
+    wheelPickerScroll: {
+      flex: 1,
+    },
+    wheelPickerContent: {
+      paddingHorizontal: rs(20),
+    },
+    wheelPickerItem: {
+      height: rs(50),
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    wheelPickerItemText: {
+      fontSize: responsiveSize.fontSize.xl,
+      fontWeight: '500',
+    },
+    wheelPickerItemSelectedText: {
+      fontSize: responsiveSize.fontSize['2xl'],
+      fontWeight: '700',
     },
   });
 };

@@ -28,6 +28,7 @@ export const SettingsScreen: React.FC = () => {
   const [tempTime, setTempTime] = useState(settings.reminderTime);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [showThemePicker, setShowThemePicker] = useState(false);
+  const [showWeightUnitPicker, setShowWeightUnitPicker] = useState(false);
 
   const handleToggleNotifications = async (value: boolean) => {
     if (value) {
@@ -138,6 +139,14 @@ export const SettingsScreen: React.FC = () => {
           }
           onPress={() => {
             setShowThemePicker(true);
+          }}
+        />
+        <Divider />
+        <SettingItem
+          label={t.weightUnit}
+          value={settings.weightUnit === 'kg' ? t.kg : t.lb}
+          onPress={() => {
+            setShowWeightUnitPicker(true);
           }}
         />
       </Card>
@@ -337,6 +346,57 @@ export const SettingsScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Weight Unit Picker Modal */}
+      <Modal
+        visible={showWeightUnitPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowWeightUnitPicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{t.weightUnit}</Text>
+
+            <TouchableOpacity
+              style={[styles.optionButton, { backgroundColor: colors.backgroundSecondary }]}
+              onPress={() => {
+                updateSettings({ weightUnit: 'kg' });
+                setShowWeightUnitPicker(false);
+              }}
+            >
+              <Text style={[styles.optionText, { color: colors.text }]}>
+                {t.kg}
+              </Text>
+              {settings.weightUnit === 'kg' && (
+                <Text style={[styles.checkIcon, { color: colors.primary }]}>✓</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.optionButton, { backgroundColor: colors.backgroundSecondary }]}
+              onPress={() => {
+                updateSettings({ weightUnit: 'lb' });
+                setShowWeightUnitPicker(false);
+              }}
+            >
+              <Text style={[styles.optionText, { color: colors.text }]}>
+                {t.lb}
+              </Text>
+              {settings.weightUnit === 'lb' && (
+                <Text style={[styles.checkIcon, { color: colors.primary }]}>✓</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.cancelButton, { backgroundColor: colors.divider }]}
+              onPress={() => setShowWeightUnitPicker(false)}
+            >
+              <Text style={[styles.cancelButtonText, { color: colors.text }]}>{t.cancel}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
@@ -462,11 +522,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 10,
     marginBottom: 10,
-    backgroundColor: '#F5F5F5',
   },
   optionText: {
     fontSize: 16,
-    color: '#333',
   },
   checkIcon: {
     fontSize: 20,
