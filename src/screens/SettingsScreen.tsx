@@ -11,6 +11,7 @@ import {
   TextInput,
   Linking,
   Share,
+  Clipboard,
 } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useApp } from '../context/AppContext';
@@ -57,14 +58,49 @@ export const SettingsScreen: React.FC = () => {
       ? `Estoy usando la app "Ayuno Intermitente" para seguir mis hábitos de ayuno. ¡Te la recomiendo!\n${appUrl}`
       : `I'm using the "Intermittent Fasting" app to track my fasting habits. Highly recommend!\n${appUrl}`;
 
-    try {
-      await Share.share({
-        message: shareMessage,
-        url: appUrl,
-      });
-    } catch (error) {
-      // Handle error or user canceling the share sheet
-    }
+    const copyAndAlert = async () => {
+      await Clipboard.setStringAsync(appUrl);
+      const copyMsg = language === 'zh' ? '链接已复制到剪贴板' : language === 'es' ? 'Enlace copiado' : 'Link copied to clipboard';
+      const openWeChatMsg = language === 'zh'
+        ? '\n\n请打开微信，粘贴链接发送给朋友'
+        : language === 'es'
+        ? '\n\nAbre WeChat y pega el enlace'
+        : '\n\nOpen WeChat and paste the link';
+      Alert.alert(copyMsg, openWeChatMsg);
+    };
+
+    // Show options
+    Alert.alert(
+      language === 'zh' ? '分享应用' : language === 'es' ? 'Compartir App' : 'Share App',
+      language === 'zh'
+        ? '选择分享方式'
+        : language === 'es'
+        ? 'Elige cómo compartir'
+        : 'Choose how to share',
+      [
+        {
+          text: language === 'zh' ? '复制链接' : language === 'es' ? 'Copiar enlace' : 'Copy Link',
+          onPress: copyAndAlert,
+        },
+        {
+          text: language === 'zh' ? '系统分享' : language === 'es' ? 'Compartir' : 'Share',
+          onPress: async () => {
+            try {
+              await Share.share({
+                message: shareMessage,
+                url: appUrl,
+              });
+            } catch (error) {
+              await copyAndAlert();
+            }
+          },
+        },
+        {
+          text: language === 'zh' ? '取消' : language === 'es' ? 'Cancelar' : 'Cancel',
+          style: 'cancel',
+        },
+      ]
+    );
   };
 
   const SettingItem = ({
