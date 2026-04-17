@@ -9,6 +9,7 @@ import {
   Alert,
   Modal,
   TextInput,
+  Linking,
 } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useApp } from '../context/AppContext';
@@ -23,6 +24,7 @@ export const SettingsScreen: React.FC = () => {
     updateHealthSync,
     colors,
     isDarkMode,
+    language,
   } = useApp();
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [tempTime, setTempTime] = useState(settings.reminderTime);
@@ -65,6 +67,9 @@ export const SettingsScreen: React.FC = () => {
       <Text style={[styles.settingLabel, { color: colors.text }]}>{label}</Text>
       {value && <Text style={[styles.settingValue, { color: colors.textLight }]}>{value}</Text>}
       {rightElement}
+      {onPress && !rightElement && (
+        <Text style={[styles.settingValue, { color: colors.textLight }]}>›</Text>
+      )}
     </TouchableOpacity>
   );
 
@@ -176,6 +181,12 @@ export const SettingsScreen: React.FC = () => {
       <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t.about}</Text>
       <Card>
         <SettingItem label={t.version} value="1.0.0" />
+        <SettingItem
+          label={language === 'zh' ? '隐私政策' : 'Privacy Policy'}
+          onPress={() => {
+            Linking.openURL('https://github.com/lijingmt/guowubushi-fasting/blob/main/PRIVACY.md');
+          }}
+        />
       </Card>
 
       {/* 时间选择器 */}

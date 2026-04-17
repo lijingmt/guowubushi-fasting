@@ -111,29 +111,6 @@ export interface HealthSyncStatus {
   lastSyncTime?: number; // 最后同步时间
 }
 
-// P2P 排行榜类型（完全匿名）
-export interface P2PUserStats {
-  userId: string;
-  rank: number;
-  merit: number;
-  completedDays: number;
-  currentStreak: number;
-}
-
-export interface P2PLeaderboardData {
-  users: P2PUserStats[];
-  lastUpdate: number;
-}
-
-export interface P2PMessage {
-  type: string;
-  userId?: string;
-  merit?: number;
-  completedDays?: number;
-  currentStreak?: number;
-  leaderboard?: any[];
-}
-
 // 导航类型
 export type RootStackParamList = {
   Home: undefined;
