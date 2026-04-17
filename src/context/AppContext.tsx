@@ -1,6 +1,7 @@
 import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { useColorScheme } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import { getLocales } from 'expo-localization';
 import {
   UserSettings,
   DailyCheckIn,
@@ -33,6 +34,33 @@ import {
 } from '../services/storage';
 import { translations } from '../i18n/translations';
 import { Colors, lightColors, darkColors } from '../theme/colors';
+
+// 检测设备语言并返回对应的应用语言
+const detectDeviceLanguage = (): 'zh' | 'en' | 'es' => {
+  const deviceLocales = getLocales();
+  if (deviceLocales && deviceLocales.length > 0) {
+    const deviceLanguage = deviceLocales[0].languageCode?.toLowerCase() || '';
+
+    // 英文设备 → 英文
+    if (deviceLanguage === 'en') {
+      return 'en';
+    }
+
+    // 西班牙语设备 → 西班牙语
+    if (deviceLanguage === 'es') {
+      return 'es';
+    }
+
+    // 中文设备（包括 zh-CN, zh-TW, zh-HK 等）→ 中文
+    if (deviceLanguage.startsWith('zh')) {
+      return 'zh';
+    }
+
+    // 其他语言默认中文
+    return 'zh';
+  }
+  return 'zh';
+};
 
 // 配置通知行为
 Notifications.setNotificationHandler({
@@ -173,8 +201,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const initializeData = async () => {
     try {
+      // 检查是否首次启动
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const settingsData = await AsyncStorage.getItem('@guowu_settings');
+      const isFirstLaunch = settingsData === null;
+
       // 加载设置
-      const savedSettings = await getSettings();
+      let savedSettings = await getSettings();
+
+      // 首次启动时自动检测设备语言
+      if (isFirstLaunch) {
+        const detectedLanguage = detectDeviceLanguage();
+        savedSettings.language = detectedLanguage;
+        await saveSettings(savedSettings);
+      }
+
       setSettings(savedSettings);
       setLanguage(savedSettings.language);
 
