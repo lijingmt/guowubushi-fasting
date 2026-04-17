@@ -16,7 +16,28 @@ export const translations = {
     tabFasting: '禁食',
     tabMeals: '饮食',
     tabStats: '统计',
+    tabLeaderboard: '排行榜',
     tabSettings: '设置',
+
+    // 排行榜
+    leaderboard: '修行排行榜',
+    leaderboardTitle: '全球修行者',
+    enableP2P: '参与排行榜',
+    enableP2PDesc: '启用后将公开您的连胜天数、完成天数和功德值到P2P网络',
+    p2pPrivacyNote: '隐私说明：体重、禁欲等私密数据仅在本地存储，不会同步',
+    rank: '排名',
+    nickname: '昵称',
+    leaderboardStreak: '连胜',
+    completedDays: '完成天数',
+    leaderboardMerit: '功德',
+    loading: '加载中...',
+    noLeaderboardData: '暂无排行榜数据',
+    you: '您',
+    setNickname: '设置昵称',
+    nicknamePlaceholder: '请输入昵称',
+    leaderboardDisabled: '排行榜已禁用',
+    enableLeaderboard: '启用排行榜',
+    disableLeaderboard: '禁用排行榜',
 
     // 首页
     welcome: '欢迎回来',
@@ -72,7 +93,7 @@ export const translations = {
     standingMeditationMinutes: '站桩时长',
     scriptureChanting: '诵经',
     scriptureListening: '听经',
-    merit: '功德',
+    practiceMerit: '功德',
     totalMerit: '总功德',
     minutes: '分钟',
     selectTime: '选择时间',
@@ -138,7 +159,7 @@ export const translations = {
     checkInHistory: '打卡历史',
     noCheckInRecords: '还没有打卡记录',
     startFirstDay: '开始你的第一天过午不食吧！',
-    completed: '已完成',
+    historyCompleted: '已完成',
     notCompletedLabel: '未完成',
 
     // 设置页面
@@ -251,9 +272,9 @@ export const translations = {
     achievement_merit_1000_desc: '获得1000点功德',
 
     // 时间描述
-    hours: '小时',
-    minutes: '分钟',
-    seconds: '秒',
+    timeHours: '小时',
+    timeMinutes: '分钟',
+    timeSeconds: '秒',
 
     // 提示信息
     fastingStarted: '禁食已开始',
@@ -286,7 +307,28 @@ export const translations = {
     tabFasting: 'Fasting',
     tabMeals: 'Meals',
     tabStats: 'Stats',
+    tabLeaderboard: 'Leaderboard',
     tabSettings: 'Settings',
+
+    // Leaderboard
+    leaderboard: 'Practice Leaderboard',
+    leaderboardTitle: 'Global Practitioners',
+    enableP2P: 'Join Leaderboard',
+    enableP2PDesc: 'When enabled, your streak, completed days, and merit will be shared on the P2P network',
+    p2pPrivacyNote: 'Privacy: Weight, abstinence and other private data are stored locally only',
+    rank: 'Rank',
+    nickname: 'Nickname',
+    leaderboardStreak: 'Streak',
+    completedDays: 'Days',
+    leaderboardMerit: 'Merit',
+    loading: 'Loading...',
+    noLeaderboardData: 'No leaderboard data available',
+    you: 'You',
+    setNickname: 'Set Nickname',
+    nicknamePlaceholder: 'Enter nickname',
+    leaderboardDisabled: 'Leaderboard disabled',
+    enableLeaderboard: 'Enable Leaderboard',
+    disableLeaderboard: 'Disable Leaderboard',
 
     // Home
     welcome: 'Welcome Back',
@@ -342,7 +384,7 @@ export const translations = {
     standingMeditationMinutes: 'Standing Duration',
     scriptureChanting: 'Scripture Chanting',
     scriptureListening: 'Scripture Listening',
-    merit: 'Merit',
+    practiceMerit: 'Merit',
     totalMerit: 'Total Merit',
     minutes: 'minutes',
     selectTime: 'Select Time',
@@ -408,7 +450,7 @@ export const translations = {
     checkInHistory: 'Check-In History',
     noCheckInRecords: 'No check-in records yet',
     startFirstDay: 'Start your first day of fasting!',
-    completed: 'Completed',
+    historyCompleted: 'Completed',
     notCompletedLabel: 'Not Completed',
 
     // Settings
@@ -521,9 +563,9 @@ export const translations = {
     achievement_merit_1000_desc: 'Earn 1000 merit points',
 
     // Time
-    hours: 'hours',
-    minutes: 'minutes',
-    seconds: 'seconds',
+    timeHours: 'hours',
+    timeMinutes: 'minutes',
+    timeSeconds: 'seconds',
 
     // Messages
     fastingStarted: 'Fasting started',
@@ -556,7 +598,28 @@ export const translations = {
     tabFasting: 'Ayuno',
     tabMeals: 'Comidas',
     tabStats: 'Estadísticas',
+    tabLeaderboard: 'Tabla',
     tabSettings: 'Ajustes',
+
+    // Leaderboard
+    leaderboard: 'Tabla de Practicantes',
+    leaderboardTitle: 'Practicantes Globales',
+    enableP2P: 'Unirse a la Tabla',
+    enableP2PDesc: 'Al habilitar, tu racha, días completados y mérito se compartirán en la red P2P',
+    p2pPrivacyNote: 'Privacidad: Peso, abstinencia y otros datos privados se almacenan solo localmente',
+    rank: 'Rango',
+    nickname: 'Apodo',
+    leaderboardStreak: 'Racha',
+    completedDays: 'Días',
+    leaderboardMerit: 'Mérito',
+    loading: 'Cargando...',
+    noLeaderboardData: 'No hay datos disponibles',
+    you: 'Tú',
+    setNickname: 'Establecer Apodo',
+    nicknamePlaceholder: 'Ingresa apodo',
+    leaderboardDisabled: 'Tabla deshabilitada',
+    enableLeaderboard: 'Habilitar Tabla',
+    disableLeaderboard: 'Deshabilitar Tabla',
 
     // Home
     welcome: 'Bienvenido',
@@ -612,7 +675,7 @@ export const translations = {
     standingMeditationMinutes: 'Duración de Pie',
     scriptureChanting: 'Cantar Escrituras',
     scriptureListening: 'Escuchar Escrituras',
-    merit: 'Mérito',
+    practiceMerit: 'Mérito',
     totalMerit: 'Mérito Total',
     minutes: 'minutos',
     selectTime: 'Seleccionar Tiempo',
@@ -678,7 +741,7 @@ export const translations = {
     checkInHistory: 'Historial de Registro',
     noCheckInRecords: 'Aún no hay registros',
     startFirstDay: '¡Comienza tu primer día de ayuno!',
-    completed: 'Completado',
+    historyCompleted: 'Completado',
     notCompletedLabel: 'No Completado',
 
     // Settings
@@ -791,9 +854,9 @@ export const translations = {
     achievement_merit_1000_desc: 'Gana 1000 puntos de mérito',
 
     // Time
-    hours: 'horas',
-    minutes: 'minutos',
-    seconds: 'segundos',
+    timeHours: 'horas',
+    timeMinutes: 'minutos',
+    timeSeconds: 'segundos',
 
     // Messages
     fastingStarted: 'Ayuno iniciado',

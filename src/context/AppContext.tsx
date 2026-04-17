@@ -38,6 +38,7 @@ import {
 } from '../services/storage';
 import { translations } from '../i18n/translations';
 import { Colors, lightColors, darkColors } from '../theme/colors';
+import * as p2p from '../services/p2p';
 
 // 检测设备语言并返回对应的应用语言
 const detectDeviceLanguage = (): 'zh' | 'en' | 'es' => {
@@ -128,6 +129,11 @@ interface AppContextType {
     subtype?: MeditationType
   ) => Promise<void>;
 
+  // P2P 排行榜
+  p2pEnabled: boolean;
+  toggleP2P: () => Promise<void>;
+  publishToLeaderboard: () => Promise<void>;
+
   // 加载状态
   isLoading: boolean;
 }
@@ -170,6 +176,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // 修行
   const [practiceRecords, setPracticeRecords] = useState<PracticeRecord[]>([]);
+
+  // P2P 排行榜
+  const [p2pEnabled, setP2pEnabled] = useState(false);
 
   // 统计
   const [stats, setStats] = useState<UserStats>({
@@ -600,6 +609,41 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     await saveHealthSyncStatus(updated);
   };
 
+  // P2P 排行榜功能
+  const toggleP2P = async () => {
+    const newState = !p2pEnabled;
+    if (newState) {
+      await p2p.enableP2P();
+      // 生成用户ID
+      await p2p.getOrCreateUserId();
+    } else {
+      await p2p.disableP2P();
+      // 移除用户数据
+      await p2p.removeUserFromP2P();
+    }
+    setP2pEnabled(newState);
+  };
+
+  const publishToLeaderboard = async () => {
+    if (!p2pEnabled) return;
+    await p2p.publishUserStats(stats);
+  };
+
+  // 初始化 P2P 状态
+  useEffect(() => {
+    (async () => {
+      const enabled = await p2p.isP2PEnabled();
+      setP2pEnabled(enabled);
+    })();
+  }, []);
+
+  // 当统计数据变化时，自动发布到排行榜
+  useEffect(() => {
+    if (p2pEnabled && stats.completedDays > 0) {
+      publishToLeaderboard();
+    }
+  }, [stats, p2pEnabled]);
+
   const t = translations[language];
 
   return (
@@ -633,6 +677,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         updateHealthSync,
         practiceRecords,
         addPractice,
+        p2pEnabled,
+        toggleP2P,
+        publishToLeaderboard,
         isLoading,
       }}
     >

@@ -598,6 +598,8 @@ const createResponsiveStyles = () => {
       borderRadius: responsiveSize.borderRadius.md,
       alignItems: 'center',
     },
+    cancelModalButton: {},
+    saveModalButton: {},
     modalButtonText: {
       fontSize: responsive({
         small: fs(14),

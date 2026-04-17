@@ -465,7 +465,7 @@ export const CheckInCard: React.FC = () => {
                   />
                 </View>
                 {isScriptureChanting && (
-                  <Text style={[styles.meritText, { color: colors.primary }]}>+10 {t.merit}</Text>
+                  <Text style={[styles.meritText, { color: colors.primary }]}>+10 {(t as any).practiceMerit || '功德'}</Text>
                 )}
               </View>
 
@@ -481,7 +481,7 @@ export const CheckInCard: React.FC = () => {
                   />
                 </View>
                 {isScriptureListening && (
-                  <Text style={[styles.meritText, { color: colors.success }]}>+5 {t.merit}</Text>
+                  <Text style={[styles.meritText, { color: colors.success }]}>+5 {(t as any).practiceMerit || '功德'}</Text>
                 )}
               </View>
 
