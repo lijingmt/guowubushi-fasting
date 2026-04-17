@@ -17,22 +17,11 @@ const TIME_OPTIONS = [
   { label: '60', value: 60 },
 ];
 
-// Weight options (dropdown style)
-const WEIGHT_OPTIONS = [
-  { label: '40', value: 40 },
-  { label: '45', value: 45 },
-  { label: '50', value: 50 },
-  { label: '55', value: 55 },
-  { label: '60', value: 60 },
-  { label: '65', value: 65 },
-  { label: '70', value: 70 },
-  { label: '75', value: 75 },
-  { label: '80', value: 80 },
-  { label: '85', value: 85 },
-  { label: '90', value: 90 },
-  { label: '95', value: 95 },
-  { label: '100', value: 100 },
-];
+// Weight options (dropdown style) - 1kg steps
+const WEIGHT_OPTIONS = Array.from({ length: 61 }, (_, i) => ({
+  label: `${40 + i}`,
+  value: 40 + i,
+}));
 
 export const CheckInCard: React.FC = () => {
   const {
