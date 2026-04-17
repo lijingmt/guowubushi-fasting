@@ -112,6 +112,13 @@ export const CheckInCard: React.FC = () => {
     setIsScriptureListening(false);
   };
 
+  const openEditModal = () => {
+    // Reset form for fresh input - user can re-do their check-in
+    resetForm();
+    setShowModal(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  };
+
   const handleCheckIn = async (completed: boolean) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
@@ -168,27 +175,40 @@ export const CheckInCard: React.FC = () => {
 
   if (hasCheckedToday && todayCheckIn) {
     return (
-      <LinearGradient
-        colors={todayCheckIn.completed ? ['#FF9800', '#FF5722'] : ['#9E9E9E', '#757575']}
-        style={styles.completedContainer}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <Text style={styles.completedIcon}>
-          {todayCheckIn.completed ? '🔥' : '😔'}
-        </Text>
-        <Text style={styles.completedTitle}>
-          {todayCheckIn.completed ? t.todayCompleted : t.todayNotCompleted}
-        </Text>
-        <View style={styles.streakRow}>
-          <Text style={styles.streakLabel}>{t.streak}</Text>
-          <Text style={styles.streakValue}>{stats.currentStreak}</Text>
-          <Text style={styles.streakDays}>{t.dayUnit}</Text>
-        </View>
-        {todayCheckIn.notes && (
-          <Text style={styles.notes}>{todayCheckIn.notes}</Text>
-        )}
-      </LinearGradient>
+      <>
+        <LinearGradient
+          colors={todayCheckIn.completed ? ['#FF9800', '#FF5722'] : ['#9E9E9E', '#757575']}
+          style={styles.completedContainer}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <Text style={styles.completedIcon}>
+            {todayCheckIn.completed ? '🔥' : '😔'}
+          </Text>
+          <Text style={styles.completedTitle}>
+            {todayCheckIn.completed ? t.todayCompleted : t.todayNotCompleted}
+          </Text>
+          <View style={styles.streakRow}>
+            <Text style={styles.streakLabel}>{t.streak}</Text>
+            <Text style={styles.streakValue}>{stats.currentStreak}</Text>
+            <Text style={styles.streakDays}>{t.dayUnit}</Text>
+          </View>
+          {todayCheckIn.notes && (
+            <Text style={styles.notes}>{todayCheckIn.notes}</Text>
+          )}
+        </LinearGradient>
+
+        {/* Edit/Re-check button */}
+        <TouchableOpacity
+          style={[styles.editCheckInButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={openEditModal}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.editCheckInButtonText, { color: colors.textSecondary }]}>
+            ✏️ {language === 'zh' ? '修改打卡' : language === 'es' ? 'Editar registro' : 'Edit Check-in'}
+          </Text>
+        </TouchableOpacity>
+      </>
     );
   }
 
@@ -883,6 +903,24 @@ const createResponsiveStyles = () => {
     cancelButtonText: {
       fontSize: responsiveSize.fontSize.lg,
       color: '#999',
+    },
+    // Edit check-in button styles
+    editCheckInButton: {
+      marginTop: vs(12),
+      paddingVertical: vs(12),
+      paddingHorizontal: rs(20),
+      borderRadius: responsiveSize.borderRadius.md,
+      borderWidth: 1,
+      alignItems: 'center',
+      alignSelf: 'center',
+    },
+    editCheckInButtonText: {
+      fontSize: responsive({
+        small: fs(13),
+        tablet: fs(16),
+        default: fs(14),
+      }),
+      fontWeight: '500',
     },
   });
 };
