@@ -404,12 +404,13 @@ export const CheckInCard: React.FC = () => {
               <TouchableOpacity
                 style={[styles.weightSection, { backgroundColor: colors.backgroundSecondary }]}
                 onPress={() => {
-                  setTempWeight(weight ? parseInt(weight) : weightMin);
+                  setTempWeight(weight && !isNaN(parseInt(weight)) ? parseInt(weight) : weightMin);
                   setShowWeightPicker(true);
                 }}
+                activeOpacity={0.7}
               >
                 <Text style={[styles.weightLabel, { color: colors.textSecondary }]}>{t.todaysWeight}</Text>
-                <View style={styles.weightSelectorButton}>
+                <View style={styles.weightSelectorButton} pointerEvents="none">
                   <Text style={[styles.weightSelectorText, { color: weight ? colors.text : colors.textLight }]}>
                     {weight || `${weightMin}`}
                   </Text>
