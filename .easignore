@@ -1,0 +1,7 @@
+# Exclude large directories
+ios/Pods
+ios/build
+ios/.symlinks
+ios/Podfile.lock
+node_modules
+.git
