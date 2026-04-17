@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, Switch } fr
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useApp } from '../context/AppContext';
+import { responsiveSize, fs, rs, vs, layout, responsive } from '../theme/responsive';
 
 export const CheckInCard: React.FC = () => {
   const { t, hasCheckedToday, todayCheckIn, dailyCheckIn, stats, addWeight, addWater, colors, language } = useApp();
@@ -60,6 +61,9 @@ export const CheckInCard: React.FC = () => {
     setSelectedWater(null);
     setShowModal(false);
   };
+
+  // 响应式样式
+  const styles = createResponsiveStyles();
 
   if (hasCheckedToday && todayCheckIn) {
     return (
@@ -224,239 +228,291 @@ export const CheckInCard: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  checkInButton: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  checkInGradient: {
-    padding: 24,
-    alignItems: 'center',
-  },
-  checkInTitle: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  checkInSubtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
-  },
-  completedContainer: {
-    borderRadius: 20,
-    padding: 24,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  completedIcon: {
-    fontSize: 64,
-    marginBottom: 8,
-  },
-  completedTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 12,
-  },
-  streakRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  streakLabel: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginRight: 8,
-  },
-  streakValue: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  streakDays: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginLeft: 4,
-  },
-  notes: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 8,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    padding: 32,
-    width: '85%',
-    maxWidth: 360,
-    alignItems: 'center',
-  },
-  modalTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 16,
-  },
-  modalQuestion: {
-    fontSize: 18,
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  modalHint: {
-    fontSize: 13,
-    color: '#999',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  weightSection: {
-    width: '100%',
-    marginBottom: 16,
-  },
-  weightLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-    textAlign: 'left',
-    width: '100%',
-  },
-  weightInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-  },
-  abstinenceSection: {
-    width: '100%',
-    marginBottom: 16,
-    backgroundColor: '#F3E5F5',
-    borderRadius: 12,
-    padding: 16,
-  },
-  abstinenceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  abstinenceLabel: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
-  },
-  waterSection: {
-    width: '100%',
-    marginBottom: 16,
-  },
-  waterLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 10,
-    textAlign: 'left',
-    width: '100%',
-  },
-  waterOptionsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  waterOption: {
-    flex: 1,
-    minWidth: 70,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 10,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  waterOptionSelected: {
-    backgroundColor: '#E3F2FD',
-    borderColor: '#2196F3',
-  },
-  waterOptionText: {
-    fontSize: 13,
-    color: '#666',
-    fontWeight: '500',
-  },
-  waterOptionTextSelected: {
-    color: '#2196F3',
-    fontWeight: 'bold',
-  },
-  weightInput: {
-    flex: 1,
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-    paddingVertical: 12,
-  },
-  weightUnit: {
-    fontSize: 18,
-    color: '#999',
-    marginLeft: 8,
-  },
-  notesInput: {
-    width: '100%',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 16,
-    minHeight: 80,
-    textAlignVertical: 'top',
-    marginBottom: 24,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    width: '100%',
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  yesButton: {
-    backgroundColor: '#4CAF50',
-  },
-  noButton: {
-    backgroundColor: '#9E9E9E',
-  },
-  yesButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  noButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  cancelButton: {
-    marginTop: 16,
-    paddingVertical: 8,
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    color: '#999',
-  },
-});
+// 创建响应式样式
+const createResponsiveStyles = () => {
+  const isTablet = layout.maxWidth >= 600;
+
+  return StyleSheet.create({
+    checkInButton: {
+      borderRadius: responsiveSize.borderRadius.xl,
+      overflow: 'hidden',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: vs(4) },
+      shadowOpacity: 0.3,
+      shadowRadius: rs(8),
+      elevation: 8,
+    },
+    checkInGradient: {
+      padding: responsiveSize.spacing['2xl'],
+      alignItems: 'center',
+    },
+    checkInTitle: {
+      fontSize: responsive({
+        small: fs(24),
+        tablet: fs(36),
+        default: fs(28),
+      }),
+      fontWeight: 'bold',
+      color: '#fff',
+      marginBottom: rs(8),
+    },
+    checkInSubtitle: {
+      fontSize: responsiveSize.fontSize.lg,
+      color: 'rgba(255, 255, 255, 0.9)',
+    },
+    completedContainer: {
+      borderRadius: responsiveSize.borderRadius.xl,
+      padding: responsiveSize.spacing['2xl'],
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: vs(4) },
+      shadowOpacity: 0.3,
+      shadowRadius: rs(8),
+      elevation: 8,
+    },
+    completedIcon: {
+      fontSize: responsive({
+        small: fs(48),
+        tablet: fs(72),
+        default: fs(56),
+      }),
+      marginBottom: rs(8),
+    },
+    completedTitle: {
+      fontSize: responsive({
+        small: fs(20),
+        tablet: fs(28),
+        default: fs(24),
+      }),
+      fontWeight: 'bold',
+      color: '#fff',
+      marginBottom: rs(12),
+    },
+    streakRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    streakLabel: {
+      fontSize: responsiveSize.fontSize.lg,
+      color: 'rgba(255, 255, 255, 0.8)',
+      marginRight: rs(8),
+    },
+    streakValue: {
+      fontSize: responsive({
+        small: fs(24),
+        tablet: fs(36),
+        default: fs(28),
+      }),
+      fontWeight: 'bold',
+      color: '#fff',
+    },
+    streakDays: {
+      fontSize: responsiveSize.fontSize.lg,
+      color: 'rgba(255, 255, 255, 0.8)',
+      marginLeft: rs(4),
+    },
+    notes: {
+      fontSize: responsiveSize.fontSize.base,
+      color: 'rgba(255, 255, 255, 0.8)',
+      marginTop: rs(8),
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.6)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalContent: {
+      borderRadius: responsive({
+        small: rs(16),
+        tablet: rs(24),
+        default: rs(20),
+      }),
+      padding: responsive({
+        small: rs(20),
+        tablet: rs(40),
+        default: rs(28),
+      }),
+      width: layout.modalWidth as string | number,
+      maxWidth: layout.modalMaxWidth as number,
+      alignItems: 'center',
+    },
+    modalTitle: {
+      fontSize: responsive({
+        small: fs(22),
+        tablet: fs(32),
+        default: fs(28),
+      }),
+      fontWeight: 'bold',
+      color: '#333',
+      marginBottom: rs(16),
+    },
+    modalQuestion: {
+      fontSize: responsive({
+        small: fs(16),
+        tablet: fs(20),
+        default: fs(18),
+      }),
+      color: '#333',
+      textAlign: 'center',
+      marginBottom: rs(4),
+    },
+    modalHint: {
+      fontSize: responsiveSize.fontSize.sm,
+      color: '#999',
+      textAlign: 'center',
+      marginBottom: vs(20),
+    },
+    weightSection: {
+      width: '100%',
+      marginBottom: vs(16),
+    },
+    weightLabel: {
+      fontSize: responsiveSize.fontSize.base,
+      color: '#666',
+      marginBottom: rs(8),
+      textAlign: 'left',
+      width: '100%',
+    },
+    weightInputRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#F5F5F5',
+      borderRadius: responsiveSize.borderRadius.md,
+      paddingHorizontal: rs(16),
+    },
+    abstinenceSection: {
+      width: '100%',
+      marginBottom: vs(16),
+      backgroundColor: '#F3E5F5',
+      borderRadius: responsiveSize.borderRadius.md,
+      padding: rs(16),
+    },
+    abstinenceRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    abstinenceLabel: {
+      fontSize: responsiveSize.fontSize.lg,
+      color: '#333',
+      fontWeight: '500',
+    },
+    waterSection: {
+      width: '100%',
+      marginBottom: vs(16),
+    },
+    waterLabel: {
+      fontSize: responsiveSize.fontSize.base,
+      color: '#666',
+      marginBottom: rs(10),
+      textAlign: 'left',
+      width: '100%',
+    },
+    waterOptionsContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: rs(8),
+    },
+    waterOption: {
+      flex: 1,
+      minWidth: isTablet ? rs(80) : rs(70),
+      paddingVertical: vs(10),
+      paddingHorizontal: rs(8),
+      backgroundColor: '#F5F5F5',
+      borderRadius: responsiveSize.borderRadius.md,
+      alignItems: 'center',
+      borderWidth: 2,
+      borderColor: 'transparent',
+    },
+    waterOptionSelected: {
+      backgroundColor: '#E3F2FD',
+      borderColor: '#2196F3',
+    },
+    waterOptionText: {
+      fontSize: responsiveSize.fontSize.sm,
+      color: '#666',
+      fontWeight: '500',
+    },
+    waterOptionTextSelected: {
+      color: '#2196F3',
+      fontWeight: 'bold',
+    },
+    weightInput: {
+      flex: 1,
+      fontSize: responsive({
+        small: fs(24),
+        tablet: fs(36),
+        default: fs(28),
+      }),
+      fontWeight: 'bold',
+      color: '#333',
+      textAlign: 'center',
+      paddingVertical: vs(12),
+    },
+    weightUnit: {
+      fontSize: responsive({
+        small: fs(16),
+        tablet: fs(20),
+        default: fs(18),
+      }),
+      color: '#999',
+      marginLeft: rs(8),
+    },
+    notesInput: {
+      width: '100%',
+      borderWidth: 1,
+      borderColor: '#ddd',
+      borderRadius: responsiveSize.borderRadius.md,
+      padding: rs(14),
+      fontSize: responsiveSize.fontSize.lg,
+      minHeight: vs(80),
+      textAlignVertical: 'top',
+      marginBottom: vs(24),
+    },
+    buttonRow: {
+      flexDirection: 'row',
+      width: '100%',
+      gap: rs(12),
+    },
+    modalButton: {
+      flex: 1,
+      paddingVertical: vs(16),
+      borderRadius: responsiveSize.borderRadius.md,
+      alignItems: 'center',
+    },
+    yesButton: {
+      backgroundColor: '#4CAF50',
+    },
+    noButton: {
+      backgroundColor: '#9E9E9E',
+    },
+    yesButtonText: {
+      fontSize: responsive({
+        small: fs(16),
+        tablet: fs(20),
+        default: fs(18),
+      }),
+      fontWeight: 'bold',
+      color: '#fff',
+    },
+    noButtonText: {
+      fontSize: responsive({
+        small: fs(16),
+        tablet: fs(20),
+        default: fs(18),
+      }),
+      fontWeight: 'bold',
+      color: '#fff',
+    },
+    cancelButton: {
+      marginTop: vs(16),
+      paddingVertical: vs(8),
+    },
+    cancelButtonText: {
+      fontSize: responsiveSize.fontSize.lg,
+      color: '#999',
+    },
+  });
+};

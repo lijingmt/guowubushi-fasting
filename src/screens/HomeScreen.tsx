@@ -5,6 +5,7 @@ import { Card } from '../components/Card';
 import { StatCard } from '../components/StatCard';
 import { CheckInCard } from '../components/CheckInCard';
 import * as Haptics from 'expo-haptics';
+import { responsiveSize, fs, rs, vs, layout, responsive } from '../theme/responsive';
 
 export const HomeScreen: React.FC = () => {
   const {
@@ -56,8 +57,14 @@ export const HomeScreen: React.FC = () => {
     return '💪';
   };
 
+  // 响应式样式
+  const styles = createResponsiveStyles();
+
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      contentContainerStyle={styles.content}
+    >
       <View style={styles.header}>
         <Text style={[styles.greeting, { color: colors.text }]}>{t.welcome}</Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t.appName}</Text>
@@ -67,7 +74,10 @@ export const HomeScreen: React.FC = () => {
 
       {/* Share button */}
       {hasCheckedToday && todayCheckIn?.completed && (
-        <TouchableOpacity style={[styles.shareButton, { backgroundColor: colors.primary }]} onPress={handleShare}>
+        <TouchableOpacity
+          style={[styles.shareButton, { backgroundColor: colors.primary }]}
+          onPress={handleShare}
+        >
           <Text style={styles.shareButtonText}>📱 {t.shareToMoments}</Text>
         </TouchableOpacity>
       )}
@@ -146,7 +156,10 @@ export const HomeScreen: React.FC = () => {
             ]}
           />
         </View>
-        <TouchableOpacity style={[styles.waterButton, { backgroundColor: colors.info }]} onPress={handleAddWater}>
+        <TouchableOpacity
+          style={[styles.waterButton, { backgroundColor: colors.info }]}
+          onPress={handleAddWater}
+        >
           <Text style={styles.waterButtonText}>+ 250ml</Text>
         </TouchableOpacity>
       </Card>
@@ -169,145 +182,175 @@ export const HomeScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  header: {
-    marginBottom: 20,
-  },
-  greeting: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 4,
-  },
-  shareButton: {
-    backgroundColor: '#FF5722',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 16,
-    marginBottom: 16,
-    shadowColor: '#FF5722',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  shareButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  streakCard: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 20,
-    padding: 24,
-    alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  streakEmoji: {
-    fontSize: 48,
-    marginBottom: 8,
-  },
-  streakTitle: {
-    fontSize: 16,
-    color: '#999',
-    marginBottom: 8,
-  },
-  streakCount: {
-    fontSize: 56,
-    fontWeight: 'bold',
-    color: '#FF5722',
-  },
-  streakLabel: {
-    fontSize: 18,
-    color: '#999',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    marginTop: 16,
-  },
-  waterCard: {
-    marginTop: 16,
-  },
-  waterHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  waterTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#2196F3',
-  },
-  waterAmount: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2196F3',
-  },
-  waterUnit: {
-    fontSize: 16,
-    fontWeight: 'normal',
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#2196F3',
-    borderRadius: 4,
-  },
-  waterButton: {
-    marginTop: 12,
-    backgroundColor: '#2196F3',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  waterButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  calorieCard: {
-    marginTop: 16,
-  },
-  calorieTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FF9800',
-    marginBottom: 8,
-  },
-  calorieAmount: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FF9800',
-  },
-  calorieUnit: {
-    fontSize: 16,
-    fontWeight: 'normal',
-  },
-  calorieProgress: {
-    backgroundColor: '#FF9800',
-  },
-});
+// 创建响应式样式
+const createResponsiveStyles = () => {
+  const isTablet = layout.maxWidth >= 600;
+
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    content: {
+      padding: layout.contentPadding,
+      paddingBottom: vs(40),
+    },
+    header: {
+      marginBottom: vs(20),
+    },
+    greeting: {
+      fontSize: responsive({
+        small: fs(24),
+        medium: fs(26),
+        large: fs(28),
+        tablet: fs(36),
+        default: fs(28),
+      }),
+      fontWeight: 'bold',
+    },
+    subtitle: {
+      fontSize: responsiveSize.fontSize.lg,
+      marginTop: vs(4),
+    },
+    shareButton: {
+      paddingVertical: vs(14),
+      borderRadius: responsiveSize.borderRadius.md,
+      alignItems: 'center',
+      marginTop: vs(16),
+      marginBottom: vs(16),
+      shadowColor: '#FF5722',
+      shadowOffset: { width: 0, height: vs(2) },
+      shadowOpacity: 0.3,
+      shadowRadius: rs(4),
+      elevation: 4,
+    },
+    shareButtonText: {
+      color: '#fff',
+      fontSize: responsive({
+        small: fs(14),
+        tablet: fs(18),
+        default: fs(16),
+      }),
+      fontWeight: '600',
+    },
+    streakCard: {
+      borderRadius: responsive({
+        small: rs(16),
+        tablet: rs(24),
+        default: rs(20),
+      }),
+      padding: responsive({
+        small: rs(16),
+        tablet: rs(32),
+        default: rs(24),
+      }),
+      alignItems: 'center',
+      marginBottom: vs(20),
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: vs(4) },
+      shadowOpacity: 0.3,
+      shadowRadius: rs(8),
+      elevation: 8,
+    },
+    streakEmoji: {
+      fontSize: responsive({
+        small: fs(40),
+        tablet: fs(64),
+        default: fs(48),
+      }),
+      marginBottom: rs(8),
+    },
+    streakTitle: {
+      fontSize: responsiveSize.fontSize.lg,
+      marginBottom: rs(8),
+    },
+    streakCount: {
+      fontSize: responsive({
+        small: fs(44),
+        medium: fs(52),
+        tablet: fs(72),
+        default: fs(56),
+      }),
+      fontWeight: 'bold',
+    },
+    streakLabel: {
+      fontSize: responsiveSize.fontSize.xl,
+    },
+    statsRow: {
+      flexDirection: 'row',
+      marginTop: vs(16),
+      gap: rs(8),
+    },
+    waterCard: {
+      marginTop: vs(16),
+    },
+    waterHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: vs(12),
+    },
+    waterTitle: {
+      fontSize: responsiveSize.fontSize.xl,
+      fontWeight: '600',
+    },
+    waterAmount: {
+      fontSize: responsive({
+        small: fs(20),
+        tablet: fs(28),
+        default: fs(24),
+      }),
+      fontWeight: 'bold',
+    },
+    waterUnit: {
+      fontSize: responsiveSize.fontSize.lg,
+      fontWeight: 'normal',
+    },
+    progressBar: {
+      height: vs(8),
+      borderRadius: rs(4),
+      overflow: 'hidden',
+    },
+    progressFill: {
+      height: '100%',
+      borderRadius: rs(4),
+    },
+    waterButton: {
+      marginTop: vs(12),
+      paddingVertical: vs(12),
+      borderRadius: responsiveSize.borderRadius.md,
+      alignItems: 'center',
+    },
+    waterButtonText: {
+      color: '#fff',
+      fontSize: responsive({
+        small: fs(14),
+        tablet: fs(18),
+        default: fs(16),
+      }),
+      fontWeight: '600',
+    },
+    calorieCard: {
+      marginTop: vs(16),
+    },
+    calorieTitle: {
+      fontSize: responsiveSize.fontSize.xl,
+      fontWeight: '600',
+      marginBottom: vs(8),
+    },
+    calorieAmount: {
+      fontSize: responsive({
+        small: fs(20),
+        tablet: fs(28),
+        default: fs(24),
+      }),
+      fontWeight: 'bold',
+    },
+    calorieUnit: {
+      fontSize: responsiveSize.fontSize.lg,
+      fontWeight: 'normal',
+    },
+    calorieProgress: {
+      backgroundColor: '#FF9800',
+    },
+  });
+};

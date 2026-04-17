@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { Text, View, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -9,12 +9,36 @@ import { MealsScreen } from '../screens/MealsScreen';
 import { StatsScreen } from '../screens/StatsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { HistoryScreen } from '../screens/HistoryScreen';
+import { responsiveSize, fs, vs, rs, layout, responsive } from '../theme/responsive';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 const TabNavigator = () => {
   const { t, colors } = useApp();
+
+  // 响应式Tab高度
+  const tabBarHeight = responsive({
+    small: 60,
+    medium: 65,
+    large: 70,
+    tablet: 80,
+    default: 70,
+  });
+
+  // 响应式图标大小
+  const iconSize = responsive({
+    small: fs(20),
+    tablet: fs(28),
+    default: fs(24),
+  });
+
+  // 响应式标签字体大小
+  const labelFontSize = responsive({
+    small: fs(10),
+    tablet: fs(14),
+    default: fs(11),
+  });
 
   return (
     <Tab.Navigator
@@ -24,16 +48,16 @@ const TabNavigator = () => {
           backgroundColor: colors.tabBar,
           borderTopWidth: 1,
           borderTopColor: colors.border,
-          height: 70,
-          paddingBottom: 5,
-          paddingTop: 10,
+          height: tabBarHeight,
+          paddingBottom: Platform.OS === 'ios' ? vs(5) : vs(8),
+          paddingTop: vs(10),
         },
         tabBarActiveTintColor: colors.tabBarActive,
         tabBarInactiveTintColor: colors.tabBarInactive,
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: labelFontSize,
           fontWeight: '500',
-          marginTop: 2,
+          marginTop: vs(2),
         },
       }}
     >
@@ -43,7 +67,7 @@ const TabNavigator = () => {
         options={{
           tabBarLabel: t.tabHome,
           tabBarIcon: ({ color }) => (
-            <TabIcon name="🏠" color={color} />
+            <TabIcon name="🏠" color={color} size={iconSize} />
           ),
         }}
       />
@@ -53,7 +77,7 @@ const TabNavigator = () => {
         options={{
           tabBarLabel: t.viewHistory,
           tabBarIcon: ({ color }) => (
-            <TabIcon name="📅" color={color} />
+            <TabIcon name="📅" color={color} size={iconSize} />
           ),
         }}
       />
@@ -63,7 +87,7 @@ const TabNavigator = () => {
         options={{
           tabBarLabel: t.tabMeals,
           tabBarIcon: ({ color }) => (
-            <TabIcon name="🍽️" color={color} />
+            <TabIcon name="🍽️" color={color} size={iconSize} />
           ),
         }}
       />
@@ -73,7 +97,7 @@ const TabNavigator = () => {
         options={{
           tabBarLabel: t.tabStats,
           tabBarIcon: ({ color }) => (
-            <TabIcon name="📊" color={color} />
+            <TabIcon name="📊" color={color} size={iconSize} />
           ),
         }}
       />
@@ -83,7 +107,7 @@ const TabNavigator = () => {
         options={{
           tabBarLabel: t.tabSettings,
           tabBarIcon: ({ color }) => (
-            <TabIcon name="⚙️" color={color} />
+            <TabIcon name="⚙️" color={color} size={iconSize} />
           ),
         }}
       />
@@ -91,10 +115,10 @@ const TabNavigator = () => {
   );
 };
 
-const TabIcon = ({ name, color }: { name: string; color: string }) => {
+const TabIcon = ({ name, color, size }: { name: string; color: string; size: number }) => {
   return (
     <View style={{ alignItems: 'center' }}>
-      <Text style={{ fontSize: 24 }}>{name}</Text>
+      <Text style={{ fontSize: size }}>{name}</Text>
     </View>
   );
 };
