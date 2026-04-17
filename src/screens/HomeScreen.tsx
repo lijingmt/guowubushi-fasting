@@ -25,6 +25,8 @@ export const HomeScreen: React.FC = () => {
   const [flameAnimation] = useState(false);
   const [showCalorieModal, setShowCalorieModal] = useState(false);
   const [calorieInput, setCalorieInput] = useState(settings.dailyCalorieGoal.toString());
+  const [showWaterModal, setShowWaterModal] = useState(false);
+  const [waterInput, setWaterInput] = useState('2000');
 
   const handleAddWater = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -50,6 +52,29 @@ export const HomeScreen: React.FC = () => {
     setShowCalorieModal(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
+
+  const handleSaveWaterGoal = async () => {
+    const newGoal = parseInt(waterInput, 10);
+    if (newGoal && newGoal >= 500 && newGoal <= 3000) {
+      await updateSettings({ dailyWaterGoal: newGoal });
+      setShowWaterModal(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } else {
+      Alert.alert(
+        language === 'zh' ? '无效的数值' : 'Invalid Value',
+        language === 'zh' ? '请输入500-3000之间的数值' : 'Please enter a value between 500 and 3000'
+      );
+    }
+  };
+
+  const openWaterModal = () => {
+    setWaterInput((settings as any).dailyWaterGoal?.toString() || '2000');
+    setShowWaterModal(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  // Get current water goal
+  const getWaterGoal = () => (settings as any).dailyWaterGoal || 2000;
 
   const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -187,15 +212,23 @@ export const HomeScreen: React.FC = () => {
       <Card style={styles.waterCard}>
         <View style={styles.waterHeader}>
           <Text style={[styles.waterTitle, { color: colors.info }]}>{t.waterIntake}</Text>
-          <Text style={[styles.waterAmount, { color: colors.info }]}>
-            {todayWater} <Text style={styles.waterUnit}>ml</Text>
-          </Text>
+          <View style={styles.waterAmountRow}>
+            <Text style={[styles.waterAmount, { color: colors.info }]}>
+              {todayWater} <Text style={styles.waterUnit}>ml</Text>
+            </Text>
+            <Text style={[styles.waterGoalText, { color: colors.textLight }]}> / </Text>
+            <TouchableOpacity onPress={openWaterModal}>
+              <Text style={[styles.waterGoalText, { color: colors.textLight }]}>
+                {getWaterGoal()}ml ✏️
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
         <View style={[styles.progressBar, { backgroundColor: colors.divider }]}>
           <View
             style={[
               styles.progressFill,
-              { backgroundColor: colors.info, width: `${Math.min((todayWater / 2000) * 100, 100)}%` },
+              { backgroundColor: colors.info, width: `${Math.min((todayWater / getWaterGoal()) * 100, 100)}%` },
             ]}
           />
         </View>
@@ -263,6 +296,52 @@ export const HomeScreen: React.FC = () => {
               <TouchableOpacity
                 style={[styles.modalButton, styles.saveModalButton, { backgroundColor: colors.success }]}
                 onPress={handleSaveCalorieGoal}
+              >
+                <Text style={styles.saveButtonText}>
+                  {language === 'zh' ? '保存' : 'Save'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Water Goal Edit Modal */}
+      <Modal
+        visible={showWaterModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowWaterModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              {language === 'zh' ? '设置每日饮水目标' : 'Set Daily Water Goal'}
+            </Text>
+            <Text style={[styles.modalHint, { color: colors.textSecondary }]}>
+              {language === 'zh' ? '请输入500-3000之间的数值' : 'Enter a value between 500 and 3000'}
+            </Text>
+            <TextInput
+              style={[styles.calorieInput, { color: colors.text, backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
+              value={waterInput}
+              onChangeText={setWaterInput}
+              keyboardType="number-pad"
+              placeholder="2000"
+              placeholderTextColor={colors.textLight}
+              autoFocus
+            />
+            <View style={styles.modalButtonRow}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelModalButton, { backgroundColor: colors.divider }]}
+                onPress={() => setShowWaterModal(false)}
+              >
+                <Text style={[styles.modalButtonText, { color: colors.text }]}>
+                  {t.cancel}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.saveModalButton, { backgroundColor: colors.info }]}
+                onPress={handleSaveWaterGoal}
               >
                 <Text style={styles.saveButtonText}>
                   {language === 'zh' ? '保存' : 'Save'}
@@ -387,6 +466,10 @@ const createResponsiveStyles = () => {
       fontSize: responsiveSize.fontSize.xl,
       fontWeight: '600',
     },
+    waterAmountRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
     waterAmount: {
       fontSize: responsive({
         small: fs(20),
@@ -398,6 +481,11 @@ const createResponsiveStyles = () => {
     waterUnit: {
       fontSize: responsiveSize.fontSize.lg,
       fontWeight: 'normal',
+    },
+    waterGoalText: {
+      fontSize: responsiveSize.fontSize.base,
+      textDecorationLine: 'underline',
+      textDecorationStyle: 'dotted',
     },
     progressBar: {
       height: vs(8),

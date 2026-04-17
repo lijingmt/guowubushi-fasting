@@ -2,6 +2,7 @@
 export interface UserSettings {
   reminderTime: string; // "21:00" - 每日提醒时间
   dailyCalorieGoal: number; // 每日卡路里目标
+  dailyWaterGoal?: number; // 每日饮水目标（ml）
   enableNotifications: boolean; // 启用通知
   weightUnit: 'kg' | 'lb'; // 体重单位
   theme: 'light' | 'dark' | 'auto'; // 主题
