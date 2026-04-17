@@ -43,44 +43,27 @@ export const HomeScreen: React.FC = () => {
     const shareMessage = `🔥 ${getMessage()}`;
 
     try {
+      // Try sharing without URL for better WeChat compatibility
       const result = await Share.share({
         message: shareMessage,
-        url: 'https://github.com/lijingmt/guowubushifasting', // Add URL for better compatibility
       });
 
-      // If sharing was dismissed or failed, offer to copy to clipboard
+      // If sharing was dismissed, offer to copy to clipboard
       if (result.action === Share.dismissedAction) {
+        // Automatically copy to clipboard when dismissed
+        await Clipboard.setStringAsync(shareMessage);
         Alert.alert(
-          t.share || 'Share',
-          t.shareFailed || 'Share cancelled. Copy message instead?',
-          [
-            { text: t.cancel || 'Cancel', style: 'cancel' },
-            {
-              text: t.copy || 'Copy',
-              onPress: async () => {
-                await Clipboard.setStringAsync(shareMessage);
-                Alert.alert(t.copied || 'Copied!', shareMessage);
-              },
-            },
-          ]
+          t.copied || 'Copied!',
+          shareMessage + '\n\n' + (language === 'zh' ? '（已复制到剪贴板，可手动粘贴到微信）' : '(Copied to clipboard, paste to WeChat manually)')
         );
       }
     } catch (error: any) {
       console.error('Error sharing:', error);
-      // Offer to copy to clipboard when sharing fails
+      // Automatically copy to clipboard when sharing fails
+      await Clipboard.setStringAsync(shareMessage);
       Alert.alert(
-        t.share || 'Share',
-        t.shareFailed || 'Share not supported. Copy message instead?',
-        [
-          { text: t.cancel || 'Cancel', style: 'cancel' },
-          {
-            text: t.copy || 'Copy',
-            onPress: async () => {
-              await Clipboard.setStringAsync(shareMessage);
-              Alert.alert(t.copied || 'Copied!', shareMessage);
-            },
-          },
-        ]
+        t.copied || 'Copied!',
+        shareMessage + '\n\n' + (language === 'zh' ? '（已复制到剪贴板，可手动粘贴到微信）' : '(Copied to clipboard, paste to WeChat manually)')
       );
     }
   };
