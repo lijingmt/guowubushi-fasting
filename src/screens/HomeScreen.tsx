@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Alert, Clipboard } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Alert, Clipboard, Modal, TextInput } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { Card } from '../components/Card';
 import { StatCard } from '../components/StatCard';
@@ -14,17 +14,41 @@ export const HomeScreen: React.FC = () => {
     todayWater,
     todayCalories,
     settings,
+    updateSettings,
     addWater,
     hasCheckedToday,
     todayCheckIn,
     colors,
+    language,
   } = useApp();
 
   const [flameAnimation] = useState(false);
+  const [showCalorieModal, setShowCalorieModal] = useState(false);
+  const [calorieInput, setCalorieInput] = useState(settings.dailyCalorieGoal.toString());
 
   const handleAddWater = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     addWater(250);
+  };
+
+  const handleSaveCalorieGoal = async () => {
+    const newGoal = parseInt(calorieInput, 10);
+    if (newGoal && newGoal >= 500 && newGoal <= 10000) {
+      await updateSettings({ dailyCalorieGoal: newGoal });
+      setShowCalorieModal(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } else {
+      Alert.alert(
+        language === 'zh' ? '无效的数值' : 'Invalid Value',
+        language === 'zh' ? '请输入500-10000之间的数值' : 'Please enter a value between 500 and 10000'
+      );
+    }
+  };
+
+  const openCalorieModal = () => {
+    setCalorieInput(settings.dailyCalorieGoal.toString());
+    setShowCalorieModal(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
   const handleShare = async () => {
@@ -186,7 +210,12 @@ export const HomeScreen: React.FC = () => {
       <Card style={styles.calorieCard}>
         <Text style={[styles.calorieTitle, { color: colors.warning }]}>{t.totalCalories}</Text>
         <Text style={[styles.calorieAmount, { color: colors.warning }]}>
-          {todayCalories} <Text style={styles.calorieUnit}>/ {settings.dailyCalorieGoal} kcal</Text>
+          {todayCalories}{' '}
+          <TouchableOpacity onPress={openCalorieModal}>
+            <Text style={[styles.calorieGoal, { color: colors.warning }]}>
+              / {settings.dailyCalorieGoal} kcal ✏️
+            </Text>
+          </TouchableOpacity>
         </Text>
         <View style={[styles.progressBar, { backgroundColor: colors.divider }]}>
           <View
@@ -197,6 +226,52 @@ export const HomeScreen: React.FC = () => {
           />
         </View>
       </Card>
+
+      {/* Calorie Goal Edit Modal */}
+      <Modal
+        visible={showCalorieModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCalorieModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              {language === 'zh' ? '设置每日卡路里目标' : 'Set Daily Calorie Goal'}
+            </Text>
+            <Text style={[styles.modalHint, { color: colors.textSecondary }]}>
+              {language === 'zh' ? '请输入500-10000之间的数值' : 'Enter a value between 500 and 10000'}
+            </Text>
+            <TextInput
+              style={[styles.calorieInput, { color: colors.text, backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
+              value={calorieInput}
+              onChangeText={setCalorieInput}
+              keyboardType="number-pad"
+              placeholder="2000"
+              placeholderTextColor={colors.textLight}
+              autoFocus
+            />
+            <View style={styles.modalButtonRow}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelModalButton, { backgroundColor: colors.divider }]}
+                onPress={() => setShowCalorieModal(false)}
+              >
+                <Text style={[styles.modalButtonText, { color: colors.text }]}>
+                  {t.cancel}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.saveModalButton, { backgroundColor: colors.success }]}
+                onPress={handleSaveCalorieGoal}
+              >
+                <Text style={styles.saveButtonText}>
+                  {language === 'zh' ? '保存' : 'Save'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
@@ -368,8 +443,89 @@ const createResponsiveStyles = () => {
       fontSize: responsiveSize.fontSize.lg,
       fontWeight: 'normal',
     },
+    calorieGoal: {
+      fontSize: responsiveSize.fontSize.lg,
+      fontWeight: 'normal',
+      textDecorationLine: 'underline',
+      textDecorationStyle: 'dotted',
+    },
     calorieProgress: {
       backgroundColor: '#FF9800',
+    },
+    // Calorie edit modal styles
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalContent: {
+      borderRadius: responsiveSize.borderRadius.xl,
+      padding: responsive({
+        small: rs(20),
+        tablet: rs(32),
+        default: rs(24),
+      }),
+      width: '80%',
+      maxWidth: rs(320),
+      alignItems: 'center',
+    },
+    modalTitle: {
+      fontSize: responsive({
+        small: fs(18),
+        tablet: fs(22),
+        default: fs(20),
+      }),
+      fontWeight: 'bold',
+      marginBottom: rs(8),
+      textAlign: 'center',
+    },
+    modalHint: {
+      fontSize: responsiveSize.fontSize.sm,
+      marginBottom: vs(20),
+      textAlign: 'center',
+    },
+    calorieInput: {
+      width: '100%',
+      borderWidth: 1,
+      borderRadius: responsiveSize.borderRadius.md,
+      padding: rs(14),
+      fontSize: responsive({
+        small: fs(20),
+        tablet: fs(26),
+        default: fs(24),
+      }),
+      fontWeight: 'bold',
+      textAlign: 'center',
+      marginBottom: vs(20),
+    },
+    modalButtonRow: {
+      flexDirection: 'row',
+      width: '100%',
+      gap: rs(12),
+    },
+    modalButton: {
+      flex: 1,
+      paddingVertical: vs(14),
+      borderRadius: responsiveSize.borderRadius.md,
+      alignItems: 'center',
+    },
+    modalButtonText: {
+      fontSize: responsive({
+        small: fs(14),
+        tablet: fs(18),
+        default: fs(16),
+      }),
+      fontWeight: '600',
+    },
+    saveButtonText: {
+      color: '#fff',
+      fontSize: responsive({
+        small: fs(14),
+        tablet: fs(18),
+        default: fs(16),
+      }),
+      fontWeight: '600',
     },
   });
 };
