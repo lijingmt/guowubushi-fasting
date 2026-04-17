@@ -6,6 +6,7 @@ import {
   WeightRecord,
   WaterRecord,
   HealthSyncStatus,
+  PracticeRecord,
 } from '../types';
 import { DEFAULT_SETTINGS } from '../constants/achievements';
 
@@ -16,6 +17,7 @@ const KEYS = {
   WEIGHT_RECORDS: '@guowu_weight_records',
   WATER_RECORDS: '@guowu_water_records',
   HEALTH_SYNC: '@guowu_health_sync',
+  PRACTICE_RECORDS: '@guowu_practice_records',
 };
 
 // 设置相关
@@ -244,6 +246,43 @@ export const saveHealthSyncStatus = async (status: HealthSyncStatus): Promise<vo
   }
 };
 
+// 修行记录相关
+export const getPracticeRecords = async (): Promise<PracticeRecord[]> => {
+  try {
+    const data = await AsyncStorage.getItem(KEYS.PRACTICE_RECORDS);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Error getting practice records:', error);
+    return [];
+  }
+};
+
+export const savePracticeRecord = async (record: PracticeRecord): Promise<void> => {
+  try {
+    const records = await getPracticeRecords();
+    const index = records.findIndex((r) => r.id === record.id);
+    if (index >= 0) {
+      records[index] = record;
+    } else {
+      records.push(record);
+    }
+    await AsyncStorage.setItem(KEYS.PRACTICE_RECORDS, JSON.stringify(records));
+  } catch (error) {
+    console.error('Error saving practice record:', error);
+  }
+};
+
+export const getTodayPracticeRecords = async (): Promise<PracticeRecord[]> => {
+  try {
+    const records = await getPracticeRecords();
+    const today = new Date().toISOString().split('T')[0];
+    return records.filter((r) => r.date === today);
+  } catch (error) {
+    console.error('Error getting today practice records:', error);
+    return [];
+  }
+};
+
 // 清除所有数据
 export const clearAllData = async (): Promise<void> => {
   try {
@@ -254,6 +293,7 @@ export const clearAllData = async (): Promise<void> => {
       KEYS.WEIGHT_RECORDS,
       KEYS.WATER_RECORDS,
       KEYS.HEALTH_SYNC,
+      KEYS.PRACTICE_RECORDS,
     ];
     for (const key of keys) {
       await AsyncStorage.removeItem(key);

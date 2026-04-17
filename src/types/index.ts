@@ -8,6 +8,9 @@ export interface UserSettings {
   language: 'zh' | 'en' | 'es'; // 语言
 }
 
+// 打坐类型
+export type MeditationType = 'cross_leg' | 'single_leg' | null;
+
 // 每日打卡记录类型
 export interface DailyCheckIn {
   id: string;
@@ -16,6 +19,25 @@ export interface DailyCheckIn {
   brokeAfterNoon: boolean; // 是否在过午后进食
   checkInTime: number; // 打卡时间戳
   notes?: string; // 备注
+  // 新增修练相关字段
+  meditation?: boolean; // 是否打坐
+  meditationType?: MeditationType; // 打坐类型：双盘/单盘
+  meditationMinutes?: number; // 打坐时长（分钟）
+  standingMeditation?: boolean; // 是否站桩
+  standingMeditationMinutes?: number; // 站桩时长（分钟）
+  scriptureChanting?: boolean; // 是否诵经
+  scriptureListening?: boolean; // 是否听经
+}
+
+// 修行记录类型
+export interface PracticeRecord {
+  id: string;
+  date: string; // YYYY-MM-DD
+  type: 'meditation' | 'standing_meditation' | 'scripture_chanting' | 'scripture_listening';
+  duration?: number; // 时长（分钟），仅打坐和站桩需要
+  subtype?: MeditationType; // 打坐子类型
+  merit?: number; // 功德值
+  timestamp: number; // 记录时间戳
 }
 
 // 饮食记录类型
@@ -64,6 +86,13 @@ export interface UserStats {
   totalHoursSaved: number; // 节省的总小时数（每天2小时）
   currentAbstinenceStreak: number; // 当前禁欲连续天数
   longestAbstinenceStreak: number; // 最长禁欲连续天数
+  // 修行统计
+  totalMeditationMinutes: number; // 总打坐分钟数
+  totalMeditationDays: number; // 打坐天数
+  longestMeditationStreak: number; // 最长打坐连续天数
+  totalStandingMeditationMinutes: number; // 总站桩分钟数
+  totalStandingMeditationDays: number; // 站桩天数
+  totalMerit: number; // 总功德值
 }
 
 // 饮水记录类型

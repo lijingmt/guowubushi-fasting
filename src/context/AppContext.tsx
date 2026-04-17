@@ -10,6 +10,8 @@ import {
   WaterRecord,
   UserStats,
   HealthSyncStatus,
+  PracticeRecord,
+  MeditationType,
 } from '../types';
 import { DEFAULT_SETTINGS, DINNER_CALORIES } from '../constants/achievements';
 import {
@@ -31,6 +33,8 @@ import {
   getTodayWaterIntake,
   getHealthSyncStatus,
   saveHealthSyncStatus,
+  getPracticeRecords,
+  savePracticeRecord,
 } from '../services/storage';
 import { translations } from '../i18n/translations';
 import { Colors, lightColors, darkColors } from '../theme/colors';
@@ -116,6 +120,14 @@ interface AppContextType {
   healthSync: HealthSyncStatus;
   updateHealthSync: (status: Partial<HealthSyncStatus>) => Promise<void>;
 
+  // 修行
+  practiceRecords: PracticeRecord[];
+  addPractice: (
+    type: 'meditation' | 'standing_meditation' | 'scripture_chanting' | 'scripture_listening',
+    duration?: number,
+    subtype?: MeditationType
+  ) => Promise<void>;
+
   // 加载状态
   isLoading: boolean;
 }
@@ -156,6 +168,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [waterRecords, setWaterRecords] = useState<WaterRecord[]>([]);
   const [todayWater, setTodayWater] = useState(0);
 
+  // 修行
+  const [practiceRecords, setPracticeRecords] = useState<PracticeRecord[]>([]);
+
   // 统计
   const [stats, setStats] = useState<UserStats>({
     totalCheckInDays: 0,
@@ -170,6 +185,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     totalHoursSaved: 0,
     currentAbstinenceStreak: 0,
     longestAbstinenceStreak: 0,
+    totalMeditationMinutes: 0,
+    totalMeditationDays: 0,
+    longestMeditationStreak: 0,
+    totalStandingMeditationMinutes: 0,
+    totalStandingMeditationDays: 0,
+    totalMerit: 0,
   });
 
   // 健康同步
@@ -190,7 +211,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // 计算统计数据
   useEffect(() => {
     calculateStats();
-  }, [checkInRecords, weightRecords]);
+  }, [checkInRecords, weightRecords, practiceRecords]);
 
   // 设置改变时重新调度提醒
   useEffect(() => {
@@ -243,6 +264,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setWaterRecords(savedWater);
       const water = await getTodayWaterIntake();
       setTodayWater(water);
+
+      // 加载修行记录
+      const savedPractices = await getPracticeRecords();
+      setPracticeRecords(savedPractices);
 
       // 加载健康同步状态
       const savedHealthSync = await getHealthSyncStatus();
@@ -363,6 +388,51 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // 计算完成率
     const completionRate = totalDays > 0 ? Math.round((completedDays / totalDays) * 100) : 0;
 
+    // 计算修行统计
+    let totalMeditationMinutes = 0;
+    let totalMeditationDays = 0;
+    let longestMeditationStreak = 0;
+    let currentMeditationStreak = 0;
+
+    let totalStandingMeditationMinutes = 0;
+    let totalStandingMeditationDays = 0;
+
+    let totalMerit = 0;
+
+    // 统计打坐记录
+    const meditationRecords = practiceRecords.filter((r) => r.type === 'meditation');
+    const meditationDates = [...new Set(meditationRecords.map((r) => r.date))];
+    totalMeditationDays = meditationDates.length;
+    totalMeditationMinutes = meditationRecords.reduce((sum, r) => sum + (r.duration || 0), 0);
+
+    // 计算打坐连续天数
+    const sortedMeditationDates = meditationDates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+    let meditationCheckDate = new Date(today);
+    for (const dateStr of sortedMeditationDates) {
+      if (dateStr === meditationCheckDate.toISOString().split('T')[0]) {
+        currentMeditationStreak++;
+        meditationCheckDate.setDate(meditationCheckDate.getDate() - 1);
+      } else {
+        longestMeditationStreak = Math.max(longestMeditationStreak, currentMeditationStreak);
+        currentMeditationStreak = 1;
+        meditationCheckDate = new Date(dateStr);
+        meditationCheckDate.setDate(meditationCheckDate.getDate() - 1);
+      }
+    }
+    longestMeditationStreak = Math.max(longestMeditationStreak, currentMeditationStreak);
+
+    // 统计站桩记录
+    const standingRecords = practiceRecords.filter((r) => r.type === 'standing_meditation');
+    totalStandingMeditationDays = [...new Set(standingRecords.map((r) => r.date))].length;
+    totalStandingMeditationMinutes = standingRecords.reduce((sum, r) => sum + (r.duration || 0), 0);
+
+    // 计算功德值：诵经+10，听经+5
+    totalMerit = practiceRecords.reduce((sum, r) => {
+      if (r.type === 'scripture_chanting') return sum + 10;
+      if (r.type === 'scripture_listening') return sum + 5;
+      return sum;
+    }, 0);
+
     setStats({
       totalCheckInDays: totalDays,
       completedDays,
@@ -376,6 +446,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       totalHoursSaved,
       currentAbstinenceStreak,
       longestAbstinenceStreak,
+      totalMeditationMinutes,
+      totalMeditationDays,
+      longestMeditationStreak,
+      totalStandingMeditationMinutes,
+      totalStandingMeditationDays,
+      totalMerit,
     });
   };
 
@@ -487,6 +563,33 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setTodayWater(water);
   };
 
+  const addPractice = async (
+    type: 'meditation' | 'standing_meditation' | 'scripture_chanting' | 'scripture_listening',
+    duration?: number,
+    subtype?: MeditationType
+  ) => {
+    const today = new Date().toISOString().split('T')[0];
+
+    // 计算功德值
+    let merit = 0;
+    if (type === 'scripture_chanting') merit = 10;
+    if (type === 'scripture_listening') merit = 5;
+
+    const newRecord: PracticeRecord = {
+      id: `practice_${type}_${Date.now()}`,
+      date: today,
+      type,
+      duration,
+      subtype,
+      merit,
+      timestamp: Date.now(),
+    };
+
+    await savePracticeRecord(newRecord);
+    const updatedRecords = await getPracticeRecords();
+    setPracticeRecords(updatedRecords);
+  };
+
   const refreshStats = async () => {
     await calculateStats();
   };
@@ -528,6 +631,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         refreshStats,
         healthSync,
         updateHealthSync,
+        practiceRecords,
+        addPractice,
         isLoading,
       }}
     >

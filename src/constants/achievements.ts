@@ -99,6 +99,79 @@ export const ACHIEVEMENTS: Achievement[] = [
     icon: '🧘',
     condition: (stats) => stats.longestAbstinenceStreak >= 100,
   },
+  // 打坐成就
+  {
+    id: 'meditation_first',
+    titleKey: 'achievement_meditation_first_title',
+    descriptionKey: 'achievement_meditation_first_desc',
+    icon: '🧘',
+    condition: (stats) => stats.totalMeditationDays >= 1,
+  },
+  {
+    id: 'meditation_week',
+    titleKey: 'achievement_meditation_week_title',
+    descriptionKey: 'achievement_meditation_week_desc',
+    icon: '🧘🧘',
+    condition: (stats) => stats.longestMeditationStreak >= 7,
+  },
+  {
+    id: 'meditation_100min',
+    titleKey: 'achievement_meditation_100min_title',
+    descriptionKey: 'achievement_meditation_100min_desc',
+    icon: '⏰',
+    condition: (stats) => stats.totalMeditationMinutes >= 100,
+  },
+  {
+    id: 'meditation_1000min',
+    titleKey: 'achievement_meditation_1000min_title',
+    descriptionKey: 'achievement_meditation_1000min_desc',
+    icon: '⏰⏰',
+    condition: (stats) => stats.totalMeditationMinutes >= 1000,
+  },
+  // 站桩成就
+  {
+    id: 'standing_first',
+    titleKey: 'achievement_standing_first_title',
+    descriptionKey: 'achievement_standing_first_desc',
+    icon: '🧍',
+    condition: (stats) => stats.totalStandingMeditationDays >= 1,
+  },
+  {
+    id: 'standing_100min',
+    titleKey: 'achievement_standing_100min_title',
+    descriptionKey: 'achievement_standing_100min_desc',
+    icon: '🧍⏰',
+    condition: (stats) => stats.totalStandingMeditationMinutes >= 100,
+  },
+  {
+    id: 'standing_500min',
+    titleKey: 'achievement_standing_500min_title',
+    descriptionKey: 'achievement_standing_500min_desc',
+    icon: '🧍⏰⏰',
+    condition: (stats) => stats.totalStandingMeditationMinutes >= 500,
+  },
+  // 功德成就
+  {
+    id: 'merit_10',
+    titleKey: 'achievement_merit_10_title',
+    descriptionKey: 'achievement_merit_10_desc',
+    icon: '📿',
+    condition: (stats) => stats.totalMerit >= 10,
+  },
+  {
+    id: 'merit_100',
+    titleKey: 'achievement_merit_100_title',
+    descriptionKey: 'achievement_merit_100_desc',
+    icon: '📿📿',
+    condition: (stats) => stats.totalMerit >= 100,
+  },
+  {
+    id: 'merit_1000',
+    titleKey: 'achievement_merit_1000_title',
+    descriptionKey: 'achievement_merit_1000_desc',
+    icon: '✨',
+    condition: (stats) => stats.totalMerit >= 1000,
+  },
 ];
 
 // 食物卡路里参考数据

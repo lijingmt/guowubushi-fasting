@@ -62,6 +62,22 @@ export const translations = {
     abstinenceCompleted: '禁欲完成',
     waterRecord: '饮水',
 
+    // 修行
+    meditation: '打坐',
+    meditationType: '打坐类型',
+    meditationCrossLeg: '双盘',
+    meditationSingleLeg: '单盘',
+    meditationMinutes: '打坐时长',
+    standingMeditation: '站桩',
+    standingMeditationMinutes: '站桩时长',
+    scriptureChanting: '诵经',
+    scriptureListening: '听经',
+    merit: '功德',
+    totalMerit: '总功德',
+    minutes: '分钟',
+    selectTime: '选择时间',
+    practiceTitle: '修行记录',
+
     // 禁食页面
     fastingStatus: '禁食状态',
     fastingActive: '禁食中',
@@ -208,6 +224,32 @@ export const translations = {
     achievement_hundred_abstinence_title: '百日筑基',
     achievement_hundred_abstinence_desc: '累计禁欲100天（炼丹）',
 
+    // 打坐成就
+    achievement_meditation_first_title: '初次打坐',
+    achievement_meditation_first_desc: '完成第一次打坐',
+    achievement_meditation_week_title: '打坐周',
+    achievement_meditation_week_desc: '连续打坐7天',
+    achievement_meditation_100min_title: '百分钟禅定',
+    achievement_meditation_100min_desc: '累计打坐100分钟',
+    achievement_meditation_1000min_title: '千分钟禅定',
+    achievement_meditation_1000min_desc: '累计打坐1000分钟',
+
+    // 站桩成就
+    achievement_standing_first_title: '初次站桩',
+    achievement_standing_first_desc: '完成第一次站桩',
+    achievement_standing_100min_title: '站桩百分钟',
+    achievement_standing_100min_desc: '累计站桩100分钟',
+    achievement_standing_500min_title: '站桩五百分钟',
+    achievement_standing_500min_desc: '累计站桩500分钟',
+
+    // 功德成就
+    achievement_merit_10_title: '初积功德',
+    achievement_merit_10_desc: '获得10点功德',
+    achievement_merit_100_title: '功德百倍',
+    achievement_merit_100_desc: '获得100点功德',
+    achievement_merit_1000_title: '功德无量',
+    achievement_merit_1000_desc: '获得1000点功德',
+
     // 时间描述
     hours: '小时',
     minutes: '分钟',
@@ -289,6 +331,22 @@ export const translations = {
     kg: 'kg',
     abstinenceCompleted: 'Abstinence Completed',
     waterRecord: 'Water',
+
+    // Practice
+    meditation: 'Meditation',
+    meditationType: 'Meditation Type',
+    meditationCrossLeg: 'Cross Leg',
+    meditationSingleLeg: 'Single Leg',
+    meditationMinutes: 'Meditation Duration',
+    standingMeditation: 'Standing Meditation',
+    standingMeditationMinutes: 'Standing Duration',
+    scriptureChanting: 'Scripture Chanting',
+    scriptureListening: 'Scripture Listening',
+    merit: 'Merit',
+    totalMerit: 'Total Merit',
+    minutes: 'minutes',
+    selectTime: 'Select Time',
+    practiceTitle: 'Practice Records',
 
     // Fasting
     fastingStatus: 'Fasting Status',
@@ -436,6 +494,32 @@ export const translations = {
     achievement_hundred_abstinence_title: '100 Days Cultivation',
     achievement_hundred_abstinence_desc: '100 days of abstinence (Alchemy)',
 
+    // Meditation achievements
+    achievement_meditation_first_title: 'First Meditation',
+    achievement_meditation_first_desc: 'Complete your first meditation',
+    achievement_meditation_week_title: 'Meditation Week',
+    achievement_meditation_week_desc: 'Meditate for 7 consecutive days',
+    achievement_meditation_100min_title: '100 Minutes of Zen',
+    achievement_meditation_100min_desc: 'Accumulate 100 minutes of meditation',
+    achievement_meditation_1000min_title: '1000 Minutes of Zen',
+    achievement_meditation_1000min_desc: 'Accumulate 1000 minutes of meditation',
+
+    // Standing meditation achievements
+    achievement_standing_first_title: 'First Standing',
+    achievement_standing_first_desc: 'Complete your first standing meditation',
+    achievement_standing_100min_title: '100 Minutes Standing',
+    achievement_standing_100min_desc: 'Accumulate 100 minutes of standing meditation',
+    achievement_standing_500min_title: '500 Minutes Standing',
+    achievement_standing_500min_desc: 'Accumulate 500 minutes of standing meditation',
+
+    // Merit achievements
+    achievement_merit_10_title: 'Initial Merit',
+    achievement_merit_10_desc: 'Earn 10 merit points',
+    achievement_merit_100_title: 'Hundred Merit',
+    achievement_merit_100_desc: 'Earn 100 merit points',
+    achievement_merit_1000_title: 'Thousand Merit',
+    achievement_merit_1000_desc: 'Earn 1000 merit points',
+
     // Time
     hours: 'hours',
     minutes: 'minutes',
@@ -517,6 +601,22 @@ export const translations = {
     kg: 'kg',
     abstinenceCompleted: 'Abstinencia Completada',
     waterRecord: 'Agua',
+
+    // Practice
+    meditation: 'Meditación',
+    meditationType: 'Tipo de Meditación',
+    meditationCrossLeg: 'Piernas Cruzadas',
+    meditationSingleLeg: 'Una Pierna',
+    meditationMinutes: 'Duración de Meditación',
+    standingMeditation: 'Meditación de Pie',
+    standingMeditationMinutes: 'Duración de Pie',
+    scriptureChanting: 'Cantar Escrituras',
+    scriptureListening: 'Escuchar Escrituras',
+    merit: 'Mérito',
+    totalMerit: 'Mérito Total',
+    minutes: 'minutos',
+    selectTime: 'Seleccionar Tiempo',
+    practiceTitle: 'Registros de Práctica',
 
     // Fasting
     fastingStatus: 'Estado del Ayuno',
@@ -663,6 +763,32 @@ export const translations = {
     achievement_dedicated_user_desc: 'Alcanza el 80% de tasa de finalización',
     achievement_hundred_abstinence_title: '100 Días de Cultivación',
     achievement_hundred_abstinence_desc: '100 días de abstinencia (Alquimia)',
+
+    // Meditation achievements
+    achievement_meditation_first_title: 'Primera Meditación',
+    achievement_meditation_first_desc: 'Completa tu primera meditación',
+    achievement_meditation_week_title: 'Semana de Meditación',
+    achievement_meditation_week_desc: 'Medita por 7 días consecutivos',
+    achievement_meditation_100min_title: '100 Minutos de Zen',
+    achievement_meditation_100min_desc: 'Acumula 100 minutos de meditación',
+    achievement_meditation_1000min_title: '1000 Minutos de Zen',
+    achievement_meditation_1000min_desc: 'Acumula 1000 minutos de meditación',
+
+    // Standing meditation achievements
+    achievement_standing_first_title: 'Primero de Pie',
+    achievement_standing_first_desc: 'Completa tu primera meditación de pie',
+    achievement_standing_100min_title: '100 Minutos de Pie',
+    achievement_standing_100min_desc: 'Acumula 100 minutos de meditación de pie',
+    achievement_standing_500min_title: '500 Minutos de Pie',
+    achievement_standing_500min_desc: 'Acumula 500 minutos de meditación de pie',
+
+    // Merit achievements
+    achievement_merit_10_title: 'Mérito Inicial',
+    achievement_merit_10_desc: 'Gana 10 puntos de mérito',
+    achievement_merit_100_title: 'Mérito Ciento',
+    achievement_merit_100_desc: 'Gana 100 puntos de mérito',
+    achievement_merit_1000_title: 'Mérito Mil',
+    achievement_merit_1000_desc: 'Gana 1000 puntos de mérito',
 
     // Time
     hours: 'horas',
