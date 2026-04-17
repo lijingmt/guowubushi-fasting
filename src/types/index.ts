@@ -40,11 +40,14 @@ export interface WeightRecord {
 // 成就类型
 export interface Achievement {
   id: string;
-  title: string; // 标题
-  description: string; // 描述
+  titleKey: string; // 标题翻译键
+  descriptionKey: string; // 描述翻译键
   icon: string; // 图标
   condition: (stats: UserStats) => boolean; // 解锁条件
   unlockedAt?: number; // 解锁时间
+  // 兼容旧代码的getter
+  title?: string; // 标题（已弃用，使用titleKey）
+  description?: string; // 描述（已弃用，使用descriptionKey）
 }
 
 // 用户统计类型

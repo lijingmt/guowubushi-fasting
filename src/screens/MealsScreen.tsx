@@ -22,6 +22,7 @@ export const MealsScreen: React.FC = () => {
     addMeal,
     removeMeal,
     colors,
+    language,
   } = useApp();
   const [showAddModal, setShowAddModal] = useState(false);
   const [mealName, setMealName] = useState('');
@@ -55,10 +56,10 @@ export const MealsScreen: React.FC = () => {
 
   const getMealTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
-      breakfast: t.breakfast || '早餐',
-      lunch: t.lunch || '午餐',
-      dinner: t.dinner || '晚餐',
-      snack: t.snack || '零食',
+      breakfast: t.breakfast,
+      lunch: t.lunch,
+      dinner: t.dinner,
+      snack: t.snack,
     };
     return labels[type] || type;
   };
@@ -90,7 +91,7 @@ export const MealsScreen: React.FC = () => {
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>{t.meals}</Text>
         <Text style={[styles.date, { color: colors.textSecondary }]}>
-          {new Date().toLocaleDateString('zh-CN', {
+          {new Date().toLocaleDateString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-ES' : 'en-US', {
             month: 'long',
             day: 'numeric',
           })}

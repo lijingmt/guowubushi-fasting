@@ -266,7 +266,7 @@ export const StatsScreen: React.FC = () => {
                       !isUnlocked && { color: colors.textLight },
                     ]}
                   >
-                    {achievement.title}
+                    {t[achievement.titleKey as keyof typeof t] || achievement.titleKey}
                   </Text>
                   <Text
                     style={[
@@ -275,7 +275,7 @@ export const StatsScreen: React.FC = () => {
                       !isUnlocked && { color: colors.textLight },
                     ]}
                   >
-                    {achievement.description}
+                    {t[achievement.descriptionKey as keyof typeof t] || achievement.descriptionKey}
                   </Text>
                 </View>
                 {isUnlocked && (
