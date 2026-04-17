@@ -10,6 +10,7 @@ import {
   Modal,
   TextInput,
   Linking,
+  Share,
 } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useApp } from '../context/AppContext';
@@ -46,6 +47,24 @@ export const SettingsScreen: React.FC = () => {
   const handleSaveTime = () => {
     updateSettings({ reminderTime: tempTime });
     setShowTimePicker(false);
+  };
+
+  const handleShareApp = async () => {
+    const appUrl = 'https://apps.apple.com/app/id6762360504';
+    const shareMessage = language === 'zh'
+      ? `我正在使用"过午不食"app来追踪禁食习惯，推荐你也试试！\n${appUrl}`
+      : language === 'es'
+      ? `Estoy usando la app "Ayuno Intermitente" para seguir mis hábitos de ayuno. ¡Te la recomiendo!\n${appUrl}`
+      : `I'm using the "Intermittent Fasting" app to track my fasting habits. Highly recommend!\n${appUrl}`;
+
+    try {
+      await Share.share({
+        message: shareMessage,
+        url: appUrl,
+      });
+    } catch (error) {
+      // Handle error or user canceling the share sheet
+    }
   };
 
   const SettingItem = ({
@@ -180,6 +199,11 @@ export const SettingsScreen: React.FC = () => {
       {/* 关于 */}
       <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t.about}</Text>
       <Card>
+        <SettingItem
+          label={language === 'zh' ? '分享应用' : language === 'es' ? 'Compartir App' : 'Share App'}
+          onPress={handleShareApp}
+          rightElement={<Text style={{ fontSize: 20 }}>📤</Text>}
+        />
         <SettingItem label={t.version} value="1.0.0" />
         <SettingItem
           label={language === 'zh' ? '隐私政策' : 'Privacy Policy'}
