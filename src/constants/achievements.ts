@@ -92,6 +92,13 @@ export const ACHIEVEMENTS: Achievement[] = [
     icon: '💪',
     condition: (stats) => stats.completionRate >= 80,
   },
+  {
+    id: 'hundred_abstinence',
+    titleKey: 'achievement_hundred_abstinence_title',
+    descriptionKey: 'achievement_hundred_abstinence_desc',
+    icon: '🧘',
+    condition: (stats) => stats.longestAbstinenceStreak >= 100,
+  },
 ];
 
 // 食物卡路里参考数据

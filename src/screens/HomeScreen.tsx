@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Alert, Clipboard } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { Card } from '../components/Card';
 import { StatCard } from '../components/StatCard';
 import { CheckInCard } from '../components/CheckInCard';
 import * as Haptics from 'expo-haptics';
+import * as Clipboard from 'expo-clipboard';
 import { responsiveSize, fs, rs, vs, layout, responsive } from '../theme/responsive';
 
 export const HomeScreen: React.FC = () => {
@@ -39,12 +40,48 @@ export const HomeScreen: React.FC = () => {
       return t.shareMessage2.replace('{{days}}', stats.completedDays.toString());
     };
 
+    const shareMessage = `🔥 ${getMessage()}`;
+
     try {
-      await Share.share({
-        message: `🔥 ${getMessage()}`,
+      const result = await Share.share({
+        message: shareMessage,
+        url: 'https://github.com/lijingmt/guowubushifasting', // Add URL for better compatibility
       });
-    } catch (error) {
+
+      // If sharing was dismissed or failed, offer to copy to clipboard
+      if (result.action === Share.dismissedAction) {
+        Alert.alert(
+          t.share || 'Share',
+          t.shareFailed || 'Share cancelled. Copy message instead?',
+          [
+            { text: t.cancel || 'Cancel', style: 'cancel' },
+            {
+              text: t.copy || 'Copy',
+              onPress: async () => {
+                await Clipboard.setStringAsync(shareMessage);
+                Alert.alert(t.copied || 'Copied!', shareMessage);
+              },
+            },
+          ]
+        );
+      }
+    } catch (error: any) {
       console.error('Error sharing:', error);
+      // Offer to copy to clipboard when sharing fails
+      Alert.alert(
+        t.share || 'Share',
+        t.shareFailed || 'Share not supported. Copy message instead?',
+        [
+          { text: t.cancel || 'Cancel', style: 'cancel' },
+          {
+            text: t.copy || 'Copy',
+            onPress: async () => {
+              await Clipboard.setStringAsync(shareMessage);
+              Alert.alert(t.copied || 'Copied!', shareMessage);
+            },
+          },
+        ]
+      );
     }
   };
 

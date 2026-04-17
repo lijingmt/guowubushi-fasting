@@ -31,6 +31,10 @@ export const translations = {
     waterIntake: '今日饮水',
     waterMl: '毫升',
     shareToMoments: '分享到朋友圈',
+    share: '分享',
+    shareFailed: '分享失败，是否复制到剪贴板？',
+    copy: '复制',
+    copied: '已复制！',
     shareMessage1: '我已连续{{streak}}天完成过午不食！\n累计完成{{days}}天，节省{{calories}}卡路里\n\n一起来过午不食吧！',
     shareMessage2: '我正在坚持过午不食！\n已累计完成{{days}}天\n\n一起来过午不食吧！',
     totalCompletedDays: '总完成天数',
@@ -201,6 +205,8 @@ export const translations = {
     achievement_weight_loss_5kg_desc: '减重5公斤',
     achievement_dedicated_user_title: '坚持不懈',
     achievement_dedicated_user_desc: '打卡完成率达到80%',
+    achievement_hundred_abstinence_title: '百日筑基',
+    achievement_hundred_abstinence_desc: '累计禁欲100天（炼丹）',
 
     // 时间描述
     hours: '小时',
@@ -253,6 +259,10 @@ export const translations = {
     waterIntake: 'Water Today',
     waterMl: 'ml',
     shareToMoments: 'Share to Moments',
+    share: 'Share',
+    shareFailed: 'Share failed. Copy to clipboard instead?',
+    copy: 'Copy',
+    copied: 'Copied!',
     shareMessage1: "I've completed {{streak}} consecutive days of intermittent fasting!\nTotal {{days}} days completed, {{calories}} calories saved\n\nJoin me!",
     shareMessage2: "I'm practicing intermittent fasting!\nCompleted {{days}} days total\n\nJoin me!",
     totalCompletedDays: 'Total Days',
@@ -423,6 +433,8 @@ export const translations = {
     achievement_weight_loss_5kg_desc: 'Lose 5 kg of weight',
     achievement_dedicated_user_title: 'Dedicated User',
     achievement_dedicated_user_desc: 'Achieve 80% completion rate',
+    achievement_hundred_abstinence_title: '100 Days Cultivation',
+    achievement_hundred_abstinence_desc: '100 days of abstinence (Alchemy)',
 
     // Time
     hours: 'hours',
@@ -475,6 +487,10 @@ export const translations = {
     waterIntake: 'Agua de Hoy',
     waterMl: 'ml',
     shareToMoments: 'Compartir',
+    share: 'Compartir',
+    shareFailed: 'Error al compartir. ¿Copiar al portapapeles?',
+    copy: 'Copiar',
+    copied: '¡Copiado!',
     shareMessage1: '¡He completado {{streak}} días consecutivos de ayuno intermitente!\nTotal {{days}} días, {{calories}} calorías ahorradas\n\n¡Únete a mí!',
     shareMessage2: '¡Estoy practicando ayuno intermitente!\nCompletado {{days}} días en total\n\n¡Únete a mí!',
     totalCompletedDays: 'Días Totales',
@@ -645,6 +661,8 @@ export const translations = {
     achievement_weight_loss_5kg_desc: 'Pierde 5 kg de peso',
     achievement_dedicated_user_title: 'Usuario Dedicado',
     achievement_dedicated_user_desc: 'Alcanza el 80% de tasa de finalización',
+    achievement_hundred_abstinence_title: '100 Días de Cultivación',
+    achievement_hundred_abstinence_desc: '100 días de abstinencia (Alquimia)',
 
     // Time
     hours: 'horas',
