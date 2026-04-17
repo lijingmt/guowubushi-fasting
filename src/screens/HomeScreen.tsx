@@ -5,7 +5,6 @@ import { Card } from '../components/Card';
 import { StatCard } from '../components/StatCard';
 import { CheckInCard } from '../components/CheckInCard';
 import * as Haptics from 'expo-haptics';
-import * as Clipboard from 'expo-clipboard';
 import { responsiveSize, fs, rs, vs, layout, responsive } from '../theme/responsive';
 
 export const HomeScreen: React.FC = () => {
@@ -51,7 +50,7 @@ export const HomeScreen: React.FC = () => {
       // If sharing was dismissed, offer to copy to clipboard
       if (result.action === Share.dismissedAction) {
         // Automatically copy to clipboard when dismissed
-        await Clipboard.setStringAsync(shareMessage);
+        await Clipboard.setString(shareMessage);
         Alert.alert(
           t.copied || 'Copied!',
           shareMessage + '\n\n' + (language === 'zh' ? '（已复制到剪贴板，可手动粘贴到微信）' : '(Copied to clipboard, paste to WeChat manually)')
@@ -60,7 +59,7 @@ export const HomeScreen: React.FC = () => {
     } catch (error: any) {
       console.error('Error sharing:', error);
       // Automatically copy to clipboard when sharing fails
-      await Clipboard.setStringAsync(shareMessage);
+      await Clipboard.setString(shareMessage);
       Alert.alert(
         t.copied || 'Copied!',
         shareMessage + '\n\n' + (language === 'zh' ? '（已复制到剪贴板，可手动粘贴到微信）' : '(Copied to clipboard, paste to WeChat manually)')
