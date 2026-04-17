@@ -6,17 +6,20 @@ import {
   ScrollView,
   Dimensions,
   TouchableOpacity,
+  Modal,
 } from 'react-native';
 import { LineChart, BarChart } from 'react-native-chart-kit';
 import { useApp } from '../context/AppContext';
 import { Card } from '../components/Card';
+import { AchievementShareCard } from '../components/AchievementShareCard';
 import { ACHIEVEMENTS } from '../constants/achievements';
 
 const { width } = Dimensions.get('window');
 
 export const StatsScreen: React.FC = () => {
-  const { t, stats, checkInRecords, weightRecords, colors } = useApp();
+  const { t, stats, checkInRecords, weightRecords, colors, language } = useApp();
   const [viewMode, setViewMode] = useState<'overview' | 'weight' | 'achievements'>('overview');
+  const [showShareModal, setShowShareModal] = useState(false);
 
   // 准备图表数据 - 最近7天的打卡记录
   const getLast7DaysData = () => {
@@ -246,6 +249,16 @@ export const StatsScreen: React.FC = () => {
             <Text style={[styles.achievementLabel, { color: colors.textSecondary }]}>{t.unlockedAchievements}</Text>
           </Card>
 
+          {/* Share Achievement Button */}
+          <TouchableOpacity
+            style={[styles.shareAchievementButton, { backgroundColor: colors.primary }]}
+            onPress={() => setShowShareModal(true)}
+          >
+            <Text style={styles.shareAchievementButtonText}>
+              {language === 'zh' ? '📤 分享我的成就' : language === 'es' ? '📤 Compartir logros' : '📤 Share My Achievements'}
+            </Text>
+          </TouchableOpacity>
+
           {ACHIEVEMENTS.map((achievement) => {
             const isUnlocked = achievement.condition(stats);
             return (
@@ -289,6 +302,42 @@ export const StatsScreen: React.FC = () => {
           })}
         </>
       )}
+
+      {/* Share Achievement Modal */}
+      <Modal
+        visible={showShareModal}
+        animationType="slide"
+        onRequestClose={() => setShowShareModal(false)}
+      >
+        <View style={[styles.shareModalContainer, { backgroundColor: colors.background }]}>
+          <View style={styles.shareModalHeader}>
+            <TouchableOpacity onPress={() => setShowShareModal(false)}>
+              <Text style={[styles.shareModalCloseText, { color: colors.text }]}>✕</Text>
+            </TouchableOpacity>
+            <Text style={[styles.shareModalTitle, { color: colors.text }]}>
+              {language === 'zh' ? '分享成就' : language === 'es' ? 'Compartir' : 'Share Achievement'}
+            </Text>
+            <View style={{ width: 20 }} />
+          </View>
+          <ScrollView
+            style={styles.shareModalContent}
+            contentContainerStyle={styles.shareModalScrollContent}
+          >
+            <AchievementShareCard
+              stats={{
+                currentStreak: stats.currentStreak,
+                totalCompletedDays: stats.completedDays,
+                totalCaloriesSaved: stats.totalCaloriesSaved,
+                totalMealsSkipped: stats.totalMealsSkipped,
+                longestAbstinenceStreak: stats.longestAbstinenceStreak,
+              }}
+              unlockedAchievements={unlockedAchievements.map(a => a.id)}
+              language={language}
+              colors={colors}
+            />
+          </ScrollView>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
@@ -481,5 +530,48 @@ const styles = StyleSheet.create({
   achievementUnlocked: {
     fontSize: 24,
     color: '#4CAF50',
+  },
+  shareAchievementButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  shareAchievementButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  shareModalContainer: {
+    flex: 1,
+  },
+  shareModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  shareModalCloseText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  shareModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  shareModalContent: {
+    flex: 1,
+  },
+  shareModalScrollContent: {
+    padding: 16,
+    paddingBottom: 32,
   },
 });
