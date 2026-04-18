@@ -16,7 +16,6 @@ import { Card } from '../components/Card';
 interface GameCenterScore {
   rank: number;
   playerID: string;
-  displayName: string;
   score: number;
 }
 
@@ -281,7 +280,7 @@ export const LeaderboardScreen: React.FC = () => {
                 </View>
                 <View style={styles.playerInfo}>
                   <Text style={[styles.playerName, { color: colors.text }]}>
-                    {item.displayName || `${t.nickname} ${item.rank}`}
+                    {`${t.nickname} ${item.rank}`}
                   </Text>
                 </View>
                 <Text style={[styles.playerScore, { color: colors.primary }]}>
