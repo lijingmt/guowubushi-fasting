@@ -405,7 +405,9 @@ export const CheckInCard: React.FC = () => {
                 style={[styles.weightSection, { backgroundColor: colors.backgroundSecondary }]}
                 onPress={() => {
                   setTempWeight(weight && !isNaN(parseInt(weight)) ? parseInt(weight) : weightMin);
-                  setShowWeightPicker(true);
+                  // Close main modal first, then open weight picker (fix iOS nested modal issue)
+                  setShowModal(false);
+                  setTimeout(() => setShowWeightPicker(true), 300);
                 }}
                 activeOpacity={0.7}
               >
@@ -677,7 +679,11 @@ export const CheckInCard: React.FC = () => {
         <View style={styles.pickerOverlay}>
           <View style={[styles.pickerContent, { backgroundColor: colors.card }]}>
             <View style={styles.pickerHeader}>
-              <TouchableOpacity onPress={() => setShowWeightPicker(false)}>
+              <TouchableOpacity onPress={() => {
+                setShowWeightPicker(false);
+                // Reopen main modal after cancel
+                setTimeout(() => setShowModal(true), 300);
+              }}>
                 <Text style={[styles.pickerCancelText, { color: colors.textSecondary }]}>{t.cancel}</Text>
               </TouchableOpacity>
               <Text style={[styles.pickerTitle, { color: colors.text }]}>{t.todaysWeight}</Text>
@@ -685,6 +691,8 @@ export const CheckInCard: React.FC = () => {
                 onPress={() => {
                   setWeight(tempWeight.toString());
                   setShowWeightPicker(false);
+                  // Reopen main modal after selection
+                  setTimeout(() => setShowModal(true), 300);
                 }}
               >
                 <Text style={[styles.pickerConfirmText, { color: colors.primary }]}>{t.ok}</Text>
