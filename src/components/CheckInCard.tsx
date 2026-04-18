@@ -55,7 +55,7 @@ export const CheckInCard: React.FC = () => {
   const weightMax = weightUnit === 'lb' ? WEIGHT_LB_MAX : WEIGHT_KG_MAX;
 
   const [showModal, setShowModal] = useState(false);
-  const [modalMode, setModalMode] = useState<'checkIn' | 'weightPicker'>('checkIn');
+  const [showWeightPicker, setShowWeightPicker] = useState(false);
   const [notes, setNotes] = useState('');
   const [weight, setWeight] = useState('');
   const [lastWeightKg, setLastWeightKg] = useState<number | null>(null);
@@ -386,37 +386,29 @@ export const CheckInCard: React.FC = () => {
       <Modal
         visible={showModal}
         transparent
-        animationType={modalMode === 'weightPicker' ? 'slide' : 'fade'}
-        onRequestClose={() => {
-          if (modalMode === 'weightPicker') {
-            setModalMode('checkIn');
-          } else {
-            setShowModal(false);
-          }
-        }}
+        animationType="fade"
+        onRequestClose={() => setShowModal(false)}
       >
-        <View style={modalMode === 'weightPicker' ? styles.pickerOverlay : styles.modalOverlay}>
-          <View style={modalMode === 'weightPicker' ? [styles.pickerContent, { backgroundColor: colors.card }] : [styles.modalContent, { backgroundColor: colors.card }]}>
-            {modalMode === 'checkIn' ? (
-              <>
-                <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
-                  <Text style={[styles.modalTitle, { color: colors.text }]}>{t.checkInToday}</Text>
-                  <Text style={[styles.modalQuestion, { color: colors.text }]}>
-                    {t.checkInQuestion}
-                  </Text>
-                  <Text style={[styles.modalHint, { color: colors.textSecondary }]}>
-                    {t.checkInHint}
-                  </Text>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{t.checkInToday}</Text>
+              <Text style={[styles.modalQuestion, { color: colors.text }]}>
+                {t.checkInQuestion}
+              </Text>
+              <Text style={[styles.modalHint, { color: colors.textSecondary }]}>
+                {t.checkInHint}
+              </Text>
 
-                  {/* Weight selector */}
-                  <TouchableOpacity
-                    style={[styles.weightSection, { backgroundColor: colors.backgroundSecondary }]}
-                    onPress={() => {
-                      setTempWeight(weight && !isNaN(parseInt(weight)) ? parseInt(weight) : weightMin);
-                      setModalMode('weightPicker');
-                    }}
-                    activeOpacity={0.7}
-                  >
+              {/* Weight selector */}
+              <TouchableOpacity
+                style={[styles.weightSection, { backgroundColor: colors.backgroundSecondary }]}
+                onPress={() => {
+                  setTempWeight(weight && !isNaN(parseInt(weight)) ? parseInt(weight) : weightMin);
+                  setShowWeightPicker(true);
+                }}
+                activeOpacity={0.7}
+              >
                 <Text style={[styles.weightLabel, { color: colors.textSecondary }]}>{t.todaysWeight}</Text>
                 <View style={styles.weightSelectorButton} pointerEvents="none">
                   <Text style={[styles.weightSelectorText, { color: weight ? colors.text : colors.textLight }]}>
@@ -671,69 +663,81 @@ export const CheckInCard: React.FC = () => {
                 <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>{t.cancel}</Text>
               </TouchableOpacity>
             </ScrollView>
-              </>
-            ) : (
-              <>
-                {/* Weight Picker Mode */}
-                <View style={styles.pickerHeader}>
-                  <TouchableOpacity onPress={() => setModalMode('checkIn')}>
-                    <Text style={[styles.pickerCancelText, { color: colors.textSecondary }]}>{t.cancel}</Text>
-                  </TouchableOpacity>
-                  <Text style={[styles.pickerTitle, { color: colors.text }]}>{t.todaysWeight}</Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setWeight(tempWeight.toString());
-                      setModalMode('checkIn');
-                    }}
-                  >
-                    <Text style={[styles.pickerConfirmText, { color: colors.primary }]}>{t.ok}</Text>
-                  </TouchableOpacity>
-                </View>
+          </View>
+        </View>
+      </Modal>
 
-                <View style={styles.wheelPickerContainer}>
-                  <View style={[styles.wheelPickerHighlight, { borderColor: colors.divider }]} />
+      {/* Weight Picker Modal */}
+      <Modal
+        visible={showWeightPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowWeightPicker(false)}
+      >
+        <View style={styles.pickerOverlay}>
+          <View style={[styles.pickerContent, { backgroundColor: colors.card }]}>
+            <View style={styles.pickerHeader}>
+              <TouchableOpacity onPress={() => setShowWeightPicker(false)}>
+                <Text style={[styles.pickerCancelText, { color: colors.textSecondary }]}>{t.cancel}</Text>
+              </TouchableOpacity>
+              <Text style={[styles.pickerTitle, { color: colors.text }]}>{t.todaysWeight}</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setWeight(tempWeight.toString());
+                  setShowWeightPicker(false);
+                }}
+              >
+                <Text style={[styles.pickerConfirmText, { color: colors.primary }]}>{t.ok}</Text>
+              </TouchableOpacity>
+            </View>
 
-                  <GestureScrollView
-                    style={styles.wheelPickerScroll}
-                    contentContainerStyle={styles.wheelPickerContent}
-                    showsVerticalScrollIndicator={false}
-                    snapToInterval={rs(50)}
-                    decelerationRate="fast"
-                    onMomentumScrollEnd={(event) => {
-                      const index = Math.round(event.nativeEvent.contentOffset.y / rs(50));
-                      const newWeight = weightMin + index;
-                      if (newWeight >= weightMin && newWeight <= weightMax) {
-                        setTempWeight(newWeight);
-                      }
-                    }}
-                    scrollEventThrottle={16}
-                  >
-                    <View style={{ height: rs(100) }} />
+            <View style={styles.wheelPickerContainer}>
+              {/* Selected value highlight */}
+              <View style={[styles.wheelPickerHighlight, { borderColor: colors.divider }]} />
 
-                    {Array.from({ length: weightMax - weightMin + 1 }, (_, i) => {
-                      const value = weightMin + i;
-                      return (
-                        <TouchableOpacity
-                          key={value}
-                          style={styles.wheelPickerItem}
-                          onPress={() => setTempWeight(value)}
-                        >
-                          <Text style={[
-                            styles.wheelPickerItemText,
-                            { color: value === tempWeight ? colors.text : colors.textLight },
-                            value === tempWeight && styles.wheelPickerItemSelectedText
-                          ]}>
-                            {value} {weightUnit === 'lb' ? 'lb' : t.kg}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
+              {/* Wheel picker */}
+              <GestureScrollView
+                style={styles.wheelPickerScroll}
+                contentContainerStyle={styles.wheelPickerContent}
+                showsVerticalScrollIndicator={false}
+                snapToInterval={rs(50)}
+                decelerationRate="fast"
+                onMomentumScrollEnd={(event) => {
+                  const index = Math.round(event.nativeEvent.contentOffset.y / rs(50));
+                  const newWeight = weightMin + index;
+                  if (newWeight >= weightMin && newWeight <= weightMax) {
+                    setTempWeight(newWeight);
+                  }
+                }}
+                scrollEventThrottle={16}
+              >
+                {/* Top padding for centering */}
+                <View style={{ height: rs(100) }} />
 
-                    <View style={{ height: rs(100) }} />
-                  </GestureScrollView>
-                </View>
-              </>
-            )}
+                {/* Weight values */}
+                {Array.from({ length: weightMax - weightMin + 1 }, (_, i) => {
+                  const value = weightMin + i;
+                  return (
+                    <TouchableOpacity
+                      key={value}
+                      style={styles.wheelPickerItem}
+                      onPress={() => setTempWeight(value)}
+                    >
+                      <Text style={[
+                        styles.wheelPickerItemText,
+                        { color: value === tempWeight ? colors.text : colors.textLight },
+                        value === tempWeight && styles.wheelPickerItemSelectedText
+                      ]}>
+                        {value} {weightUnit === 'lb' ? 'lb' : t.kg}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+
+                {/* Bottom padding for centering */}
+                <View style={{ height: rs(100) }} />
+              </GestureScrollView>
+            </View>
           </View>
         </View>
       </Modal>
