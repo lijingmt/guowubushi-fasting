@@ -1,5 +1,5 @@
 import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
-import { useColorScheme } from 'react-native';
+import { useColorScheme, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { getLocales } from 'expo-localization';
 import {
@@ -283,6 +283,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const setupNotifications = async () => {
+    // Web 平台不支持通知
+    if (Platform.OS === 'web') return;
+
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     if (existingStatus !== 'granted') {
       await Notifications.requestPermissionsAsync();
@@ -291,6 +294,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const scheduleDailyReminder = async () => {
     if (!settings.enableNotifications) return;
+    // Web 平台不支持通知
+    if (Platform.OS === 'web') return;
 
     // 取消所有已安排的通知
     await Notifications.cancelAllScheduledNotificationsAsync();
