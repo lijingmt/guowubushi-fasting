@@ -368,6 +368,7 @@ const createResponsiveStyles = () => {
       paddingBottom: vs(40),
     },
     header: {
+      marginTop: vs(50),
       marginBottom: vs(20),
     },
     greeting: {
