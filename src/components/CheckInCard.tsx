@@ -155,6 +155,7 @@ export const CheckInCard: React.FC = () => {
     setSelectedStandingTime(null);
     setIsScriptureChanting(false);
     setIsScriptureListening(false);
+    setShowWeightPicker(false);  // Reset weight picker state
   };
 
   const openEditModal = () => {
@@ -312,6 +313,7 @@ export const CheckInCard: React.FC = () => {
     await dailyCheckIn(completed, finalNotes || undefined);
     resetForm();
     setShowModal(false);
+    setShowWeightPicker(false);  // Ensure weight picker is closed
   };
 
   // 响应式样式
