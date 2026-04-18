@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Alert, Clipboard, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Alert, Clipboard, Modal, TextInput, Platform } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { Card } from '../components/Card';
 import { StatCard } from '../components/StatCard';
@@ -84,8 +84,24 @@ export const HomeScreen: React.FC = () => {
   const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
+    // Web platform: use text sharing
+    if (Platform.OS === 'web') {
+      const getMessage = () => {
+        if (hasCheckedToday && todayCheckIn?.completed) {
+          return t.shareMessage1
+            .replace('{{streak}}', stats.currentStreak.toString())
+            .replace('{{days}}', stats.completedDays.toString())
+            .replace('{{calories}}', stats.totalCaloriesSaved.toString());
+        }
+        return t.shareMessage2.replace('{{days}}', stats.completedDays.toString());
+      };
+      const shareMessage = `🔥 ${getMessage()}`;
+      await Share.share({ message: shareMessage });
+      return;
+    }
+
+    // Native platforms: generate image and share
     try {
-      // Generate achievement image and share
       const uri = await captureRef(shareCardRef, {
         format: 'png',
         quality: 1,
