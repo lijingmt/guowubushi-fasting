@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Alert, Clipboard, Modal, TextInput } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { Card } from '../components/Card';
@@ -6,6 +6,10 @@ import { StatCard } from '../components/StatCard';
 import { CheckInCard } from '../components/CheckInCard';
 import * as Haptics from 'expo-haptics';
 import { responsiveSize, fs, rs, vs, layout, responsive } from '../theme/responsive';
+import { LinearGradient } from 'expo-linear-gradient';
+import { captureRef } from 'react-native-view-shot';
+import * as FileSystem from 'expo-file-system';
+import { shareAsync } from 'expo-sharing';
 
 export const HomeScreen: React.FC = () => {
   const {
@@ -23,6 +27,7 @@ export const HomeScreen: React.FC = () => {
   } = useApp();
 
   const [flameAnimation] = useState(false);
+  const shareCardRef = useRef<View>(null);
   const [showCalorieModal, setShowCalorieModal] = useState(false);
   const [calorieInput, setCalorieInput] = useState(settings.dailyCalorieGoal.toString());
   const [showWaterModal, setShowWaterModal] = useState(false);
@@ -78,41 +83,37 @@ export const HomeScreen: React.FC = () => {
 
   const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const getMessage = () => {
-      if (hasCheckedToday && todayCheckIn?.completed) {
-        return t.shareMessage1
-          .replace('{{streak}}', stats.currentStreak.toString())
-          .replace('{{days}}', stats.completedDays.toString())
-          .replace('{{calories}}', stats.totalCaloriesSaved.toString());
-      }
-      return t.shareMessage2.replace('{{days}}', stats.completedDays.toString());
-    };
-
-    const shareMessage = `🔥 ${getMessage()}`;
 
     try {
-      // Try sharing without URL for better WeChat compatibility
-      const result = await Share.share({
-        message: shareMessage,
+      // Generate achievement image and share
+      const uri = await captureRef(shareCardRef, {
+        format: 'png',
+        quality: 1,
       });
 
-      // If sharing was dismissed, offer to copy to clipboard
-      if (result.action === Share.dismissedAction) {
-        // Automatically copy to clipboard when dismissed
-        await Clipboard.setString(shareMessage);
-        Alert.alert(
-          t.copied || 'Copied!',
-          shareMessage + '\n\n' + (language === 'zh' ? '（已复制到剪贴板，可手动粘贴到微信）' : '(Copied to clipboard, paste to WeChat manually)')
-        );
-      }
-    } catch (error: any) {
-      console.error('Error sharing:', error);
-      // Automatically copy to clipboard when sharing fails
-      await Clipboard.setString(shareMessage);
-      Alert.alert(
-        t.copied || 'Copied!',
-        shareMessage + '\n\n' + (language === 'zh' ? '（已复制到剪贴板，可手动粘贴到微信）' : '(Copied to clipboard, paste to WeChat manually)')
-      );
+      const localUri = await FileSystem.copyAsync({
+        from: uri,
+        to: FileSystem.cacheDirectory + 'achievement.png',
+      });
+
+      await shareAsync(localUri, {
+        mimeType: 'image/png',
+        dialogTitle: language === 'zh' ? '分享成就' : language === 'es' ? 'Compartir logro' : 'Share Achievement',
+      });
+    } catch (error) {
+      console.error('Share error:', error);
+      // Fallback to text sharing if image capture fails
+      const getMessage = () => {
+        if (hasCheckedToday && todayCheckIn?.completed) {
+          return t.shareMessage1
+            .replace('{{streak}}', stats.currentStreak.toString())
+            .replace('{{days}}', stats.completedDays.toString())
+            .replace('{{calories}}', stats.totalCaloriesSaved.toString());
+        }
+        return t.shareMessage2.replace('{{days}}', stats.completedDays.toString());
+      };
+      const shareMessage = `🔥 ${getMessage()}`;
+      await Share.share({ message: shareMessage });
     }
   };
 
@@ -129,10 +130,11 @@ export const HomeScreen: React.FC = () => {
   const styles = createResponsiveStyles();
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      contentContainerStyle={styles.content}
-    >
+    <>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: colors.background }}
+        contentContainerStyle={styles.content}
+      >
       <View style={styles.header}>
         <Text style={[styles.greeting, { color: colors.text }]}>{t.welcome}</Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t.appName}</Text>
@@ -352,6 +354,64 @@ export const HomeScreen: React.FC = () => {
         </View>
       </Modal>
     </ScrollView>
+
+      {/* Hidden share card for image generation */}
+      <View ref={shareCardRef} collapsable={false} style={styles.hiddenShareCard}>
+        <LinearGradient
+          colors={['#FF6B6B', '#FF8E53', '#FFA726']}
+          style={styles.shareCardBackground}
+        >
+          {/* Decorative circles */}
+          <View style={[styles.shareCircle, styles.shareCircle1]} />
+          <View style={[styles.shareCircle, styles.shareCircle2]} />
+          <View style={[styles.shareCircle, styles.shareCircle3]} />
+
+          <View style={styles.shareCardContent}>
+            {/* Header */}
+            <Text style={styles.shareGreeting}>
+              {language === 'en' ? 'My Fasting Journey' : language === 'es' ? 'Mi Viaje de Ayuno' : '我的禁食之路'}
+            </Text>
+            <Text style={styles.shareSubtitle}>
+              {language === 'en' ? 'Building healthy habits, one day at a time' : language === 'es' ? 'Construyendo hábitos saludables, día a día' : '培养健康习惯，一天天坚持'}
+            </Text>
+
+            {/* Main Stats */}
+            <View style={styles.shareMainStats}>
+              <View style={styles.shareMainStatItem}>
+                <Text style={styles.shareMainStatValue}>{stats.currentStreak}</Text>
+                <Text style={styles.shareMainStatLabel}>
+                  {language === 'en' ? 'Day Streak' : language === 'es' ? 'Días Racha' : '连续天数'}
+                </Text>
+              </View>
+              <View style={styles.shareStatDivider} />
+              <View style={styles.shareMainStatItem}>
+                <Text style={styles.shareMainStatValue}>{stats.completedDays}</Text>
+                <Text style={styles.shareMainStatLabel}>
+                  {language === 'en' ? 'Total Days' : language === 'es' ? 'Días Totales' : '累计天数'}
+                </Text>
+              </View>
+              <View style={styles.shareStatDivider} />
+              <View style={styles.shareMainStatItem}>
+                <Text style={styles.shareMainStatValue}>{stats.totalCaloriesSaved.toLocaleString()}</Text>
+                <Text style={styles.shareMainStatLabel}>
+                  {language === 'en' ? 'kcal Saved' : language === 'es' ? 'kcal Ahorradas' : '节省卡路里'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Footer */}
+            <View style={styles.shareFooter}>
+              <View style={styles.shareFooterLine} />
+              <Text style={styles.shareFooterText}>
+                {language === 'zh' ? '下载app：' : language === 'es' ? 'Descarga la app:' : 'Download the app:'}
+              </Text>
+              <Text style={styles.shareFooterLink}>apps.apple.com/app/id6762360504</Text>
+              <Text style={styles.shareFooterBrand}>"过午不食" Fasting App</Text>
+            </View>
+          </View>
+        </LinearGradient>
+      </View>
+    </>
   );
 };
 
@@ -616,6 +676,113 @@ const createResponsiveStyles = () => {
         default: fs(16),
       }),
       fontWeight: '600',
+    },
+    // Hidden share card styles (for image generation)
+    hiddenShareCard: {
+      position: 'absolute',
+      left: -10000,
+      width: 375,
+      height: 500,
+    },
+    shareCardBackground: {
+      width: '100%',
+      height: '100%',
+    },
+    shareCircle: {
+      position: 'absolute',
+      borderRadius: 1000,
+      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    shareCircle1: {
+      width: 200,
+      height: 200,
+      top: -50,
+      right: -50,
+    },
+    shareCircle2: {
+      width: 150,
+      height: 150,
+      bottom: 100,
+      left: -30,
+    },
+    shareCircle3: {
+      width: 100,
+      height: 100,
+      bottom: -30,
+      right: 50,
+    },
+    shareCardContent: {
+      flex: 1,
+      padding: 30,
+      alignItems: 'center',
+    },
+    shareGreeting: {
+      fontSize: 32,
+      fontWeight: 'bold',
+      color: '#fff',
+      marginTop: 40,
+      marginBottom: 8,
+      textAlign: 'center',
+    },
+    shareSubtitle: {
+      fontSize: 14,
+      color: 'rgba(255, 255, 255, 0.9)',
+      marginBottom: 30,
+      textAlign: 'center',
+    },
+    shareMainStats: {
+      flexDirection: 'row',
+      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+      borderRadius: 20,
+      padding: 20,
+      width: '100%',
+      justifyContent: 'space-around',
+    },
+    shareMainStatItem: {
+      alignItems: 'center',
+    },
+    shareMainStatValue: {
+      fontSize: 28,
+      fontWeight: 'bold',
+      color: '#fff',
+    },
+    shareMainStatLabel: {
+      fontSize: 11,
+      color: 'rgba(255, 255, 255, 0.9)',
+      marginTop: 4,
+      textAlign: 'center',
+    },
+    shareStatDivider: {
+      width: 1,
+      backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    shareFooter: {
+      position: 'absolute',
+      bottom: 30,
+      left: 30,
+      right: 30,
+      alignItems: 'center',
+    },
+    shareFooterLine: {
+      height: 1,
+      backgroundColor: 'rgba(255, 255, 255, 0.3)',
+      width: '100%',
+      marginBottom: 12,
+    },
+    shareFooterText: {
+      fontSize: 11,
+      color: 'rgba(255, 255, 255, 0.8)',
+      marginBottom: 4,
+    },
+    shareFooterLink: {
+      fontSize: 12,
+      color: '#fff',
+      fontWeight: 'bold',
+      marginBottom: 4,
+    },
+    shareFooterBrand: {
+      fontSize: 10,
+      color: 'rgba(255, 255, 255, 0.7)',
     },
   });
 };
