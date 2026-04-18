@@ -405,9 +405,7 @@ export const CheckInCard: React.FC = () => {
                 style={[styles.weightSection, { backgroundColor: colors.backgroundSecondary }]}
                 onPress={() => {
                   setTempWeight(weight && !isNaN(parseInt(weight)) ? parseInt(weight) : weightMin);
-                  // Close main modal first, then open weight picker
-                  setShowModal(false);
-                  setTimeout(() => setShowWeightPicker(true), 300);
+                  setShowWeightPicker(true);
                 }}
                 activeOpacity={0.7}
               >
@@ -679,11 +677,7 @@ export const CheckInCard: React.FC = () => {
         <View style={styles.pickerOverlay}>
           <View style={[styles.pickerContent, { backgroundColor: colors.card }]}>
             <View style={styles.pickerHeader}>
-              <TouchableOpacity onPress={() => {
-                setShowWeightPicker(false);
-                // Reopen main modal after cancel
-                setTimeout(() => setShowModal(true), 300);
-              }}>
+              <TouchableOpacity onPress={() => setShowWeightPicker(false)}>
                 <Text style={[styles.pickerCancelText, { color: colors.textSecondary }]}>{t.cancel}</Text>
               </TouchableOpacity>
               <Text style={[styles.pickerTitle, { color: colors.text }]}>{t.todaysWeight}</Text>
@@ -691,8 +685,6 @@ export const CheckInCard: React.FC = () => {
                 onPress={() => {
                   setWeight(tempWeight.toString());
                   setShowWeightPicker(false);
-                  // Reopen main modal after weight picker closes
-                  setTimeout(() => setShowModal(true), 300);
                 }}
               >
                 <Text style={[styles.pickerConfirmText, { color: colors.primary }]}>{t.ok}</Text>
