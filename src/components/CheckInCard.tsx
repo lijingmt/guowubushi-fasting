@@ -399,7 +399,7 @@ export const CheckInCard: React.FC = () => {
           <View style={modalMode === 'weightPicker' ? [styles.pickerContent, { backgroundColor: colors.card }] : [styles.modalContent, { backgroundColor: colors.card }]}>
             {modalMode === 'checkIn' ? (
               <>
-                <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+                <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled={true}>
                   <Text style={[styles.modalTitle, { color: colors.text }]}>{t.checkInToday}</Text>
                   <Text style={[styles.modalQuestion, { color: colors.text }]}>
                     {t.checkInQuestion}
@@ -416,6 +416,7 @@ export const CheckInCard: React.FC = () => {
                       setModalMode('weightPicker');
                     }}
                     activeOpacity={0.7}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   >
                 <Text style={[styles.weightLabel, { color: colors.textSecondary }]}>{t.todaysWeight}</Text>
                 <View style={styles.weightSelectorButton} pointerEvents="none">
