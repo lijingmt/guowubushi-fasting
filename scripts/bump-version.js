@@ -56,17 +56,21 @@ function updateAppJson(newVersion) {
 // Update iOS project MARKETING_VERSION
 function updateIosVersion(newVersion) {
   const projectPbxproj = fs.readFileSync(PROJECT_PBXPROJ_PATH, 'utf8');
-  const oldVersionRegex = /MARKETING_VERSION = (\d+\.\d+\.\d+)/;
-  const match = projectPbxproj.match(oldVersionRegex);
+  const oldVersionRegex = /MARKETING_VERSION = (\d+\.\d+\.\d+)/g;
+  const matches = projectPbxproj.match(oldVersionRegex);
 
-  if (match) {
-    const oldVersion = match[1];
+  if (matches && matches.length > 0) {
+    // Get the first version for display
+    const firstMatch = matches[0].match(/MARKETING_VERSION = (\d+\.\d+\.\d+)/);
+    const oldVersion = firstMatch ? firstMatch[1] : 'unknown';
+
+    // Replace all occurrences
     const updated = projectPbxproj.replace(
       oldVersionRegex,
       `MARKETING_VERSION = ${newVersion}`
     );
     fs.writeFileSync(PROJECT_PBXPROJ_PATH, updated);
-    console.log(`✓ iOS MARKETING_VERSION: ${oldVersion} → ${newVersion}`);
+    console.log(`✓ iOS MARKETING_VERSION (${matches.length} occurrences): ${oldVersion} → ${newVersion}`);
   }
 }
 
