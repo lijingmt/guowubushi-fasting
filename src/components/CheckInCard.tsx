@@ -144,8 +144,9 @@ export const CheckInCard: React.FC = () => {
   };
 
   const resetForm = () => {
+    // Don't reset weight - keep the current value
+    // setNotes('');
     setNotes('');
-    setWeight('');
     setIsAbstinence(false);
     setSelectedWater(null);
     setIsMeditation(false);
@@ -228,6 +229,7 @@ export const CheckInCard: React.FC = () => {
 
       // Load today's weight if exists
       const todayWeightRecord = weightRecords.find(r => r.date === today);
+
       if (todayWeightRecord) {
         const weightInKg = todayWeightRecord.weight;
         setLastWeightKg(weightInKg);
@@ -412,7 +414,10 @@ export const CheckInCard: React.FC = () => {
                   <TouchableOpacity
                     style={[styles.weightSection, { backgroundColor: colors.backgroundSecondary }]}
                     onPress={() => {
-                      setTempWeight(weight && !isNaN(parseInt(weight)) ? parseInt(weight) : weightMin);
+                      // Use current weight value or last valid weight
+                      const currentWeight = weight && !isNaN(parseFloat(weight)) ? parseFloat(weight) :
+                                         (lastWeightKg !== null ? (weightUnit === 'lb' ? kgToLb(lastWeightKg) : lastWeightKg) : weightMin);
+                      setTempWeight(Math.round(currentWeight));
                       setModalMode('weightPicker');
                     }}
                     activeOpacity={0.7}
@@ -1164,7 +1169,7 @@ const createResponsiveStyles = () => {
     },
     wheelPickerHighlight: {
       position: 'absolute',
-      top: rs(75),
+      top: rs(98),
       left: 0,
       right: 0,
       height: rs(50),
