@@ -441,6 +441,7 @@ const createResponsiveStyles = () => {
     },
     content: {
       padding: layout.contentPadding,
+      paddingTop: vs(60),
       paddingBottom: vs(40),
     },
     header: {
