@@ -401,16 +401,16 @@ export const HomeScreen: React.FC = () => {
               </View>
               <View style={styles.shareStatDivider} />
               <View style={styles.shareMainStatItem}>
-                <Text style={styles.shareMainStatValue}>{stats.completedDays}</Text>
+                <Text style={styles.shareMainStatValue}>{stats.completedDays}h</Text>
                 <Text style={styles.shareMainStatLabel}>
-                  {language === 'en' ? 'Total Days' : language === 'es' ? 'Días Totales' : '累计天数'}
+                  {language === 'en' ? 'Cooking Saved' : language === 'es' ? 'Cocina Ahorrada' : '节省做饭'}
                 </Text>
               </View>
               <View style={styles.shareStatDivider} />
               <View style={styles.shareMainStatItem}>
-                <Text style={styles.shareMainStatValue}>{stats.totalCaloriesSaved.toLocaleString()}</Text>
+                <Text style={styles.shareMainStatValue}>{stats.completedDays}h</Text>
                 <Text style={styles.shareMainStatLabel}>
-                  {language === 'en' ? 'kcal Saved' : language === 'es' ? 'kcal Ahorradas' : '节省卡路里'}
+                  {language === 'en' ? 'Eating Saved' : language === 'es' ? 'Comida Ahorrada' : '节省用餐'}
                 </Text>
               </View>
             </View>
