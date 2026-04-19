@@ -14,6 +14,7 @@ export const translations = {
     // 底部导航
     tabHome: '首页',
     tabHistory: '历史',
+    tabLeaderboard: '排行榜',
     tabMeals: '饮食',
     tabStats: '统计',
     tabSettings: '设置',
@@ -140,6 +141,25 @@ export const translations = {
     startFirstDay: '开始你的第一天过午不食吧！',
     historyCompleted: '已完成',
     notCompletedLabel: '未完成',
+
+    // 排行榜
+    leaderboard: '排行榜',
+    leaderboardTitle: '全球修行榜',
+    leaderboardStreak: '连续天数榜',
+    leaderboardTotal: '累计天数榜',
+    leaderboardMerit: '功德榜',
+    rank: '排名',
+    nickname: '昵称',
+    score: '分数',
+    loading: '加载中...',
+    refresh: '刷新',
+    myRank: '我的排名',
+    notLoggedIn: '未登录',
+    loginGameCenter: '登录GameCenter',
+    gameCenterRequired: '需要登录GameCenter',
+    leaderboardDisabled: '排行榜暂未开放',
+    comingSoon: '即将推出',
+    androidComingSoon: 'Android版本排行榜即将推出',
 
     // 设置页面
     settings: '设置',
@@ -286,6 +306,7 @@ export const translations = {
     // Tab Navigation
     tabHome: 'Home',
     tabHistory: 'History',
+    tabLeaderboard: 'Leaderboard',
     tabMeals: 'Meals',
     tabStats: 'Stats',
     tabSettings: 'Settings',
@@ -413,6 +434,25 @@ export const translations = {
     startFirstDay: 'Start your first day of fasting!',
     historyCompleted: 'Completed',
     notCompletedLabel: 'Not Completed',
+
+    // Leaderboard
+    leaderboard: 'Leaderboard',
+    leaderboardTitle: 'Global Practice Rankings',
+    leaderboardStreak: 'Streak Leaderboard',
+    leaderboardTotal: 'Total Days Leaderboard',
+    leaderboardMerit: 'Merit Leaderboard',
+    rank: 'Rank',
+    nickname: 'Nickname',
+    score: 'Score',
+    loading: 'Loading...',
+    refresh: 'Refresh',
+    myRank: 'My Rank',
+    notLoggedIn: 'Not Logged In',
+    loginGameCenter: 'Sign in to GameCenter',
+    gameCenterRequired: 'GameCenter Required',
+    leaderboardDisabled: 'Leaderboard Disabled',
+    comingSoon: 'Coming Soon',
+    androidComingSoon: 'Leaderboard coming soon for Android',
 
     // Settings
     settings: 'Settings',
@@ -558,6 +598,7 @@ export const translations = {
     // Tab Navigation
     tabHome: 'Inicio',
     tabHistory: 'Historial',
+    tabLeaderboard: 'Clasificación',
     tabMeals: 'Comidas',
     tabStats: 'Estadísticas',
     tabSettings: 'Ajustes',
@@ -685,6 +726,25 @@ export const translations = {
     startFirstDay: '¡Comienza tu primer día de ayuno!',
     historyCompleted: 'Completado',
     notCompletedLabel: 'No Completado',
+
+    // Leaderboard
+    leaderboard: 'Clasificación',
+    leaderboardTitle: 'Clasificación Global',
+    leaderboardStreak: 'Racha',
+    leaderboardTotal: 'Días Totales',
+    leaderboardMerit: 'Mérito',
+    rank: 'Rango',
+    nickname: 'Apodo',
+    score: 'Puntuación',
+    loading: 'Cargando...',
+    refresh: 'Actualizar',
+    myRank: 'Mi Rango',
+    notLoggedIn: 'No Iniciado',
+    loginGameCenter: 'Iniciar Sesión',
+    gameCenterRequired: 'GameCenter Requerido',
+    leaderboardDisabled: 'Clasificación Deshabilitada',
+    comingSoon: 'Próximamente',
+    androidComingSoon: 'Próximamente para Android',
 
     // Settings
     settings: 'Ajustes',

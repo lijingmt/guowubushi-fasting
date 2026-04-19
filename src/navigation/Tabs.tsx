@@ -9,6 +9,7 @@ import { MealsScreen } from '../screens/MealsScreen';
 import { StatsScreen } from '../screens/StatsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { HistoryScreen } from '../screens/HistoryScreen';
+import { LeaderboardScreen } from '../screens/LeaderboardScreen';
 import { responsiveSize, fs, vs, rs, layout, responsive } from '../theme/responsive';
 
 const Tab = createBottomTabNavigator();
@@ -57,6 +58,16 @@ const TabNavigator = () => {
           tabBarLabel: t.tabHistory,
           tabBarIcon: ({ color }) => (
             <TabIcon name="📅" color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Leaderboard"
+        component={LeaderboardScreen}
+        options={{
+          tabBarLabel: t.tabLeaderboard,
+          tabBarIcon: ({ color }) => (
+            <TabIcon name="🏆" color={color} />
           ),
         }}
       />
