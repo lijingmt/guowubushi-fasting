@@ -28,6 +28,7 @@ export const HomeScreen: React.FC = () => {
 
   const [flameAnimation] = useState(false);
   const shareCardRef = useRef<View>(null);
+  const [showSharePreview, setShowSharePreview] = useState(false);
   const [showCalorieModal, setShowCalorieModal] = useState(false);
   const [calorieInput, setCalorieInput] = useState(settings.dailyCalorieGoal.toString());
   const [showWaterModal, setShowWaterModal] = useState(false);
@@ -84,19 +85,9 @@ export const HomeScreen: React.FC = () => {
   const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    // Web platform: use text sharing
+    // Web platform: show preview modal
     if (Platform.OS === 'web') {
-      const getMessage = () => {
-        if (hasCheckedToday && todayCheckIn?.completed) {
-          return t.shareMessage1
-            .replace('{{streak}}', stats.currentStreak.toString())
-            .replace('{{days}}', stats.completedDays.toString())
-            .replace('{{calories}}', stats.totalCaloriesSaved.toString());
-        }
-        return t.shareMessage2.replace('{{days}}', stats.completedDays.toString());
-      };
-      const shareMessage = `🔥 ${getMessage()}`;
-      await Share.share({ message: shareMessage });
+      setShowSharePreview(true);
       return;
     }
 
@@ -130,6 +121,63 @@ export const HomeScreen: React.FC = () => {
       };
       const shareMessage = `🔥 ${getMessage()}`;
       await Share.share({ message: shareMessage });
+    }
+  };
+
+  const handleDownloadImage = async () => {
+    // For web: use html2canvas to capture and share/download
+    const element = document.getElementById('share-card-preview');
+    if (element) {
+      try {
+        const { default: html2canvas } = await import('html2canvas');
+        const canvas = await html2canvas(element, {
+          backgroundColor: null,
+          scale: 2,
+          useCORS: true,
+        });
+
+        // Convert canvas to blob
+        canvas.toBlob(async (blob) => {
+          if (blob) {
+            // Try Web Share API first (mobile devices)
+            if (navigator.share && navigator.canShare) {
+              const file = new File([blob], '过午不食-成就.png', { type: 'image/png' });
+              const shareData = {
+                title: language === 'zh' ? '过午不食' : 'Fasting',
+                text: language === 'zh'
+                  ? `我已经坚持过午不食${stats.currentStreak}天，节省做饭和用餐时间各${stats.completedDays}小时！`
+                  : `I've been fasting for ${stats.currentStreak} days, saved ${stats.completedDays}h cooking and eating time!`,
+                files: [file],
+              };
+
+              try {
+                if (navigator.canShare(shareData)) {
+                  await navigator.share(shareData);
+                  setShowSharePreview(false);
+                  return;
+                }
+              } catch (err) {
+                // Share was cancelled or failed, fall through to download
+                if (err.name !== 'AbortError') {
+                  console.log('Share failed:', err);
+                }
+              }
+            }
+
+            // Fallback: download the image
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = '过午不食-成就.png';
+            link.href = url;
+            link.click();
+            URL.revokeObjectURL(url);
+            setShowSharePreview(false);
+          }
+        }, 'image/png');
+      } catch (err) {
+        console.error('Failed to generate image:', err);
+        alert(language === 'zh' ? '请截图保存' : 'Please take a screenshot to save');
+      }
     }
   };
 
@@ -369,6 +417,103 @@ export const HomeScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Share Preview Modal (Web) */}
+      <Modal
+        visible={showSharePreview}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowSharePreview(false)}
+      >
+        <View style={styles.sharePreviewOverlay}>
+          <View style={styles.sharePreviewContent}>
+            <Text style={[styles.sharePreviewTitle, { color: colors.text }]}>
+              {language === 'zh' ? '分享成就' : 'Share Achievement'}
+            </Text>
+
+            {/* Share Card Preview */}
+            <View id="share-card-preview" style={styles.sharePreviewCard}>
+              <LinearGradient
+                colors={['#FF6B6B', '#FF8E53', '#FFA726']}
+                style={styles.shareCardBackground}
+              >
+                {/* Decorative circles */}
+                <View style={[styles.shareCircle, styles.shareCircle1]} />
+                <View style={[styles.shareCircle, styles.shareCircle2]} />
+                <View style={[styles.shareCircle, styles.shareCircle3]} />
+
+                <View style={styles.shareCardContent}>
+                  {/* Header */}
+                  <Text style={styles.shareGreeting}>
+                    {language === 'en' ? 'My Fasting Journey' : language === 'es' ? 'Mi Viaje de Ayuno' : '过午不食之路'}
+                  </Text>
+                  <Text style={styles.shareSubtitle}>
+                    {language === 'en' ? 'Building healthy habits, one day at a time' : language === 'es' ? 'Construyendo hábitos saludables, día a día' : '培养健康习惯，一天天坚持'}
+                  </Text>
+
+                  {/* Main Stats */}
+                  <View style={styles.shareMainStats}>
+                    <View style={styles.shareMainStatItem}>
+                      <Text style={styles.shareMainStatValue}>{stats.currentStreak}</Text>
+                      <Text style={styles.shareMainStatLabel}>
+                        {language === 'en' ? 'Day Streak' : language === 'es' ? 'Días Racha' : '连续天数'}
+                      </Text>
+                    </View>
+                    <View style={styles.shareStatDivider} />
+                    <View style={styles.shareMainStatItem}>
+                      <Text style={styles.shareMainStatValue}>{stats.completedDays}h</Text>
+                      <Text style={styles.shareMainStatLabel}>
+                        {language === 'en' ? 'Cooking Saved' : language === 'es' ? 'Cocina Ahorrada' : '节省做饭'}
+                      </Text>
+                    </View>
+                    <View style={styles.shareStatDivider} />
+                    <View style={styles.shareMainStatItem}>
+                      <Text style={styles.shareMainStatValue}>{stats.completedDays}h</Text>
+                      <Text style={styles.shareMainStatLabel}>
+                        {language === 'en' ? 'Eating Saved' : language === 'es' ? 'Comida Ahorrada' : '节省用餐'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Footer */}
+                  <View style={styles.shareFooter}>
+                    <View style={styles.shareFooterLine} />
+                    <Text style={styles.shareFooterText}>
+                      {language === 'zh' ? '下载app：' : language === 'es' ? 'Descarga la app:' : 'Download the app:'}
+                    </Text>
+                    <Text style={styles.shareFooterLink}>apps.apple.com/app/id6762360504</Text>
+                    <Text style={styles.shareFooterBrand}>"过午不食" Fasting App</Text>
+                  </View>
+                </View>
+              </LinearGradient>
+            </View>
+
+            {/* Action buttons */}
+            <View style={styles.sharePreviewActions}>
+              <TouchableOpacity
+                style={[styles.sharePreviewButton, styles.sharePreviewButtonCancel, { backgroundColor: colors.divider }]}
+                onPress={() => setShowSharePreview(false)}
+              >
+                <Text style={[styles.sharePreviewButtonText, { color: colors.text }]}>
+                  {language === 'zh' ? '关闭' : 'Close'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.sharePreviewButton, styles.sharePreviewButtonDownload, { backgroundColor: colors.primary }]}
+                onPress={handleDownloadImage}
+              >
+                <Text style={styles.sharePreviewButtonTextDownload}>
+                  📤 {language === 'zh' ? '分享' : 'Share'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.sharePreviewHint, { color: colors.textSecondary }]}>
+              {language === 'zh' ? '提示：也可以直接截图分享' : 'Tip: You can also take a screenshot'}
+            </Text>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
 
       {/* Hidden share card for image generation */}
@@ -385,7 +530,7 @@ export const HomeScreen: React.FC = () => {
           <View style={styles.shareCardContent}>
             {/* Header */}
             <Text style={styles.shareGreeting}>
-              {language === 'en' ? 'My Fasting Journey' : language === 'es' ? 'Mi Viaje de Ayuno' : '我的禁食之路'}
+              {language === 'en' ? 'My Fasting Journey' : language === 'es' ? 'Mi Viaje de Ayuno' : '过午不食之路'}
             </Text>
             <Text style={styles.shareSubtitle}>
               {language === 'en' ? 'Building healthy habits, one day at a time' : language === 'es' ? 'Construyendo hábitos saludables, día a día' : '培养健康习惯，一天天坚持'}
@@ -801,6 +946,68 @@ const createResponsiveStyles = () => {
     shareFooterBrand: {
       fontSize: 10,
       color: 'rgba(255, 255, 255, 0.7)',
+    },
+    // Share Preview Modal styles
+    sharePreviewOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    sharePreviewContent: {
+      width: '100%',
+      maxWidth: 400,
+      alignItems: 'center',
+    },
+    sharePreviewTitle: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      marginBottom: 20,
+    },
+    sharePreviewCard: {
+      width: 320,
+      height: 450,
+      borderRadius: 20,
+      overflow: 'hidden',
+      marginBottom: 20,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    sharePreviewActions: {
+      flexDirection: 'row',
+      gap: 12,
+      width: '100%',
+      maxWidth: 320,
+    },
+    sharePreviewButton: {
+      flex: 1,
+      paddingVertical: 14,
+      borderRadius: 12,
+      alignItems: 'center',
+    },
+    sharePreviewButtonCancel: {
+      flex: 1,
+    },
+    sharePreviewButtonDownload: {
+      flex: 2,
+    },
+    sharePreviewButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    sharePreviewButtonTextDownload: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    sharePreviewHint: {
+      fontSize: 12,
+      marginTop: 16,
+      textAlign: 'center',
     },
   });
 };
