@@ -8,7 +8,7 @@ import * as Haptics from 'expo-haptics';
 import { responsiveSize, fs, rs, vs, layout, responsive } from '../theme/responsive';
 import { LinearGradient } from 'expo-linear-gradient';
 import { captureRef } from 'react-native-view-shot';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { shareAsync } from 'expo-sharing';
 
 export const HomeScreen: React.FC = () => {
