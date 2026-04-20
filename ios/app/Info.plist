@@ -38,7 +38,7 @@
     <key>CFBundlePackageType</key>
     <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
     <key>CFBundleShortVersionString</key>
-    <string>$(MARKETING_VERSION)</string>
+    <string>1.0.11</string>
     <key>CFBundleSignature</key>
     <string>????</string>
     <key>CFBundleURLTypes</key>
@@ -57,55 +57,7 @@
       </dict>
     </array>
     <key>CFBundleVersion</key>
-    <string>$(CURRENT_PROJECT_VERSION)</string>
-    <key>CFBundleIcons</key>
-    <dict>
-      <key>CFBundlePrimaryIcon</key>
-      <dict>
-        <key>CFBundleIconFiles</key>
-        <array>
-          <string>AppIcon20x20</string>
-          <string>AppIcon20x20@2x</string>
-          <string>AppIcon20x20@3x</string>
-          <string>AppIcon29x29</string>
-          <string>AppIcon29x29@2x</string>
-          <string>AppIcon29x29@3x</string>
-          <string>AppIcon40x40</string>
-          <string>AppIcon40x40@2x</string>
-          <string>AppIcon40x40@3x</string>
-          <string>AppIcon60x60</string>
-          <string>AppIcon60x60@2x</string>
-          <string>AppIcon60x60@3x</string>
-        </array>
-        <key>CFBundleIconName</key>
-        <string>AppIcon</string>
-      </dict>
-    </dict>
-    <key>CFBundleIcons~ipad</key>
-    <dict>
-      <key>CFBundlePrimaryIcon</key>
-      <dict>
-        <key>CFBundleIconFiles</key>
-        <array>
-          <string>AppIcon20x20</string>
-          <string>AppIcon20x20@2x</string>
-          <string>AppIcon20x20@3x</string>
-          <string>AppIcon29x29</string>
-          <string>AppIcon29x29@2x</string>
-          <string>AppIcon29x29@3x</string>
-          <string>AppIcon40x40</string>
-          <string>AppIcon40x40@2x</string>
-          <string>AppIcon40x40@3x</string>
-          <string>AppIcon60x60</string>
-          <string>AppIcon60x60@2x</string>
-          <string>AppIcon60x60@3x</string>
-          <string>AppIcon76x76</string>
-          <string>AppIcon76x76@2x</string>
-        </array>
-        <key>CFBundleIconName</key>
-        <string>AppIcon</string>
-      </dict>
-    </dict>
+    <string>1</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
     <key>LSMinimumSystemVersion</key>
@@ -119,6 +71,12 @@
       <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
+    <key>NSCameraUsageDescription</key>
+    <string>Allow $(PRODUCT_NAME) to access your camera</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Allow $(PRODUCT_NAME) to access your microphone</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Allow $(PRODUCT_NAME) to access your photos</string>
     <key>RCTNewArchEnabled</key>
     <true/>
     <key>UILaunchStoryboardName</key>

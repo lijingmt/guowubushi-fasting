@@ -631,12 +631,16 @@ export const HomeScreen: React.FC = () => {
       collapsable={false}
       style={styles.hiddenShareCard}
     >
-      {/* Decorative circles */}
-      <View style={[styles.shareCircle, styles.shareCircle1]} />
-      <View style={[styles.shareCircle, styles.shareCircle2]} />
-      <View style={[styles.shareCircle, styles.shareCircle3]} />
+      <LinearGradient
+        colors={['#FF6B6B', '#FF8E53', '#FFA726']}
+        style={{ width: '100%', height: '100%' }}
+      >
+        {/* Decorative circles */}
+        <View style={[styles.shareCircle, styles.shareCircle1]} />
+        <View style={[styles.shareCircle, styles.shareCircle2]} />
+        <View style={[styles.shareCircle, styles.shareCircle3]} />
 
-      <View style={styles.shareCardContent}>
+        <View style={styles.shareCardContent}>
         {/* Header */}
         <Text style={styles.shareGreeting}>
           {language === 'en' ? 'My Fasting Journey' : language === 'es' ? 'Mi Viaje de Ayuno' : '过午不食之路'}
@@ -678,7 +682,8 @@ export const HomeScreen: React.FC = () => {
           <Text style={styles.shareFooterLink}>apps.apple.com/app/id6762360504</Text>
           <Text style={styles.shareFooterBrand}>"过午不食" Fasting App</Text>
         </View>
-      </View>
+        </View>
+      </LinearGradient>
     </View>
     </View>
   );
@@ -1156,19 +1161,16 @@ const createResponsiveStyles = () => {
       fontSize: 16,
       fontWeight: '600',
     },
-    // Hidden share card for capture - visible on screen for testing
+    // Hidden share card for capture - rendered off-screen for proper screenshot
     hiddenShareCard: {
       position: 'absolute',
-      width: 100,
-      height: 150,
-      bottom: 10,
+      width: 320,
+      height: 480,
+      bottom: -500, // Render off-screen to avoid visible interference
       right: 10,
-      opacity: 0.5,
       backgroundColor: '#FF6B6B',
-      borderRadius: 10,
-      padding: 12,
+      borderRadius: 20,
       overflow: 'hidden',
-      pointerEvents: 'none',
     },
   });
 };
