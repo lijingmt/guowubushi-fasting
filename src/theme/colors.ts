@@ -9,6 +9,7 @@ export interface Colors {
   text: string;
   textSecondary: string;
   textLight: string;
+  textTertiary: string;
 
   // 主色调
   primary: string;
@@ -40,6 +41,7 @@ export const lightColors: Colors = {
   text: '#333333',
   textSecondary: '#666666',
   textLight: '#999999',
+  textTertiary: '#AAAAAA',
 
   primary: '#FF5722',
   primaryLight: '#FF8A65',
@@ -67,6 +69,7 @@ export const darkColors: Colors = {
   text: '#FFFFFF',
   textSecondary: '#B0B0B0',
   textLight: '#808080',
+  textTertiary: '#707070',
 
   primary: '#FF6B3D',
   primaryLight: '#FF8A65',

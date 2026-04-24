@@ -156,6 +156,7 @@ export const HomeScreen: React.FC = () => {
         <Text style={[styles.streakTitle, { color: colors.textSecondary }]}>{t.currentStreak}</Text>
         <Text style={[styles.streakCount, { color: colors.primary }]}>{stats.currentStreak}</Text>
         <Text style={[styles.streakLabel, { color: colors.textSecondary }]}>{t.dayUnit}</Text>
+        <Text style={[styles.gracePeriodHint, { color: colors.textTertiary }]}>{t.gracePeriodHint}</Text>
       </View>
 
       <View style={styles.statsRow}>
@@ -447,6 +448,15 @@ const createResponsiveStyles = () => {
     },
     streakLabel: {
       fontSize: responsiveSize.fontSize.xl,
+    },
+    gracePeriodHint: {
+      fontSize: responsive({
+        small: fs(10),
+        tablet: fs(12),
+        default: fs(11),
+      }),
+      marginTop: rs(4),
+      textAlign: 'center',
     },
     statsRow: {
       flexDirection: 'row',

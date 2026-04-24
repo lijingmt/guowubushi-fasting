@@ -324,11 +324,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const totalDays = checkInRecords.length;
     const completedDays = checkInRecords.filter((r) => r.completed).length;
 
-    // 计算连续天数
+    // 计算连续天数（带1天宽限期）
     let currentStreak = 0;
     let longestStreak = 0;
 
-    // 计算禁欲连续天数
+    // 计算禁欲连续天数（带1天宽限期）
     let currentAbstinenceStreak = 0;
     let longestAbstinenceStreak = 0;
 
@@ -339,27 +339,55 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const today = new Date().toISOString().split('T')[0];
     let checkingDate = new Date(today);
     let abstinenceDate = new Date(today);
+    let graceDaysUsed = 0; // 已使用的宽限天数
+    const GRACE_PERIOD = 1; // 宽限期天数
 
     for (const record of sortedRecords) {
       const recordDate = record.date;
       if (record.completed) {
         const checkDateStr = checkingDate.toISOString().split('T')[0];
+        const daysDiff = Math.floor(
+          (new Date(checkDateStr).getTime() - new Date(recordDate).getTime()) / (1000 * 60 * 60 * 24)
+        );
+
         if (recordDate === checkDateStr) {
+          // 日期匹配，增加连胜
           currentStreak++;
           checkingDate.setDate(checkingDate.getDate() - 1);
-        } else {
+          graceDaysUsed = 0; // 重置宽限期使用天数
+        } else if (daysDiff === 1 + graceDaysUsed) {
+          // 在宽限期内（跳过1天）
+          currentStreak++;
+          checkingDate = new Date(recordDate);
+          checkingDate.setDate(checkingDate.getDate() - 1);
+          graceDaysUsed++; // 增加已使用的宽限天数
+        } else if (daysDiff > 1 + graceDaysUsed) {
+          // 超过宽限期，重置连胜
           longestStreak = Math.max(longestStreak, currentStreak);
           currentStreak = 1;
           checkingDate = new Date(recordDate);
           checkingDate.setDate(checkingDate.getDate() - 1);
+          graceDaysUsed = 0;
+        } else {
+          // daysDiff < 1，说明记录顺序有问题，跳过
+          continue;
         }
 
         // 检查是否禁欲完成
         const hasAbstinence = record.notes && record.notes.includes('禁欲完成');
         if (hasAbstinence) {
           const abstinenceDateStr = abstinenceDate.toISOString().split('T')[0];
+          const abstinenceDaysDiff = Math.floor(
+            (new Date(abstinenceDateStr).getTime() - new Date(recordDate).getTime()) / (1000 * 60 * 60 * 24)
+          );
+
           if (recordDate === abstinenceDateStr) {
             currentAbstinenceStreak++;
+            abstinenceDate.setDate(abstinenceDate.getDate() - 1);
+          } else if (abstinenceDaysDiff === 1) {
+            // 禁欲也支持1天宽限期
+            currentAbstinenceStreak++;
+            abstinenceDate = new Date(recordDate);
             abstinenceDate.setDate(abstinenceDate.getDate() - 1);
           } else {
             longestAbstinenceStreak = Math.max(longestAbstinenceStreak, currentAbstinenceStreak);
