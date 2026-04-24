@@ -256,7 +256,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setCheckInRecords(savedCheckIns);
       const todayRecord = await getTodayCheckIn();
       setTodayCheckIn(todayRecord);
-      setHasCheckedToday(todayRecord !== null);
+      setHasCheckedToday(todayRecord?.completed || false);
 
       // 加载饮食记录
       const savedMeals = await getMealRecords();
@@ -569,6 +569,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       await saveCheckInRecord(updatedRecord);
       setTodayCheckIn(updatedRecord);
+      setHasCheckedToday(completed);
 
       const updatedRecords = await getCheckInRecords();
       setCheckInRecords(updatedRecords);

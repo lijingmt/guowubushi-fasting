@@ -14,8 +14,12 @@ import {
   Clipboard,
 } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useApp } from '../context/AppContext';
 import { Card } from '../components/Card';
+
+// 开发者模式
+const IS_DEV = __DEV__;
 
 export const SettingsScreen: React.FC = () => {
   const {
@@ -101,6 +105,74 @@ export const SettingsScreen: React.FC = () => {
         },
       ]
     );
+  };
+
+  // 开发者测试功能
+  const getDateDaysAgo = (days: number) => {
+    const date = new Date();
+    date.setDate(date.getDate() - days);
+    return date.toISOString().split('T')[0];
+  };
+
+  const generateCheckInRecord = (date: string, completed: boolean) => ({
+    id: `checkin-${date}`,
+    date,
+    completed,
+    brokeAfterNoon: !completed,
+    checkInTime: new Date(date + 'T20:00:00').getTime(),
+    notes: completed ? '完成过午不食' : '未完成',
+  });
+
+  const mockFrozenFlame = async () => {
+    const today = getDateDaysAgo(0);
+    const yesterday = getDateDaysAgo(1);
+
+    const records = [];
+    for (let i = 10; i >= 2; i--) {
+      records.push(generateCheckInRecord(getDateDaysAgo(i), true));
+    }
+    records.push(generateCheckInRecord(yesterday, false));
+    records.push(generateCheckInRecord(today, false));
+
+    await AsyncStorage.setItem('@guowu_checkin_records', JSON.stringify(records));
+    Alert.alert('🧊 冰冻场景', '已生成冰冻火苗数据！\n\n连续打卡10天后，昨天和今天未打卡。\n\n下拉刷新查看效果！');
+  };
+
+  const mockGracePeriod = async () => {
+    const today = getDateDaysAgo(0);
+    const yesterday = getDateDaysAgo(1);
+
+    const records = [];
+    for (let i = 10; i >= 2; i--) {
+      records.push(generateCheckInRecord(getDateDaysAgo(i), true));
+    }
+    records.push(generateCheckInRecord(yesterday, false));
+    records.push(generateCheckInRecord(today, true));
+
+    await AsyncStorage.setItem('@guowu_checkin_records', JSON.stringify(records));
+    Alert.alert('🛡️ 宽限期场景', '已生成宽限期数据！\n\n连续打卡9天，昨天未打卡但今天打卡（使用宽限期）。\n\n下拉刷新查看效果！');
+  };
+
+  const mockStreakBroken = async () => {
+    const today = getDateDaysAgo(0);
+    const yesterday = getDateDaysAgo(1);
+    const dayBefore = getDateDaysAgo(2);
+
+    const records = [];
+    for (let i = 12; i >= 4; i--) {
+      records.push(generateCheckInRecord(getDateDaysAgo(i), true));
+    }
+    records.push(generateCheckInRecord(dayBefore, false));
+    records.push(generateCheckInRecord(yesterday, false));
+    records.push(generateCheckInRecord(today, true));
+
+    await AsyncStorage.setItem('@guowu_checkin_records', JSON.stringify(records));
+    Alert.alert('💔 连胜中断', '已生成连胜中断数据！\n\n之前连胜10天，但前天和昨天都未打卡（超过宽限期）。\n\n下拉刷新查看效果！');
+  };
+
+  const clearMockData = async () => {
+    await AsyncStorage.removeItem('@guowu_checkin_records');
+    Alert.alert('🗑️ 数据已清除', '所有打卡数据已删除！');
   };
 
   const SettingItem = ({
@@ -248,6 +320,40 @@ export const SettingsScreen: React.FC = () => {
           }}
         />
       </Card>
+
+      {/* 开发者测试选项 - 仅开发模式显示 */}
+      {IS_DEV && (
+        <>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+            🧪 开发者测试
+          </Text>
+          <Card>
+            <SettingItem
+              label="🧊 冰冻火苗"
+              value="今天和昨天都没打卡"
+              onPress={mockFrozenFlame}
+            />
+            <Divider />
+            <SettingItem
+              label="🛡️ 宽限期恢复"
+              value="昨天没打卡，今天打卡"
+              onPress={mockGracePeriod}
+            />
+            <Divider />
+            <SettingItem
+              label="💔 连胜中断"
+              value="连续两天未打卡"
+              onPress={mockStreakBroken}
+            />
+            <Divider />
+            <SettingItem
+              label="🗑️ 清除数据"
+              value="删除所有打卡记录"
+              onPress={clearMockData}
+            />
+          </Card>
+        </>
+      )}
 
       {/* 时间选择器 */}
       <Modal

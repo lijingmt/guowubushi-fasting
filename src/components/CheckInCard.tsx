@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, Switch, ScrollView, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, Switch, ScrollView, Dimensions, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useApp } from '../context/AppContext';
@@ -62,6 +62,28 @@ export const CheckInCard: React.FC = () => {
   const [tempWeight, setTempWeight] = useState(weightMin);
   const [isAbstinence, setIsAbstinence] = useState(false);
   const [selectedWater, setSelectedWater] = useState<number | null>(null);
+
+  // Unfreeze animation states
+  const [showUnfreezeAnimation, setShowUnfreezeAnimation] = useState(false);
+  const [unfreezeStage, setUnfreezeStage] = useState<'ice' | 'shattering' | 'fire'>('ice');
+  const iceScale = useRef(new Animated.Value(0)).current;
+  const iceOpacity = useRef(new Animated.Value(0)).current;
+  const fireScale = useRef(new Animated.Value(0)).current;
+  const fireOpacity = useRef(new Animated.Value(0)).current;
+
+  // Shards animation values (8 pieces flying outward)
+  const shardTranslations = useRef(
+    Array.from({ length: 8 }, (_, i) => {
+      const angle = (i * 45 * Math.PI) / 180; // 8 directions, 45 degrees apart
+      return {
+        x: new Animated.Value(0),
+        y: new Animated.Value(0),
+        rotate: new Animated.Value(0),
+        scale: new Animated.Value(1),
+        opacity: new Animated.Value(1),
+      };
+    })
+  ).current;
 
   // Load last weight on mount
   useEffect(() => {
@@ -155,6 +177,81 @@ export const CheckInCard: React.FC = () => {
     setSelectedStandingTime(null);
     setIsScriptureChanting(false);
     setIsScriptureListening(false);
+  };
+
+  const startUnfreezeAnimation = () => {
+    setShowUnfreezeAnimation(true);
+    setUnfreezeStage('ice');
+
+    // Reset all animation values
+    iceScale.setValue(0);
+    iceOpacity.setValue(0);
+    fireScale.setValue(0);
+    fireOpacity.setValue(0);
+    shardTranslations.forEach(shard => {
+      shard.x.setValue(0);
+      shard.y.setValue(0);
+      shard.rotate.setValue(0);
+      shard.scale.setValue(1);
+      shard.opacity.setValue(1);
+    });
+
+    // Single shake cycle (faster)
+    const shakeCycle = Animated.sequence([
+      Animated.timing(iceScale, { toValue: 1.15, duration: 30, useNativeDriver: true }),
+      Animated.timing(iceScale, { toValue: 0.9, duration: 30, useNativeDriver: true }),
+      Animated.timing(iceScale, { toValue: 1, duration: 30, useNativeDriver: true }),
+    ]);
+
+    // Complete animation sequence
+    const fullAnimation = Animated.sequence([
+      // Stage 1: Ice block appears (bounce effect)
+      Animated.timing(iceOpacity, { toValue: 1, duration: 100, useNativeDriver: true }),
+      Animated.spring(iceScale, { toValue: 1.1, friction: 4, useNativeDriver: true }),
+      Animated.spring(iceScale, { toValue: 1, friction: 4, useNativeDriver: true }),
+      // Stage 2: Shake 3 times
+      shakeCycle,
+      shakeCycle,
+      shakeCycle,
+      // Stage 3: SHATTER!
+      Animated.timing(iceOpacity, { toValue: 0, duration: 50, useNativeDriver: true }),
+    ]);
+
+    fullAnimation.start(() => {
+      // Stage 3: SHATTER! - Animate shards
+      setUnfreezeStage('shattering');
+
+      const shardAnimations = shardTranslations.map((shard, i) => {
+        const angle = (i * 45 * Math.PI) / 180;
+        const distance = 120 + Math.random() * 30;
+        const destX = Math.cos(angle) * distance;
+        const destY = Math.sin(angle) * distance;
+        const rotation = (Math.random() - 0.5) * 720;
+
+        return Animated.parallel([
+          Animated.timing(shard.x, { toValue: destX, duration: 350, useNativeDriver: true }),
+          Animated.timing(shard.y, { toValue: destY, duration: 350, useNativeDriver: true }),
+          Animated.timing(shard.rotate, { toValue: rotation, duration: 350, useNativeDriver: true }),
+          Animated.timing(shard.opacity, { toValue: 0, duration: 250, delay: 100, useNativeDriver: true }),
+        ]);
+      });
+
+      Animated.parallel(shardAnimations).start(() => {
+        // Stage 4: Fire appears
+        setUnfreezeStage('fire');
+        const fireAppearAnimation = Animated.sequence([
+          Animated.timing(fireOpacity, { toValue: 1, duration: 100, useNativeDriver: true }),
+          Animated.spring(fireScale, { toValue: 1.2, friction: 5, useNativeDriver: true }),
+          Animated.spring(fireScale, { toValue: 1, friction: 5, useNativeDriver: true }),
+          Animated.delay(300),
+          Animated.timing(fireOpacity, { toValue: 0, duration: 250, useNativeDriver: true }),
+        ]);
+
+        fireAppearAnimation.start(() => {
+          setShowUnfreezeAnimation(false);
+        });
+      });
+    });
   };
 
   const openEditModal = () => {
@@ -310,6 +407,13 @@ export const CheckInCard: React.FC = () => {
     }
 
     await dailyCheckIn(completed, finalNotes || undefined);
+
+    // Check if user was in frozen state and just completed check-in
+    const wasFrozen = stats.streakInGracePeriod && completed && !hasCheckedToday;
+    if (wasFrozen) {
+      startUnfreezeAnimation();
+    }
+
     resetForm();
     setShowModal(false);
   };
@@ -735,6 +839,80 @@ export const CheckInCard: React.FC = () => {
               </>
             )}
           </View>
+        </View>
+      </Modal>
+
+      {/* Unfreeze Animation Modal */}
+      <Modal
+        visible={showUnfreezeAnimation}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {}}
+      >
+        <View style={styles.unfreezeOverlay}>
+          {/* Ice Block Stage */}
+          {unfreezeStage === 'ice' && (
+            <Animated.View
+              style={[
+                styles.unfreezeContent,
+                {
+                  opacity: iceOpacity,
+                  transform: [{ scale: iceScale }],
+                },
+              ]}
+            >
+              <Animated.Text style={styles.unfreezeEmoji}>🧊</Animated.Text>
+              <Animated.Text style={styles.unfreezeText}>
+                {language === 'en' ? 'Breaking...' : language === 'es' ? 'Rompiendo...' : '冰块击碎...'}
+              </Animated.Text>
+            </Animated.View>
+          )}
+
+          {/* Shattering Stage - 8 shards flying outward */}
+          {unfreezeStage === 'shattering' && (
+            <View style={styles.unfreezeContent}>
+              {shardTranslations.map((shard, i) => (
+                <Animated.View
+                  key={i}
+                  style={[
+                    styles.shard,
+                    {
+                      transform: [
+                        { translateX: shard.x },
+                        { translateY: shard.y },
+                        { rotate: shard.rotate.interpolate({
+                          inputRange: [-360, 360],
+                          outputRange: ['-360deg', '360deg'],
+                        })},
+                        { scale: shard.scale },
+                      ],
+                      opacity: shard.opacity,
+                    },
+                  ]}
+                >
+                  <Text style={styles.shardEmoji}>{'🧊'}</Text>
+                </Animated.View>
+              ))}
+            </View>
+          )}
+
+          {/* Fire Stage */}
+          {unfreezeStage === 'fire' && (
+            <Animated.View
+              style={[
+                styles.unfreezeContent,
+                {
+                  opacity: fireOpacity,
+                  transform: [{ scale: fireScale }],
+                },
+              ]}
+            >
+              <Animated.Text style={styles.unfreezeEmoji}>🔥</Animated.Text>
+              <Animated.Text style={styles.unfreezeText}>
+                {language === 'en' ? 'Fire Restored!' : language === 'es' ? '¡Fuego Restaurado!' : '火苗恢复！'}
+              </Animated.Text>
+            </Animated.View>
+          )}
         </View>
       </Modal>
     </>
@@ -1163,7 +1341,7 @@ const createResponsiveStyles = () => {
     },
     wheelPickerHighlight: {
       position: 'absolute',
-      top: rs(75),
+      top: rs(100),
       left: 0,
       right: 0,
       height: rs(50),
@@ -1190,6 +1368,48 @@ const createResponsiveStyles = () => {
     wheelPickerItemSelectedText: {
       fontSize: responsiveSize.fontSize['2xl'],
       fontWeight: '700',
+    },
+    // Unfreeze animation styles
+    unfreezeOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    unfreezeContent: {
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    unfreezeEmoji: {
+      fontSize: responsive({
+        small: fs(80),
+        tablet: fs(120),
+        default: fs(100),
+      }),
+      marginBottom: rs(20),
+    },
+    unfreezeText: {
+      fontSize: responsive({
+        small: fs(24),
+        tablet: fs(32),
+        default: fs(28),
+      }),
+      fontWeight: 'bold',
+      color: '#fff',
+      textShadowColor: 'rgba(0, 0, 0, 0.3)',
+      textShadowOffset: { width: 0, height: 2 },
+      textShadowRadius: rs(4),
+    },
+    // Shattering ice shards
+    shard: {
+      position: 'absolute',
+      width: rs(40),
+      height: rs(40),
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    shardEmoji: {
+      fontSize: rs(35),
     },
   });
 };

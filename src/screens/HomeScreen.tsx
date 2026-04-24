@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Alert, Clipboard, Modal, TextInput } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Alert, Clipboard, Modal, TextInput, Platform } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { Card } from '../components/Card';
 import { StatCard } from '../components/StatCard';
 import { CheckInCard } from '../components/CheckInCard';
 import * as Haptics from 'expo-haptics';
 import { responsiveSize, fs, rs, vs, layout, responsive } from '../theme/responsive';
+import { LinearGradient } from 'expo-linear-gradient';
+import { captureRef } from 'react-native-view-shot';
+import * as FileSystem from 'expo-file-system/legacy';
+import { shareAsync } from 'expo-sharing';
 
 export const HomeScreen: React.FC = () => {
   const {
@@ -23,6 +27,9 @@ export const HomeScreen: React.FC = () => {
   } = useApp();
 
   const [flameAnimation] = useState(false);
+  const shareCardRef = useRef<View>(null);
+  const [showSharePreview, setShowSharePreview] = useState(false);
+  const [showShareCardModal, setShowShareCardModal] = useState(false);
   const [showCalorieModal, setShowCalorieModal] = useState(false);
   const [calorieInput, setCalorieInput] = useState(settings.dailyCalorieGoal.toString());
   const [showWaterModal, setShowWaterModal] = useState(false);
@@ -78,41 +85,117 @@ export const HomeScreen: React.FC = () => {
 
   const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const getMessage = () => {
-      if (hasCheckedToday && todayCheckIn?.completed) {
-        return t.shareMessage1
-          .replace('{{streak}}', stats.currentStreak.toString())
-          .replace('{{days}}', stats.completedDays.toString())
-          .replace('{{calories}}', stats.totalCaloriesSaved.toString());
-      }
-      return t.shareMessage2.replace('{{days}}', stats.completedDays.toString());
-    };
 
-    const shareMessage = `🔥 ${getMessage()}`;
+    // Web platform: show preview modal
+    if (Platform.OS === 'web') {
+      setShowSharePreview(true);
+      return;
+    }
 
+    // Native platforms: show share card modal
+    setShowShareCardModal(true);
+  };
+
+  const handleNativeShare = async () => {
     try {
-      // Try sharing without URL for better WeChat compatibility
-      const result = await Share.share({
-        message: shareMessage,
+      console.log('Starting share capture...');
+      console.log('shareCardRef current:', shareCardRef.current);
+
+      // Small delay to ensure card is fully rendered
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Capture the card with result: 'tmpfile' for iOS
+      const uri = await captureRef(shareCardRef, {
+        format: 'png',
+        quality: 1,
+        result: 'tmpfile',
       });
 
-      // If sharing was dismissed, offer to copy to clipboard
-      if (result.action === Share.dismissedAction) {
-        // Automatically copy to clipboard when dismissed
-        await Clipboard.setString(shareMessage);
-        Alert.alert(
-          t.copied || 'Copied!',
-          shareMessage + '\n\n' + (language === 'zh' ? '（已复制到剪贴板，可手动粘贴到微信）' : '(Copied to clipboard, paste to WeChat manually)')
-        );
+      console.log('captureRef returned uri:', uri);
+
+      if (!uri) {
+        throw new Error('captureRef returned null URI');
       }
-    } catch (error: any) {
-      console.error('Error sharing:', error);
-      // Automatically copy to clipboard when sharing fails
-      await Clipboard.setString(shareMessage);
-      Alert.alert(
-        t.copied || 'Copied!',
-        shareMessage + '\n\n' + (language === 'zh' ? '（已复制到剪贴板，可手动粘贴到微信）' : '(Copied to clipboard, paste to WeChat manually)')
-      );
+
+      await shareAsync(uri, {
+        mimeType: 'image/png',
+        dialogTitle: language === 'zh' ? '分享成就' : language === 'es' ? 'Compartir logro' : 'Share Achievement',
+      });
+
+      console.log('Share successful!');
+      setShowShareCardModal(false);
+    } catch (error) {
+      console.error('Share error:', error);
+      console.error('Error details:', JSON.stringify(error));
+      // Fallback to text sharing if image capture fails
+      const getMessage = () => {
+        if (hasCheckedToday && todayCheckIn?.completed) {
+          return t.shareMessage1
+            .replace('{{streak}}', stats.currentStreak.toString())
+            .replace('{{days}}', stats.completedDays.toString())
+            .replace('{{calories}}', stats.totalCaloriesSaved.toString());
+        }
+        return t.shareMessage2.replace('{{days}}', stats.completedDays.toString());
+      };
+      const shareMessage = `🔥 ${getMessage()}`;
+      await Share.share({ message: shareMessage });
+    }
+  };
+
+  const handleDownloadImage = async () => {
+    // For web: use html2canvas to capture and share/download
+    const element = document.getElementById('share-card-preview');
+    if (element) {
+      try {
+        const { default: html2canvas } = await import('html2canvas');
+        const canvas = await html2canvas(element, {
+          backgroundColor: null,
+          scale: 2,
+          useCORS: true,
+        });
+
+        // Convert canvas to blob
+        canvas.toBlob(async (blob) => {
+          if (blob) {
+            // Try Web Share API first (mobile devices)
+            if (navigator.share && navigator.canShare) {
+              const file = new File([blob], '过午不食-成就.png', { type: 'image/png' });
+              const shareData = {
+                title: language === 'zh' ? '过午不食' : 'Fasting',
+                text: language === 'zh'
+                  ? `我已经坚持过午不食${stats.currentStreak}天，节省做饭和用餐时间各${stats.completedDays}小时！`
+                  : `I've been fasting for ${stats.currentStreak} days, saved ${stats.completedDays}h cooking and eating time!`,
+                files: [file],
+              };
+
+              try {
+                if (navigator.canShare(shareData)) {
+                  await navigator.share(shareData);
+                  setShowSharePreview(false);
+                  return;
+                }
+              } catch (err) {
+                // Share was cancelled or failed, fall through to download
+                if (err.name !== 'AbortError') {
+                  console.log('Share failed:', err);
+                }
+              }
+            }
+
+            // Fallback: download the image
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = '过午不食-成就.png';
+            link.href = url;
+            link.click();
+            URL.revokeObjectURL(url);
+            setShowSharePreview(false);
+          }
+        }, 'image/png');
+      } catch (err) {
+        console.error('Failed to generate image:', err);
+        alert(language === 'zh' ? '请截图保存' : 'Please take a screenshot to save');
+      }
     }
   };
 
@@ -137,10 +220,11 @@ export const HomeScreen: React.FC = () => {
   const styles = createResponsiveStyles();
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      contentContainerStyle={styles.content}
-    >
+    <View style={{ flex: 1 }}>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: colors.background }}
+        contentContainerStyle={styles.content}
+      >
       <View style={styles.header}>
         <Text style={[styles.greeting, { color: colors.text }]}>{t.welcome}</Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t.appName}</Text>
@@ -360,7 +444,257 @@ export const HomeScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Share Preview Modal (Web) */}
+      <Modal
+        visible={showSharePreview}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowSharePreview(false)}
+      >
+        <View style={styles.sharePreviewOverlay}>
+          <View style={styles.sharePreviewContent}>
+            <Text style={[styles.sharePreviewTitle, { color: colors.text }]}>
+              {language === 'zh' ? '分享成就' : 'Share Achievement'}
+            </Text>
+
+            {/* Share Card Preview */}
+            <View id="share-card-preview" style={styles.sharePreviewCard}>
+              <LinearGradient
+                colors={['#FF6B6B', '#FF8E53', '#FFA726']}
+                style={styles.shareCardBackground}
+              >
+                {/* Decorative circles */}
+                <View style={[styles.shareCircle, styles.shareCircle1]} />
+                <View style={[styles.shareCircle, styles.shareCircle2]} />
+                <View style={[styles.shareCircle, styles.shareCircle3]} />
+
+                <View style={styles.shareCardContent}>
+                  {/* Header */}
+                  <Text style={styles.shareGreeting}>
+                    {language === 'en' ? 'My Fasting Journey' : language === 'es' ? 'Mi Viaje de Ayuno' : '过午不食之路'}
+                  </Text>
+                  <Text style={styles.shareSubtitle}>
+                    {language === 'en' ? 'Building healthy habits, one day at a time' : language === 'es' ? 'Construyendo hábitos saludables, día a día' : '培养健康习惯，一天天坚持'}
+                  </Text>
+
+                  {/* Main Stats */}
+                  <View style={styles.shareMainStats}>
+                    <View style={styles.shareMainStatItem}>
+                      <Text style={styles.shareMainStatValue}>{stats.currentStreak}</Text>
+                      <Text style={styles.shareMainStatLabel}>
+                        {language === 'en' ? 'Day Streak' : language === 'es' ? 'Días Racha' : '连续天数'}
+                      </Text>
+                    </View>
+                    <View style={styles.shareStatDivider} />
+                    <View style={styles.shareMainStatItem}>
+                      <Text style={styles.shareMainStatValue}>{stats.completedDays}h</Text>
+                      <Text style={styles.shareMainStatLabel}>
+                        {language === 'en' ? 'Cooking Saved' : language === 'es' ? 'Cocina Ahorrada' : '节省做饭'}
+                      </Text>
+                    </View>
+                    <View style={styles.shareStatDivider} />
+                    <View style={styles.shareMainStatItem}>
+                      <Text style={styles.shareMainStatValue}>{stats.completedDays}h</Text>
+                      <Text style={styles.shareMainStatLabel}>
+                        {language === 'en' ? 'Eating Saved' : language === 'es' ? 'Comida Ahorrada' : '节省用餐'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Footer */}
+                  <View style={styles.shareFooter}>
+                    <View style={styles.shareFooterLine} />
+                    <Text style={styles.shareFooterText}>
+                      {language === 'zh' ? '下载app：' : language === 'es' ? 'Descarga la app:' : 'Download the app:'}
+                    </Text>
+                    <Text style={styles.shareFooterLink}>apps.apple.com/app/id6762360504</Text>
+                    <Text style={styles.shareFooterBrand}>"过午不食" Fasting App</Text>
+                  </View>
+                </View>
+              </LinearGradient>
+            </View>
+
+            {/* Action buttons */}
+            <View style={styles.sharePreviewActions}>
+              <TouchableOpacity
+                style={[styles.sharePreviewButton, styles.sharePreviewButtonCancel, { backgroundColor: colors.divider }]}
+                onPress={() => setShowSharePreview(false)}
+              >
+                <Text style={[styles.sharePreviewButtonText, { color: colors.text }]}>
+                  {language === 'zh' ? '关闭' : 'Close'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.sharePreviewButton, styles.sharePreviewButtonDownload, { backgroundColor: colors.primary }]}
+                onPress={handleDownloadImage}
+              >
+                <Text style={styles.sharePreviewButtonTextDownload}>
+                  📤 {language === 'zh' ? '分享' : 'Share'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.sharePreviewHint, { color: colors.textSecondary }]}>
+              {language === 'zh' ? '提示：也可以直接截图分享' : 'Tip: You can also take a screenshot'}
+            </Text>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Share Card Modal (Native) */}
+      <Modal
+        visible={showShareCardModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowShareCardModal(false)}
+      >
+        <View style={styles.shareCardModalOverlay}>
+          <View style={styles.shareCardModalContent}>
+            <Text style={[styles.shareCardModalTitle, { color: colors.text }]}>
+              {language === 'zh' ? '分享成就' : 'Share Achievement'}
+            </Text>
+
+            {/* Share Card - visible preview only (not used for capture) */}
+            <View
+              style={styles.shareCardModalCard}
+            >
+              {/* Decorative circles */}
+              <View style={[styles.shareCircle, styles.shareCircle1]} />
+              <View style={[styles.shareCircle, styles.shareCircle2]} />
+              <View style={[styles.shareCircle, styles.shareCircle3]} />
+
+              <View style={styles.shareCardContent}>
+                {/* Header */}
+                <Text style={styles.shareGreeting}>
+                  {language === 'en' ? 'My Fasting Journey' : language === 'es' ? 'Mi Viaje de Ayuno' : '过午不食之路'}
+                </Text>
+                <Text style={styles.shareSubtitle}>
+                  {language === 'en' ? 'Building healthy habits, one day at a time' : language === 'es' ? 'Construyendo hábitos saludables, día a día' : '培养健康习惯，一天天坚持'}
+                </Text>
+
+                {/* Main Stats */}
+                <View style={styles.shareMainStats}>
+                  <View style={styles.shareMainStatItem}>
+                    <Text style={styles.shareMainStatValue}>{stats.currentStreak}</Text>
+                    <Text style={styles.shareMainStatLabel}>
+                      {language === 'en' ? 'Day Streak' : language === 'es' ? 'Días Racha' : '连续天数'}
+                    </Text>
+                  </View>
+                  <View style={styles.shareStatDivider} />
+                  <View style={styles.shareMainStatItem}>
+                    <Text style={styles.shareMainStatValue}>{stats.completedDays}h</Text>
+                    <Text style={styles.shareMainStatLabel}>
+                      {language === 'en' ? 'Cooking Saved' : language === 'es' ? 'Cocina Ahorrada' : '节省做饭'}
+                    </Text>
+                  </View>
+                  <View style={styles.shareStatDivider} />
+                  <View style={styles.shareMainStatItem}>
+                    <Text style={styles.shareMainStatValue}>{stats.completedDays}h</Text>
+                    <Text style={styles.shareMainStatLabel}>
+                      {language === 'en' ? 'Eating Saved' : language === 'es' ? 'Comida Ahorrada' : '节省用餐'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Footer */}
+                <View style={styles.shareFooter}>
+                  <View style={styles.shareFooterLine} />
+                  <Text style={styles.shareFooterText}>
+                    {language === 'zh' ? '下载app：' : language === 'es' ? 'Descarga la app:' : 'Download the app:'}
+                  </Text>
+                  <Text style={styles.shareFooterLink}>apps.apple.com/app/id6762360504</Text>
+                  <Text style={styles.shareFooterBrand}>"过午不食" Fasting App</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Action buttons */}
+            <View style={styles.shareCardModalActions}>
+              <TouchableOpacity
+                style={[styles.shareCardModalButton, styles.shareCardModalButtonCancel, { backgroundColor: colors.divider }]}
+                onPress={() => setShowShareCardModal(false)}
+              >
+                <Text style={[styles.shareCardModalButtonText, { color: colors.text }]}>
+                  {language === 'zh' ? '取消' : 'Cancel'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.shareCardModalButton, styles.shareCardModalButtonShare, { backgroundColor: colors.primary }]}
+                onPress={handleNativeShare}
+              >
+                <Text style={styles.shareCardModalButtonTextShare}>
+                  📤 {language === 'zh' ? '分享' : 'Share'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </ScrollView>
+
+    {/* Hidden Share Card for capture - rendered outside ScrollView */}
+    <View
+      ref={shareCardRef}
+      collapsable={false}
+      style={styles.hiddenShareCard}
+    >
+      <LinearGradient
+        colors={['#FF6B6B', '#FF8E53', '#FFA726']}
+        style={{ width: '100%', height: '100%' }}
+      >
+        {/* Decorative circles */}
+        <View style={[styles.shareCircle, styles.shareCircle1]} />
+        <View style={[styles.shareCircle, styles.shareCircle2]} />
+        <View style={[styles.shareCircle, styles.shareCircle3]} />
+
+        <View style={styles.shareCardContent}>
+        {/* Header */}
+        <Text style={styles.shareGreeting}>
+          {language === 'en' ? 'My Fasting Journey' : language === 'es' ? 'Mi Viaje de Ayuno' : '过午不食之路'}
+        </Text>
+        <Text style={styles.shareSubtitle}>
+          {language === 'en' ? 'Building healthy habits, one day at a time' : language === 'es' ? 'Construyendo hábitos saludables, día a día' : '培养健康习惯，一天天坚持'}
+        </Text>
+
+        {/* Main Stats */}
+        <View style={styles.shareMainStats}>
+          <View style={styles.shareMainStatItem}>
+            <Text style={styles.shareMainStatValue}>{stats.currentStreak}</Text>
+            <Text style={styles.shareMainStatLabel}>
+              {language === 'en' ? 'Day Streak' : language === 'es' ? 'Días Racha' : '连续天数'}
+            </Text>
+          </View>
+          <View style={styles.shareStatDivider} />
+          <View style={styles.shareMainStatItem}>
+            <Text style={styles.shareMainStatValue}>{stats.completedDays}h</Text>
+            <Text style={styles.shareMainStatLabel}>
+              {language === 'en' ? 'Cooking Saved' : language === 'es' ? 'Cocina Ahorrada' : '节省做饭'}
+            </Text>
+          </View>
+          <View style={styles.shareStatDivider} />
+          <View style={styles.shareMainStatItem}>
+            <Text style={styles.shareMainStatValue}>{stats.completedDays}h</Text>
+            <Text style={styles.shareMainStatLabel}>
+              {language === 'en' ? 'Eating Saved' : language === 'es' ? 'Comida Ahorrada' : '节省用餐'}
+            </Text>
+          </View>
+        </View>
+
+        {/* Footer */}
+        <View style={styles.shareFooter}>
+          <View style={styles.shareFooterLine} />
+          <Text style={styles.shareFooterText}>
+            {language === 'zh' ? '下载app：' : language === 'es' ? 'Descarga la app:' : 'Download the app:'}
+          </Text>
+          <Text style={styles.shareFooterLink}>apps.apple.com/app/id6762360504</Text>
+          <Text style={styles.shareFooterBrand}>"过午不食" Fasting App</Text>
+        </View>
+        </View>
+      </LinearGradient>
+    </View>
+    </View>
   );
 };
 
@@ -374,9 +708,11 @@ const createResponsiveStyles = () => {
     },
     content: {
       padding: layout.contentPadding,
+      paddingTop: vs(60),
       paddingBottom: vs(40),
     },
     header: {
+      marginTop: vs(50),
       marginBottom: vs(20),
     },
     greeting: {
@@ -634,6 +970,225 @@ const createResponsiveStyles = () => {
         default: fs(16),
       }),
       fontWeight: '600',
+    },
+    shareCardBackground: {
+      width: '100%',
+      height: '100%',
+    },
+    shareCircle: {
+      position: 'absolute',
+      borderRadius: 1000,
+      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    shareCircle1: {
+      width: 200,
+      height: 200,
+      top: -50,
+      right: -50,
+    },
+    shareCircle2: {
+      width: 150,
+      height: 150,
+      bottom: 100,
+      left: -30,
+    },
+    shareCircle3: {
+      width: 100,
+      height: 100,
+      bottom: -30,
+      right: 50,
+    },
+    shareCardContent: {
+      flex: 1,
+      padding: 30,
+      alignItems: 'center',
+    },
+    shareGreeting: {
+      fontSize: 32,
+      fontWeight: 'bold',
+      color: '#fff',
+      marginTop: 40,
+      marginBottom: 8,
+      textAlign: 'center',
+    },
+    shareSubtitle: {
+      fontSize: 14,
+      color: 'rgba(255, 255, 255, 0.9)',
+      marginBottom: 30,
+      textAlign: 'center',
+    },
+    shareMainStats: {
+      flexDirection: 'row',
+      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+      borderRadius: 20,
+      padding: 20,
+      width: '100%',
+      justifyContent: 'space-around',
+    },
+    shareMainStatItem: {
+      alignItems: 'center',
+    },
+    shareMainStatValue: {
+      fontSize: 28,
+      fontWeight: 'bold',
+      color: '#fff',
+    },
+    shareMainStatLabel: {
+      fontSize: 11,
+      color: 'rgba(255, 255, 255, 0.9)',
+      marginTop: 4,
+      textAlign: 'center',
+    },
+    shareStatDivider: {
+      width: 1,
+      backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    shareFooter: {
+      position: 'absolute',
+      bottom: 30,
+      left: 30,
+      right: 30,
+      alignItems: 'center',
+    },
+    shareFooterLine: {
+      height: 1,
+      backgroundColor: 'rgba(255, 255, 255, 0.3)',
+      width: '100%',
+      marginBottom: 12,
+    },
+    shareFooterText: {
+      fontSize: 11,
+      color: 'rgba(255, 255, 255, 0.8)',
+      marginBottom: 4,
+    },
+    shareFooterLink: {
+      fontSize: 12,
+      color: '#fff',
+      fontWeight: 'bold',
+      marginBottom: 4,
+    },
+    shareFooterBrand: {
+      fontSize: 10,
+      color: 'rgba(255, 255, 255, 0.7)',
+    },
+    // Share Preview Modal styles
+    sharePreviewOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    sharePreviewContent: {
+      width: '100%',
+      maxWidth: 400,
+      alignItems: 'center',
+    },
+    sharePreviewTitle: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      marginBottom: 20,
+    },
+    sharePreviewCard: {
+      width: 320,
+      height: 450,
+      borderRadius: 20,
+      overflow: 'hidden',
+      marginBottom: 20,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    sharePreviewActions: {
+      flexDirection: 'row',
+      gap: 12,
+      width: '100%',
+      maxWidth: 320,
+    },
+    sharePreviewButton: {
+      flex: 1,
+      paddingVertical: 14,
+      borderRadius: 12,
+      alignItems: 'center',
+    },
+    sharePreviewButtonCancel: {
+      flex: 1,
+    },
+    sharePreviewButtonDownload: {
+      flex: 2,
+    },
+    sharePreviewButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    sharePreviewButtonTextDownload: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    sharePreviewHint: {
+      fontSize: 12,
+      marginTop: 16,
+      textAlign: 'center',
+    },
+    // Native share card modal styles
+    shareCardModalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    shareCardModalContent: {
+      alignItems: 'center',
+    },
+    shareCardModalTitle: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      marginBottom: 20,
+    },
+    shareCardModalCard: {
+      width: 320,
+      height: 480,
+      borderRadius: 20,
+      padding: 24,
+      marginBottom: 20,
+      backgroundColor: '#FF6B6B',
+    },
+    shareCardModalActions: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    shareCardModalButton: {
+      paddingVertical: 14,
+      paddingHorizontal: 24,
+      borderRadius: 12,
+      alignItems: 'center',
+      minWidth: 100,
+    },
+    shareCardModalButtonCancel: {},
+    shareCardModalButtonShare: {},
+    shareCardModalButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    shareCardModalButtonTextShare: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    // Hidden share card for capture - rendered off-screen for proper screenshot
+    hiddenShareCard: {
+      position: 'absolute',
+      width: 320,
+      height: 480,
+      bottom: -500, // Render off-screen to avoid visible interference
+      right: 10,
+      backgroundColor: '#FF6B6B',
+      borderRadius: 20,
+      overflow: 'hidden',
     },
   });
 };
