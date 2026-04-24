@@ -188,6 +188,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     totalHoursSaved: 0,
     currentAbstinenceStreak: 0,
     longestAbstinenceStreak: 0,
+    streakInGracePeriod: false,
     totalMeditationMinutes: 0,
     totalMeditationDays: 0,
     longestMeditationStreak: 0,
@@ -215,6 +216,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     calculateStats();
   }, [checkInRecords, weightRecords, practiceRecords]);
+
+  // 统计数据变化时重新调度提醒（用于宽限期通知）
+  useEffect(() => {
+    if (stats.streakInGracePeriod && settings.enableNotifications) {
+      scheduleDailyReminder();
+    }
+  }, [stats.streakInGracePeriod]);
 
   // 设置改变时重新调度提醒
   useEffect(() => {
@@ -302,13 +310,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const [hours, minutes] = settings.reminderTime.split(':').map(Number);
 
+    // 根据宽限期状态决定通知内容
+    const isInGracePeriod = stats.streakInGracePeriod;
+    const getNotificationMessage = () => {
+      if (isInGracePeriod) {
+        // 宽限期状态的特殊消息
+        if (language === 'zh') {
+          return '今天过午不食完成了吗？火苗已冰冻！赶快打卡，击碎冰冻火苗！';
+        } else if (language === 'es') {
+          return '¿Completaste el ayuno de hoy? ¡La llama está congelada! ¡Regístrate ahora para romper el hielo!';
+        }
+        return 'Did you complete your fasting today? Flame is frozen! Check in now to break the ice!';
+      }
+      // 正常消息
+      if (language === 'zh') {
+        return '今天过午不食完成了吗？快来打卡吧！';
+      } else if (language === 'es') {
+        return '¿Completaste el ayuno de hoy? ¡Regístrate ahora!';
+      }
+      return 'Did you complete your fasting today? Check in now!';
+    };
+
     // 安排每日重复提醒
     await Notifications.scheduleNotificationAsync({
       content: {
         title: language === 'zh' ? '过午不食打卡' : 'Daily Check-In',
-        body: language === 'zh'
-          ? '今天过午不食完成了吗？快来打卡吧！'
-          : 'Did you complete your fasting today? Check in now!',
+        body: getNotificationMessage(),
         sound: 'default',
         priority: Notifications.AndroidNotificationPriority.HIGH,
       },
@@ -406,6 +433,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     longestStreak = Math.max(longestStreak, currentStreak);
     longestAbstinenceStreak = Math.max(longestAbstinenceStreak, currentAbstinenceStreak);
 
+    // 判断是否处于宽限期状态：今天没打卡，且昨天也没打卡，但有连胜记录
+    const todayRecord = sortedRecords.find(r => r.date === today);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    const yesterdayRecord = sortedRecords.find(r => r.date === yesterdayStr);
+
+    // 如果今天没打卡（或没完成），且昨天也没完成打卡，但有连胜记录，说明处于宽限期
+    const streakInGracePeriod = currentStreak > 0 &&
+      (!todayRecord || !todayRecord.completed) &&
+      (!yesterdayRecord || !yesterdayRecord.completed);
+
     // 计算节省的卡路里、少吃顿数和时间
     const totalCaloriesSaved = completedDays * DINNER_CALORIES;
     const totalMealsSkipped = completedDays;
@@ -482,6 +521,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       totalHoursSaved,
       currentAbstinenceStreak,
       longestAbstinenceStreak,
+      streakInGracePeriod,
       totalMeditationMinutes,
       totalMeditationDays,
       longestMeditationStreak,

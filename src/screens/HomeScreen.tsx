@@ -116,8 +116,16 @@ export const HomeScreen: React.FC = () => {
     }
   };
 
-  // 获取火焰emoji，根据连胜天数变化
+  // 获取火焰emoji，根据连胜天数和宽限期状态变化
   const getFlameEmoji = () => {
+    // 如果处于宽限期，显示冰冻火苗
+    if (stats.streakInGracePeriod) {
+      if (stats.currentStreak >= 30) return '🧊🔥🔥';
+      if (stats.currentStreak >= 14) return '🧊🔥';
+      if (stats.currentStreak >= 7) return '🧊';
+      return '🥶';
+    }
+    // 正常状态
     if (stats.currentStreak >= 30) return '🔥🔥🔥';
     if (stats.currentStreak >= 14) return '🔥🔥';
     if (stats.currentStreak >= 7) return '🔥';

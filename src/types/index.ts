@@ -87,6 +87,7 @@ export interface UserStats {
   totalHoursSaved: number; // 节省的总小时数（每天2小时）
   currentAbstinenceStreak: number; // 当前禁欲连续天数
   longestAbstinenceStreak: number; // 最长禁欲连续天数
+  streakInGracePeriod: boolean; // 连胜是否处于宽限期
   // 修行统计
   totalMeditationMinutes: number; // 总打坐分钟数
   totalMeditationDays: number; // 打坐天数
