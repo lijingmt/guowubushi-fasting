@@ -9,13 +9,14 @@ import { MealsScreen } from '../screens/MealsScreen';
 import { StatsScreen } from '../screens/StatsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { HistoryScreen } from '../screens/HistoryScreen';
+import { FastingScreen } from '../screens/FastingScreen';
 import { responsiveSize, fs, vs, rs, layout, responsive } from '../theme/responsive';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 const TabNavigator = () => {
-  const { t, colors } = useApp();
+  const { t, colors, language } = useApp();
 
   return (
     <Tab.Navigator
@@ -47,6 +48,16 @@ const TabNavigator = () => {
           tabBarLabel: t.tabHome,
           tabBarIcon: ({ color }) => (
             <TabIcon name="🏠" color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Fasting"
+        component={FastingScreen}
+        options={{
+          tabBarLabel: language === 'zh' ? '禁食' : language === 'es' ? 'Ayuno' : 'Fasting',
+          tabBarIcon: ({ color }) => (
+            <TabIcon name="⏰" color={color} />
           ),
         }}
       />

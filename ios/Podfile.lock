@@ -251,6 +251,8 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - ExpoScreenshot (0.0.1):
+    - ExpoModulesCore
   - ExpoSharing (14.0.8):
     - ExpoModulesCore
   - ExpoSpeech (14.0.8):
@@ -2309,6 +2311,7 @@ DEPENDENCIES:
   - ExpoLinearGradient (from `../node_modules/expo-linear-gradient/ios`)
   - ExpoLocalization (from `../node_modules/expo-localization/ios`)
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
+  - ExpoScreenshot (from `../node_modules/expo-screenshot/ios`)
   - ExpoSharing (from `../node_modules/expo-sharing/ios`)
   - ExpoSpeech (from `../node_modules/expo-speech/ios`)
   - EXUpdatesInterface (from `../node_modules/expo-updates-interface/ios`)
@@ -2435,6 +2438,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-localization/ios"
   ExpoModulesCore:
     :path: "../node_modules/expo-modules-core"
+  ExpoScreenshot:
+    :path: "../node_modules/expo-screenshot/ios"
   ExpoSharing:
     :path: "../node_modules/expo-sharing/ios"
   ExpoSpeech:
@@ -2618,6 +2623,7 @@ SPEC CHECKSUMS:
   ExpoLinearGradient: 809102bdb979f590083af49f7fa4805cd931bd58
   ExpoLocalization: d9168d5300a5b03e5e78b986124d11fb6ec3ebbd
   ExpoModulesCore: f3da4f1ab5a8375d0beafab763739dbee8446583
+  ExpoScreenshot: 49c5f29830d917e5be82af5f2ee040e94d349e3c
   ExpoSharing: 0d983394ed4a80334bab5a0d5384f75710feb7e8
   ExpoSpeech: d22b56570ccfab5a27112dc9691f1ac83537de26
   EXUpdatesInterface: 5adf50cb41e079c861da6d9b4b954c3db9a50734

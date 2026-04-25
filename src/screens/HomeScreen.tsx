@@ -129,13 +129,25 @@ export const HomeScreen: React.FC = () => {
       console.error('Error details:', JSON.stringify(error));
       // Fallback to text sharing if image capture fails
       const getMessage = () => {
+        let message = '';
         if (hasCheckedToday && todayCheckIn?.completed) {
-          return t.shareMessage1
+          message = t.shareMessage1
             .replace('{{streak}}', stats.currentStreak.toString())
             .replace('{{days}}', stats.completedDays.toString())
             .replace('{{calories}}', stats.totalCaloriesSaved.toString());
+        } else {
+          message = t.shareMessage2.replace('{{days}}', stats.completedDays.toString());
         }
-        return t.shareMessage2.replace('{{days}}', stats.completedDays.toString());
+        // 添加禁食统计
+        if (stats.totalSingleFastingSessions > 0) {
+          const fastingText = language === 'zh'
+            ? `\n\n⏰ 单次禁食：${stats.totalSingleFastingSessions}次，${stats.totalSingleFastingMinutes}分钟`
+            : language === 'es'
+            ? `\n\n⏰ Ayuno único: ${stats.totalSingleFastingSessions} sesiones, ${stats.totalSingleFastingMinutes} minutos`
+            : `\n\n⏰ Single Fasting: ${stats.totalSingleFastingSessions} sessions, ${stats.totalSingleFastingMinutes} minutes`;
+          message += fastingText;
+        }
+        return message;
       };
       const shareMessage = `🔥 ${getMessage()}`;
       await Share.share({ message: shareMessage });

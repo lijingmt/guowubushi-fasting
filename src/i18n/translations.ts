@@ -254,6 +254,20 @@ export const translations = {
     achievement_merit_1000_title: '功德无量',
     achievement_merit_1000_desc: '获得1000点功德',
 
+    // 单次禁食成就
+    achievement_fasting_first_title: '初次禁食',
+    achievement_fasting_first_desc: '完成第一次单次禁食',
+    achievement_fasting_10_title: '禁食十次',
+    achievement_fasting_10_desc: '累计完成10次单次禁食',
+    achievement_fasting_100_title: '禁食百次',
+    achievement_fasting_100_desc: '累计完成100次单次禁食',
+    achievement_fasting_12h_title: '十二小时挑战',
+    achievement_fasting_12h_desc: '完成一次12小时禁食',
+    achievement_fasting_1000min_title: '千分钟禁食',
+    achievement_fasting_1000min_desc: '累计禁食1000分钟',
+    achievement_fasting_week_title: '禁食周连胜',
+    achievement_fasting_week_desc: '连续7天完成单次禁食',
+
     // 时间描述
     timeHours: '小时',
     timeMinutes: '分钟',
@@ -528,6 +542,20 @@ export const translations = {
     achievement_merit_1000_title: 'Thousand Merit',
     achievement_merit_1000_desc: 'Earn 1000 merit points',
 
+    // Single Fasting achievements
+    achievement_fasting_first_title: 'First Single Fast',
+    achievement_fasting_first_desc: 'Complete your first single fasting session',
+    achievement_fasting_10_title: '10 Sessions',
+    achievement_fasting_10_desc: 'Complete 10 single fasting sessions',
+    achievement_fasting_100_title: '100 Sessions',
+    achievement_fasting_100_desc: 'Complete 100 single fasting sessions',
+    achievement_fasting_12h_title: '12 Hour Challenge',
+    achievement_fasting_12h_desc: 'Complete a 12-hour fasting session',
+    achievement_fasting_1000min_title: '1000 Minutes',
+    achievement_fasting_1000min_desc: 'Accumulate 1000 minutes of fasting',
+    achievement_fasting_week_title: 'Weekly Streak',
+    achievement_fasting_week_desc: 'Complete single fasting for 7 consecutive days',
+
     // Time
     timeHours: 'hours',
     timeMinutes: 'minutes',
@@ -801,6 +829,20 @@ export const translations = {
     achievement_merit_100_desc: 'Gana 100 puntos de mérito',
     achievement_merit_1000_title: 'Mérito Mil',
     achievement_merit_1000_desc: 'Gana 1000 puntos de mérito',
+
+    // Single Fasting achievements
+    achievement_fasting_first_title: 'Primer Ayuno Único',
+    achievement_fasting_first_desc: 'Completa tu primera sesión de ayuno único',
+    achievement_fasting_10_title: '10 Sesiones',
+    achievement_fasting_10_desc: 'Completa 10 sesiones de ayuno único',
+    achievement_fasting_100_title: '100 Sesiones',
+    achievement_fasting_100_desc: 'Completa 100 sesiones de ayuno único',
+    achievement_fasting_12h_title: 'Desafío de 12 Horas',
+    achievement_fasting_12h_desc: 'Completa una sesión de ayuno de 12 horas',
+    achievement_fasting_1000min_title: '1000 Minutos',
+    achievement_fasting_1000min_desc: 'Acumula 1000 minutos de ayuno',
+    achievement_fasting_week_title: 'Racha Semanal',
+    achievement_fasting_week_desc: 'Completa ayuno único por 7 días consecutivos',
 
     // Time
     timeHours: 'horas',

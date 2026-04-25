@@ -172,6 +172,49 @@ export const ACHIEVEMENTS: Achievement[] = [
     icon: '✨',
     condition: (stats) => stats.totalMerit >= 1000,
   },
+  // 单次禁食成就
+  {
+    id: 'fasting_first',
+    titleKey: 'achievement_fasting_first_title',
+    descriptionKey: 'achievement_fasting_first_desc',
+    icon: '⏳',
+    condition: (stats) => stats.totalSingleFastingSessions >= 1,
+  },
+  {
+    id: 'fasting_10_sessions',
+    titleKey: 'achievement_fasting_10_title',
+    descriptionKey: 'achievement_fasting_10_desc',
+    icon: '⏰',
+    condition: (stats) => stats.totalSingleFastingSessions >= 10,
+  },
+  {
+    id: 'fasting_100_sessions',
+    titleKey: 'achievement_fasting_100_title',
+    descriptionKey: 'achievement_fasting_100_desc',
+    icon: '⏰⏰',
+    condition: (stats) => stats.totalSingleFastingSessions >= 100,
+  },
+  {
+    id: 'fasting_12h_session',
+    titleKey: 'achievement_fasting_12h_title',
+    descriptionKey: 'achievement_fasting_12h_desc',
+    icon: '🏆',
+    condition: (stats) => stats.totalSingleFastingMinutes >= 720, // 12小时
+  },
+  {
+    id: 'fasting_1000_minutes',
+    titleKey: 'achievement_fasting_1000min_title',
+    descriptionKey: 'achievement_fasting_1000min_desc',
+    icon: '⌛',
+    condition: (stats) => stats.totalSingleFastingMinutes >= 1000,
+  },
+  {
+    id: 'fasting_week_streak',
+    titleKey: 'achievement_fasting_week_title',
+    descriptionKey: 'achievement_fasting_week_desc',
+    icon: '🔥',
+    condition: (stats) => stats.currentSingleFastingStreak >= 7,
+  },
 ];
 
 // 食物卡路里参考数据

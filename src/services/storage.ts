@@ -7,6 +7,8 @@ import {
   WaterRecord,
   HealthSyncStatus,
   PracticeRecord,
+  FastingSession,
+  ActiveFastingState,
 } from '../types';
 import { DEFAULT_SETTINGS } from '../constants/achievements';
 
@@ -19,6 +21,8 @@ const KEYS = {
   HEALTH_SYNC: '@guowu_health_sync',
   PRACTICE_RECORDS: '@guowu_practice_records',
   LAST_WEIGHT: '@guowu_last_weight', // 上次选择的体重
+  FASTING_SESSIONS: '@guowu_fasting_sessions', // 单次禁食记录
+  ACTIVE_FASTING_STATE: '@guowu_active_fasting_state', // 当前活跃的禁食状态
 };
 
 // 设置相关
@@ -367,6 +371,8 @@ export const clearAllData = async (): Promise<void> => {
       KEYS.HEALTH_SYNC,
       KEYS.PRACTICE_RECORDS,
       KEYS.LAST_WEIGHT,
+      KEYS.FASTING_SESSIONS,
+      KEYS.ACTIVE_FASTING_STATE,
     ];
     for (const key of keys) {
       await AsyncStorage.removeItem(key);
@@ -374,4 +380,196 @@ export const clearAllData = async (): Promise<void> => {
   } catch (error) {
     console.error('Error clearing data:', error);
   }
+};
+
+// ============ 单次禁食相关 ============
+
+// 获取所有禁食会话记录
+export const getFastingSessions = async (): Promise<FastingSession[]> => {
+  try {
+    const data = await AsyncStorage.getItem(KEYS.FASTING_SESSIONS);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Error getting fasting sessions:', error);
+    return [];
+  }
+};
+
+// 保存禁食会话记录
+export const saveFastingSession = async (session: FastingSession): Promise<void> => {
+  try {
+    const sessions = await getFastingSessions();
+    const existingIndex = sessions.findIndex((s) => s.id === session.id);
+    if (existingIndex >= 0) {
+      sessions[existingIndex] = session;
+    } else {
+      sessions.push(session);
+    }
+    // 按开始时间排序
+    sessions.sort((a, b) => a.startTime - b.startTime);
+    await AsyncStorage.setItem(KEYS.FASTING_SESSIONS, JSON.stringify(sessions));
+  } catch (error) {
+    console.error('Error saving fasting session:', error);
+  }
+};
+
+// 获取今天的禁食会话记录
+export const getTodayFastingSessions = async (): Promise<FastingSession[]> => {
+  try {
+    const sessions = await getFastingSessions();
+    const today = new Date().toISOString().split('T')[0];
+    return sessions.filter((s) => s.date === today);
+  } catch (error) {
+    console.error('Error getting today fasting sessions:', error);
+    return [];
+  }
+};
+
+// 获取活跃的禁食状态
+export const getActiveFastingState = async (): Promise<ActiveFastingState | null> => {
+  try {
+    const data = await AsyncStorage.getItem(KEYS.ACTIVE_FASTING_STATE);
+    if (!data) return null;
+    const state: ActiveFastingState = JSON.parse(data);
+    // 检查是否已过期
+    if (state.endTime < Date.now()) {
+      // 已过期，清除状态但不在这里更新会话状态（让AppContext处理）
+      await saveActiveFastingState(null);
+      return null;
+    }
+    return state;
+  } catch (error) {
+    console.error('Error getting active fasting state:', error);
+    return null;
+  }
+};
+
+// 保存活跃的禁食状态
+export const saveActiveFastingState = async (state: ActiveFastingState | null): Promise<void> => {
+  try {
+    if (state) {
+      await AsyncStorage.setItem(KEYS.ACTIVE_FASTING_STATE, JSON.stringify(state));
+    } else {
+      await AsyncStorage.removeItem(KEYS.ACTIVE_FASTING_STATE);
+    }
+  } catch (error) {
+    console.error('Error saving active fasting state:', error);
+  }
+};
+
+// 更新禁食会话状态
+export const updateFastingSessionStatus = async (
+  id: string,
+  status: FastingSession['status'],
+  completedAt?: number
+): Promise<void> => {
+  try {
+    const sessions = await getFastingSessions();
+    const session = sessions.find((s) => s.id === id);
+    if (session) {
+      session.status = status;
+      if (completedAt) {
+        session.completedAt = completedAt;
+        // 计算实际时长（分钟）
+        session.actualDurationMinutes = Math.round((completedAt - session.startTime) / 60000);
+      }
+      await saveFastingSession(session);
+    }
+  } catch (error) {
+    console.error('Error updating fasting session status:', error);
+  }
+};
+
+// 计算禁食统计数据
+export const calculateFastingStats = async (): Promise<{
+  totalSessions: number;
+  totalMinutes: number;
+  currentStreak: number;
+  longestStreak: number;
+}> => {
+  try {
+    const sessions = await getFastingSessions();
+    // 只计算已完成的会话
+    const completedSessions = sessions.filter((s) => s.status === 'completed');
+
+    // 总次数
+    const totalSessions = completedSessions.length;
+
+    // 总分钟数
+    const totalMinutes = completedSessions.reduce((sum, s) => {
+      return sum + (s.actualDurationMinutes || s.durationHours * 60);
+    }, 0);
+
+    // 计算连续天数
+    const sessionDates = Array.from(
+      new Set(completedSessions.map((s) => s.date))
+    ).sort((a, b) => b.localeCompare(a)); // 降序
+
+    const today = new Date().toISOString().split('T')[0];
+    let currentStreak = 0;
+    let longestStreak = 0;
+    let tempStreak = 0;
+    let lastDate: string | null = null;
+
+    for (const date of sessionDates) {
+      if (!lastDate) {
+        tempStreak = 1;
+        lastDate = date;
+        // 如果是今天或昨天，开始计算当前连续
+        if (date === today || date === getYesterdayDate()) {
+          currentStreak = 1;
+        }
+      } else {
+        const daysDiff = getDaysDifference(date, lastDate);
+        if (daysDiff === 1) {
+          tempStreak++;
+          // 如果当前连续还在进行中
+          if (currentStreak > 0) {
+            currentStreak++;
+          }
+        } else {
+          longestStreak = Math.max(longestStreak, tempStreak);
+          tempStreak = 1;
+          // 如果断开了，重置当前连续（除非这个新日期是今天或昨天）
+          if (date === today || date === getYesterdayDate()) {
+            currentStreak = 1;
+          } else {
+            currentStreak = 0;
+          }
+        }
+        lastDate = date;
+      }
+    }
+    longestStreak = Math.max(longestStreak, tempStreak);
+
+    return {
+      totalSessions,
+      totalMinutes,
+      currentStreak,
+      longestStreak,
+    };
+  } catch (error) {
+    console.error('Error calculating fasting stats:', error);
+    return {
+      totalSessions: 0,
+      totalMinutes: 0,
+      currentStreak: 0,
+      longestStreak: 0,
+    };
+  }
+};
+
+// 辅助函数：获取昨天的日期
+const getYesterdayDate = (): string => {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return yesterday.toISOString().split('T')[0];
+};
+
+// 辅助函数：计算两个日期之间的天数差
+const getDaysDifference = (date1: string, date2: string): number => {
+  const d1 = new Date(date1);
+  const d2 = new Date(date2);
+  const diffTime = d2.getTime() - d1.getTime();
+  return Math.round(diffTime / (1000 * 60 * 60 * 24));
 };

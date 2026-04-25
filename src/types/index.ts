@@ -95,6 +95,34 @@ export interface UserStats {
   totalStandingMeditationMinutes: number; // 总站桩分钟数
   totalStandingMeditationDays: number; // 站桩天数
   totalMerit: number; // 总功德值
+  // 单次禁食统计
+  totalSingleFastingSessions: number; // 总禁食次数
+  totalSingleFastingMinutes: number; // 总禁食分钟数
+  currentSingleFastingStreak: number; // 当前禁食连续天数
+  longestSingleFastingStreak: number; // 最长禁食连续天数
+  fastingCaloriesSaved: number; // 禁食节省的卡路里
+  fastingEstimatedWeightLoss: number; // 预计通过禁食减少的体重（kg）
+}
+
+// 单次禁食会话记录
+export interface FastingSession {
+  id: string; // 唯一标识符
+  startTime: number; // 开始时间戳
+  endTime: number; // 计划结束时间戳
+  durationHours: number; // 计划时长（小时）
+  actualDurationMinutes?: number; // 实际时长（分钟），提前结束时记录
+  status: 'active' | 'completed' | 'cancelled'; // 会话状态
+  completedAt?: number; // 完成时间戳
+  date: string; // YYYY-MM-DD，用于统计聚合
+}
+
+// 活跃禁食状态（内存中）
+export interface ActiveFastingState {
+  sessionId: string; // 会话ID
+  startTime: number; // 开始时间戳
+  endTime: number; // 计划结束时间戳
+  durationHours: number; // 计划时长（小时）
+  notificationId?: string; // 通知ID
 }
 
 // 饮水记录类型

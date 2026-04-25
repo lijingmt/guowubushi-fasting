@@ -12,6 +12,8 @@ import {
   HealthSyncStatus,
   PracticeRecord,
   MeditationType,
+  FastingSession,
+  ActiveFastingState,
 } from '../types';
 import { DEFAULT_SETTINGS, DINNER_CALORIES } from '../constants/achievements';
 import {
@@ -37,6 +39,12 @@ import {
   getPracticeRecords,
   savePracticeRecord,
   deleteTodayPracticeRecords,
+  getFastingSessions,
+  saveFastingSession,
+  getActiveFastingState,
+  saveActiveFastingState,
+  updateFastingSessionStatus,
+  calculateFastingStats,
 } from '../services/storage';
 import { translations } from '../i18n/translations';
 import { Colors, lightColors, darkColors } from '../theme/colors';
@@ -131,6 +139,13 @@ interface AppContextType {
   ) => Promise<void>;
   deleteTodayPracticeAndWater: () => Promise<void>;
 
+  // 单次禁食
+  activeFasting: ActiveFastingState | null;
+  fastingSessions: FastingSession[];
+  startFastingSession: (durationHours: number) => Promise<void>;
+  cancelFastingSession: () => Promise<void>;
+  completeFastingSession: () => Promise<void>;
+
   // 加载状态
   isLoading: boolean;
 }
@@ -174,6 +189,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // 修行
   const [practiceRecords, setPracticeRecords] = useState<PracticeRecord[]>([]);
 
+  // 单次禁食
+  const [activeFasting, setActiveFasting] = useState<ActiveFastingState | null>(null);
+  const [fastingSessions, setFastingSessions] = useState<FastingSession[]>([]);
+
   // 统计
   const [stats, setStats] = useState<UserStats>({
     totalCheckInDays: 0,
@@ -195,6 +214,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     totalStandingMeditationMinutes: 0,
     totalStandingMeditationDays: 0,
     totalMerit: 0,
+    totalSingleFastingSessions: 0,
+    totalSingleFastingMinutes: 0,
+    currentSingleFastingStreak: 0,
+    longestSingleFastingStreak: 0,
+    fastingCaloriesSaved: 0,
+    fastingEstimatedWeightLoss: 0,
   });
 
   // 健康同步
@@ -215,7 +240,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // 计算统计数据
   useEffect(() => {
     calculateStats();
-  }, [checkInRecords, weightRecords, practiceRecords]);
+  }, [checkInRecords, weightRecords, practiceRecords, fastingSessions]);
 
   // 统计数据变化时重新调度提醒（用于宽限期通知）
   useEffect(() => {
@@ -280,6 +305,33 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const savedPractices = await getPracticeRecords();
       setPracticeRecords(savedPractices);
 
+      // 加载禁食会话记录
+      const savedFastingSessions = await getFastingSessions();
+      setFastingSessions(savedFastingSessions);
+
+      // 加载活跃的禁食状态
+      const savedActiveFasting = await getActiveFastingState();
+      if (savedActiveFasting) {
+        // 检查是否已过期
+        if (savedActiveFasting.endTime > Date.now()) {
+          setActiveFasting(savedActiveFasting);
+        } else {
+          // 已过期，清除状态但不标记为完成（可能用户主动取消的）
+          await saveActiveFastingState(null);
+          // 只会话已开始了很久才标记为完成（超过1小时）
+          const hoursSinceEnd = (Date.now() - savedActiveFasting.endTime) / (1000 * 60 * 60);
+          if (hoursSinceEnd < 1) {
+            // 如果刚过期不久（1小时内），标记为完成
+            await updateFastingSessionStatus(savedActiveFasting.sessionId, 'completed', savedActiveFasting.endTime);
+          } else {
+            // 否则标记为取消
+            await updateFastingSessionStatus(savedActiveFasting.sessionId, 'cancelled', Date.now());
+          }
+          const updatedSessions = await getFastingSessions();
+          setFastingSessions(updatedSessions);
+        }
+      }
+
       // 加载健康同步状态
       const savedHealthSync = await getHealthSyncStatus();
       setHealthSync(savedHealthSync);
@@ -297,6 +349,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     if (existingStatus !== 'granted') {
       await Notifications.requestPermissionsAsync();
+    }
+
+    // 清除所有遗留的通知，防止之前测试的通知被触发
+    try {
+      await Notifications.cancelAllScheduledNotificationsAsync();
+      console.log('Cleared all scheduled notifications on startup');
+    } catch (error) {
+      console.error('Error clearing notifications:', error);
     }
   };
 
@@ -508,6 +568,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return sum;
     }, 0);
 
+    // 计算单次禁食统计
+    const fastingStats = await calculateFastingStats();
+
     setStats({
       totalCheckInDays: totalDays,
       completedDays,
@@ -528,6 +591,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       totalStandingMeditationMinutes,
       totalStandingMeditationDays,
       totalMerit,
+      totalSingleFastingSessions: fastingStats.totalSessions,
+      totalSingleFastingMinutes: fastingStats.totalMinutes,
+      currentSingleFastingStreak: fastingStats.currentStreak,
+      longestSingleFastingStreak: fastingStats.longestStreak,
+      // 计算禁食节省的卡路里
+      // 假设：每小时禁食节省约70卡路里（相当于一顿轻食）
+      fastingCaloriesSaved: Math.round(fastingStats.totalMinutes * (70 / 60)),
+      // 计算预计体重减少
+      // 假设：7700卡路里 ≈ 1公斤体重
+      fastingEstimatedWeightLoss: parseFloat((fastingStats.totalMinutes * (70 / 60) / 7700).toFixed(2)),
     });
   };
 
@@ -708,6 +781,103 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     await saveHealthSyncStatus(updated);
   };
 
+  // 开始单次禁食会话
+  const startFastingSession = async (durationHours: number) => {
+    const now = Date.now();
+    const endTime = now + durationHours * 60 * 60 * 1000;
+    const sessionId = `fasting_${now}`;
+    const today = new Date().toISOString().split('T')[0];
+
+    console.log('Starting fasting session:', { durationHours, startTime: now, endTime });
+
+    // 创建会话记录
+    const session: FastingSession = {
+      id: sessionId,
+      startTime: now,
+      endTime,
+      durationHours,
+      status: 'active',
+      date: today,
+    };
+
+    // 创建活跃状态
+    const activeState: ActiveFastingState = {
+      sessionId,
+      startTime: now,
+      endTime,
+      durationHours,
+    };
+
+    // 保存到存储
+    await saveFastingSession(session);
+    await saveActiveFastingState(activeState);
+
+    // 更新状态
+    setActiveFasting(activeState);
+    const updatedSessions = await getFastingSessions();
+    setFastingSessions(updatedSessions);
+  };
+
+  // 取消禁食会话
+  const cancelFastingSession = async () => {
+    if (!activeFasting) return;
+
+    // 更新会话状态为取消
+    await updateFastingSessionStatus(activeFasting.sessionId, 'cancelled', Date.now());
+    await saveActiveFastingState(null);
+
+    // 取消通知
+    if (Platform.OS !== 'web') {
+      try {
+        await Notifications.cancelAllScheduledNotificationsAsync();
+        // 重新调度每日提醒
+        await scheduleDailyReminder();
+      } catch (error) {
+        console.error('Error cancelling notifications:', error);
+      }
+    }
+
+    // 更新状态
+    setActiveFasting(null);
+    const updatedSessions = await getFastingSessions();
+    setFastingSessions(updatedSessions);
+  };
+
+  // 完成禁食会话
+  const completeFastingSession = async () => {
+    if (!activeFasting) return;
+
+    // 更新会话状态为完成
+    await updateFastingSessionStatus(activeFasting.sessionId, 'completed', Date.now());
+    await saveActiveFastingState(null);
+
+    // 发送完成通知
+    if (settings.enableNotifications && Platform.OS !== 'web') {
+      try {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: language === 'zh' ? '🎉 禁食结束！' : language === 'es' ? '¡Ayuno terminado!' : 'Fasting Complete!',
+            body: language === 'zh'
+              ? `恭喜！你已完成${activeFasting.durationHours}小时禁食`
+              : language === 'es'
+              ? `¡Felicidades! Has completado ${activeFasting.durationHours} horas de ayuno`
+              : `Congratulations! You've completed ${activeFasting.durationHours} hours of fasting`,
+            sound: 'default',
+            priority: Notifications.AndroidNotificationPriority.HIGH,
+          },
+          trigger: null, // 立即显示
+        });
+      } catch (error) {
+        console.error('Error sending completion notification:', error);
+      }
+    }
+
+    // 更新状态
+    setActiveFasting(null);
+    const updatedSessions = await getFastingSessions();
+    setFastingSessions(updatedSessions);
+  };
+
   const t = translations[language];
 
   return (
@@ -742,6 +912,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         practiceRecords,
         addPractice,
         deleteTodayPracticeAndWater,
+        activeFasting,
+        fastingSessions,
+        startFastingSession,
+        cancelFastingSession,
+        completeFastingSession,
         isLoading,
       }}
     >
