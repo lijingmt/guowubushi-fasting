@@ -5,15 +5,20 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AppProvider } from './src/context/AppContext';
 import { AppNavigator } from './src/navigation/Tabs';
 
+// 开发模式：加载模拟数据脚本
+if (__DEV__) {
+  import('./scripts/mockData');
+}
+
 export default function App() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
         <AppProvider>
           <AppNavigator />
           <StatusBar style="auto" />
         </AppProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }

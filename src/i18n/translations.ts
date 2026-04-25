@@ -14,7 +14,6 @@ export const translations = {
     // 底部导航
     tabHome: '首页',
     tabHistory: '历史',
-    tabLeaderboard: '排行榜',
     tabMeals: '饮食',
     tabStats: '统计',
     tabSettings: '设置',
@@ -25,6 +24,8 @@ export const translations = {
     streak: '连胜',
     days: '天',
     dayUnit: '天',
+    gracePeriodHint: '允许1天宽限，偶尔忘记不会中断连胜',
+    gracePeriodNotification: '火苗已冰冻！赶快打卡，击碎冰冻火苗！',
     fastingTime: '禁食时间',
     nextMeal: '下一餐',
     brokeRule: '今天已进食',
@@ -141,23 +142,6 @@ export const translations = {
     startFirstDay: '开始你的第一天过午不食吧！',
     historyCompleted: '已完成',
     notCompletedLabel: '未完成',
-
-    // 排行榜
-    leaderboard: '排行榜',
-    leaderboardTitle: '全球修行榜',
-    leaderboardStreak: '连续天数榜',
-    leaderboardTotal: '累计天数榜',
-    leaderboardMerit: '功德榜',
-    rank: '排名',
-    nickname: '昵称',
-    score: '分数',
-    loading: '加载中...',
-    refresh: '刷新',
-    myRank: '我的排名',
-    notLoggedIn: '未登录',
-    leaderboardDisabled: '排行榜暂未开放',
-    comingSoon: '即将推出',
-    androidComingSoon: 'Android版本排行榜即将推出',
 
     // 设置页面
     settings: '设置',
@@ -304,7 +288,6 @@ export const translations = {
     // Tab Navigation
     tabHome: 'Home',
     tabHistory: 'History',
-    tabLeaderboard: 'Leaderboard',
     tabMeals: 'Meals',
     tabStats: 'Stats',
     tabSettings: 'Settings',
@@ -315,6 +298,8 @@ export const translations = {
     streak: 'Streak',
     days: 'days',
     dayUnit: 'days',
+    gracePeriodHint: '1-day grace period: missing a day won\'t break your streak',
+    gracePeriodNotification: 'Flame is frozen! Check in now to break the ice!',
     fastingTime: 'Fasting Time',
     nextMeal: 'Next Meal',
     brokeRule: 'Ate Today',
@@ -432,23 +417,6 @@ export const translations = {
     startFirstDay: 'Start your first day of fasting!',
     historyCompleted: 'Completed',
     notCompletedLabel: 'Not Completed',
-
-    // Leaderboard
-    leaderboard: 'Leaderboard',
-    leaderboardTitle: 'Global Practice Rankings',
-    leaderboardStreak: 'Streak Leaderboard',
-    leaderboardTotal: 'Total Days Leaderboard',
-    leaderboardMerit: 'Merit Leaderboard',
-    rank: 'Rank',
-    nickname: 'Nickname',
-    score: 'Score',
-    loading: 'Loading...',
-    refresh: 'Refresh',
-    myRank: 'My Rank',
-    notLoggedIn: 'Not Logged In',
-    leaderboardDisabled: 'Leaderboard Disabled',
-    comingSoon: 'Coming Soon',
-    androidComingSoon: 'Leaderboard coming soon for Android',
 
     // Settings
     settings: 'Settings',
@@ -594,7 +562,6 @@ export const translations = {
     // Tab Navigation
     tabHome: 'Inicio',
     tabHistory: 'Historial',
-    tabLeaderboard: 'Clasificación',
     tabMeals: 'Comidas',
     tabStats: 'Estadísticas',
     tabSettings: 'Ajustes',
@@ -605,6 +572,8 @@ export const translations = {
     streak: 'Racha',
     days: 'días',
     dayUnit: 'días',
+    gracePeriodHint: 'Período de gracia de 1 día: perder un día no romperá tu racha',
+    gracePeriodNotification: '¡La llama está congelada! ¡Regístrate ahora para romper el hielo!',
     fastingTime: 'Tiempo de Ayuno',
     nextMeal: 'Próxima Comida',
     brokeRule: 'Comió Hoy',
@@ -722,23 +691,6 @@ export const translations = {
     startFirstDay: '¡Comienza tu primer día de ayuno!',
     historyCompleted: 'Completado',
     notCompletedLabel: 'No Completado',
-
-    // Leaderboard
-    leaderboard: 'Clasificación',
-    leaderboardTitle: 'Clasificación Global',
-    leaderboardStreak: 'Racha',
-    leaderboardTotal: 'Días Totales',
-    leaderboardMerit: 'Mérito',
-    rank: 'Rango',
-    nickname: 'Apodo',
-    score: 'Puntuación',
-    loading: 'Cargando...',
-    refresh: 'Actualizar',
-    myRank: 'Mi Rango',
-    notLoggedIn: 'No Iniciado',
-    leaderboardDisabled: 'Clasificación Deshabilitada',
-    comingSoon: 'Próximamente',
-    androidComingSoon: 'Próximamente para Android',
 
     // Settings
     settings: 'Ajustes',

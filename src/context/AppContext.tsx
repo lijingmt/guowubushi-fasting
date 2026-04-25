@@ -188,6 +188,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     totalHoursSaved: 0,
     currentAbstinenceStreak: 0,
     longestAbstinenceStreak: 0,
+    streakInGracePeriod: false,
     totalMeditationMinutes: 0,
     totalMeditationDays: 0,
     longestMeditationStreak: 0,
@@ -215,6 +216,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     calculateStats();
   }, [checkInRecords, weightRecords, practiceRecords]);
+
+  // 统计数据变化时重新调度提醒（用于宽限期通知）
+  useEffect(() => {
+    if (stats.streakInGracePeriod && settings.enableNotifications) {
+      scheduleDailyReminder();
+    }
+  }, [stats.streakInGracePeriod]);
 
   // 设置改变时重新调度提醒
   useEffect(() => {
@@ -248,7 +256,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setCheckInRecords(savedCheckIns);
       const todayRecord = await getTodayCheckIn();
       setTodayCheckIn(todayRecord);
-      setHasCheckedToday(todayRecord !== null);
+      setHasCheckedToday(todayRecord?.completed || false);
 
       // 加载饮食记录
       const savedMeals = await getMealRecords();
@@ -302,13 +310,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const [hours, minutes] = settings.reminderTime.split(':').map(Number);
 
+    // 根据宽限期状态决定通知内容
+    const isInGracePeriod = stats.streakInGracePeriod;
+    const getNotificationMessage = () => {
+      if (isInGracePeriod) {
+        // 宽限期状态的特殊消息
+        if (language === 'zh') {
+          return '今天过午不食完成了吗？火苗已冰冻！赶快打卡，击碎冰冻火苗！';
+        } else if (language === 'es') {
+          return '¿Completaste el ayuno de hoy? ¡La llama está congelada! ¡Regístrate ahora para romper el hielo!';
+        }
+        return 'Did you complete your fasting today? Flame is frozen! Check in now to break the ice!';
+      }
+      // 正常消息
+      if (language === 'zh') {
+        return '今天过午不食完成了吗？快来打卡吧！';
+      } else if (language === 'es') {
+        return '¿Completaste el ayuno de hoy? ¡Regístrate ahora!';
+      }
+      return 'Did you complete your fasting today? Check in now!';
+    };
+
     // 安排每日重复提醒
     await Notifications.scheduleNotificationAsync({
       content: {
         title: language === 'zh' ? '过午不食打卡' : 'Daily Check-In',
-        body: language === 'zh'
-          ? '今天过午不食完成了吗？快来打卡吧！'
-          : 'Did you complete your fasting today? Check in now!',
+        body: getNotificationMessage(),
         sound: 'default',
         priority: Notifications.AndroidNotificationPriority.HIGH,
       },
@@ -324,11 +351,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const totalDays = checkInRecords.length;
     const completedDays = checkInRecords.filter((r) => r.completed).length;
 
-    // 计算连续天数
+    // 计算连续天数（带1天宽限期）
     let currentStreak = 0;
     let longestStreak = 0;
 
-    // 计算禁欲连续天数
+    // 计算禁欲连续天数（带1天宽限期）
     let currentAbstinenceStreak = 0;
     let longestAbstinenceStreak = 0;
 
@@ -339,27 +366,55 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const today = new Date().toISOString().split('T')[0];
     let checkingDate = new Date(today);
     let abstinenceDate = new Date(today);
+    let graceDaysUsed = 0; // 已使用的宽限天数
+    const GRACE_PERIOD = 1; // 宽限期天数
 
     for (const record of sortedRecords) {
       const recordDate = record.date;
       if (record.completed) {
         const checkDateStr = checkingDate.toISOString().split('T')[0];
+        const daysDiff = Math.floor(
+          (new Date(checkDateStr).getTime() - new Date(recordDate).getTime()) / (1000 * 60 * 60 * 24)
+        );
+
         if (recordDate === checkDateStr) {
+          // 日期匹配，增加连胜
           currentStreak++;
           checkingDate.setDate(checkingDate.getDate() - 1);
-        } else {
+          graceDaysUsed = 0; // 重置宽限期使用天数
+        } else if (daysDiff === 1 + graceDaysUsed) {
+          // 在宽限期内（跳过1天）
+          currentStreak++;
+          checkingDate = new Date(recordDate);
+          checkingDate.setDate(checkingDate.getDate() - 1);
+          graceDaysUsed++; // 增加已使用的宽限天数
+        } else if (daysDiff > 1 + graceDaysUsed) {
+          // 超过宽限期，重置连胜
           longestStreak = Math.max(longestStreak, currentStreak);
           currentStreak = 1;
           checkingDate = new Date(recordDate);
           checkingDate.setDate(checkingDate.getDate() - 1);
+          graceDaysUsed = 0;
+        } else {
+          // daysDiff < 1，说明记录顺序有问题，跳过
+          continue;
         }
 
         // 检查是否禁欲完成
         const hasAbstinence = record.notes && record.notes.includes('禁欲完成');
         if (hasAbstinence) {
           const abstinenceDateStr = abstinenceDate.toISOString().split('T')[0];
+          const abstinenceDaysDiff = Math.floor(
+            (new Date(abstinenceDateStr).getTime() - new Date(recordDate).getTime()) / (1000 * 60 * 60 * 24)
+          );
+
           if (recordDate === abstinenceDateStr) {
             currentAbstinenceStreak++;
+            abstinenceDate.setDate(abstinenceDate.getDate() - 1);
+          } else if (abstinenceDaysDiff === 1) {
+            // 禁欲也支持1天宽限期
+            currentAbstinenceStreak++;
+            abstinenceDate = new Date(recordDate);
             abstinenceDate.setDate(abstinenceDate.getDate() - 1);
           } else {
             longestAbstinenceStreak = Math.max(longestAbstinenceStreak, currentAbstinenceStreak);
@@ -377,6 +432,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     longestStreak = Math.max(longestStreak, currentStreak);
     longestAbstinenceStreak = Math.max(longestAbstinenceStreak, currentAbstinenceStreak);
+
+    // 判断是否处于宽限期状态：今天没打卡，且昨天也没打卡，但有连胜记录
+    const todayRecord = sortedRecords.find(r => r.date === today);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    const yesterdayRecord = sortedRecords.find(r => r.date === yesterdayStr);
+
+    // 如果今天没打卡（或没完成），且昨天也没完成打卡，但有连胜记录，说明处于宽限期
+    const streakInGracePeriod = currentStreak > 0 &&
+      (!todayRecord || !todayRecord.completed) &&
+      (!yesterdayRecord || !yesterdayRecord.completed);
 
     // 计算节省的卡路里、少吃顿数和时间
     const totalCaloriesSaved = completedDays * DINNER_CALORIES;
@@ -454,6 +521,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       totalHoursSaved,
       currentAbstinenceStreak,
       longestAbstinenceStreak,
+      streakInGracePeriod,
       totalMeditationMinutes,
       totalMeditationDays,
       longestMeditationStreak,
@@ -501,6 +569,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       await saveCheckInRecord(updatedRecord);
       setTodayCheckIn(updatedRecord);
+      setHasCheckedToday(completed);
 
       const updatedRecords = await getCheckInRecords();
       setCheckInRecords(updatedRecords);

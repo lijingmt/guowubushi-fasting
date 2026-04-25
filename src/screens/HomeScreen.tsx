@@ -199,8 +199,16 @@ export const HomeScreen: React.FC = () => {
     }
   };
 
-  // 获取火焰emoji，根据连胜天数变化
+  // 获取火焰emoji，根据连胜天数和宽限期状态变化
   const getFlameEmoji = () => {
+    // 如果处于宽限期，显示冰冻火苗
+    if (stats.streakInGracePeriod) {
+      if (stats.currentStreak >= 30) return '🧊🔥🔥';
+      if (stats.currentStreak >= 14) return '🧊🔥';
+      if (stats.currentStreak >= 7) return '🧊';
+      return '🥶';
+    }
+    // 正常状态
     if (stats.currentStreak >= 30) return '🔥🔥🔥';
     if (stats.currentStreak >= 14) return '🔥🔥';
     if (stats.currentStreak >= 7) return '🔥';
@@ -240,6 +248,7 @@ export const HomeScreen: React.FC = () => {
         <Text style={[styles.streakTitle, { color: colors.textSecondary }]}>{t.currentStreak}</Text>
         <Text style={[styles.streakCount, { color: colors.primary }]}>{stats.currentStreak}</Text>
         <Text style={[styles.streakLabel, { color: colors.textSecondary }]}>{t.dayUnit}</Text>
+        <Text style={[styles.gracePeriodHint, { color: colors.textTertiary }]}>{t.gracePeriodHint}</Text>
       </View>
 
       <View style={styles.statsRow}>
@@ -783,6 +792,15 @@ const createResponsiveStyles = () => {
     },
     streakLabel: {
       fontSize: responsiveSize.fontSize.xl,
+    },
+    gracePeriodHint: {
+      fontSize: responsive({
+        small: fs(10),
+        tablet: fs(12),
+        default: fs(11),
+      }),
+      marginTop: rs(4),
+      textAlign: 'center',
     },
     statsRow: {
       flexDirection: 'row',
