@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Alert, ScrollView } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { responsiveSize, fs, rs, vs } from '../theme/responsive';
 import * as Haptics from 'expo-haptics';
+import {
+  getFastingDisclaimerAgreed,
+  saveFastingDisclaimerAgreed,
+  getLastFastingDuration,
+  saveLastFastingDuration,
+} from '../services/storage';
 
 interface FastingTimerCardProps {
   colors: any;
@@ -12,8 +18,28 @@ interface FastingTimerCardProps {
 export const FastingTimerCard: React.FC<FastingTimerCardProps> = ({ colors, language }) => {
   const { t, activeFasting, startFastingSession, cancelFastingSession, completeFastingSession } = useApp();
   const [showSetupModal, setShowSetupModal] = useState(false);
+  const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
+  const [pendingQuickStart, setPendingQuickStart] = useState(false); // 是否在同意免责声明后快速开始
+  const [disclaimerAgreed, setDisclaimerAgreed] = useState(false);
+  const [lastFastingDuration, setLastFastingDuration] = useState(8); // 默认8小时
   const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0 });
-  const [initialized, setInitialized] = useState(false); // 标记倒计时是否已初始化
+  const [initialized, setInitialized] = useState(false);
+
+  // 加载免责声明同意状态和上次禁食时长
+  useEffect(() => {
+    loadDisclaimerStatus();
+    loadLastDuration();
+  }, []);
+
+  const loadDisclaimerStatus = async () => {
+    const agreed = await getFastingDisclaimerAgreed();
+    setDisclaimerAgreed(agreed);
+  };
+
+  const loadLastDuration = async () => {
+    const duration = await getLastFastingDuration();
+    setLastFastingDuration(duration);
+  };
 
   // 更新倒计时
   useEffect(() => {
@@ -39,10 +65,8 @@ export const FastingTimerCard: React.FC<FastingTimerCardProps> = ({ colors, lang
       setTimeLeft({ hours, minutes, seconds });
     };
 
-    // 立即计算一次剩余时间
     updateTimeLeft();
 
-    // 标记已初始化（在setTimeout中确保状态已更新）
     setTimeout(() => {
       setInitialized(true);
     }, 50);
@@ -52,18 +76,23 @@ export const FastingTimerCard: React.FC<FastingTimerCardProps> = ({ colors, lang
     return () => clearInterval(interval);
   }, [activeFasting]);
 
-  // 检查是否完成（只在已初始化且倒计时为0时）
+  // 检查是否完成
   useEffect(() => {
     if (initialized && activeFasting && timeLeft.hours === 0 && timeLeft.minutes === 0 && timeLeft.seconds === 0) {
-      // 时间到了，自动完成
       completeFastingSession();
       setInitialized(false);
     }
   }, [timeLeft, activeFasting, initialized]);
 
-  const handleStartPress = () => {
+  const handleStartPress = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setShowSetupModal(true);
+    // 检查是否已同意免责声明
+    const agreed = await getFastingDisclaimerAgreed();
+    if (agreed) {
+      setShowSetupModal(true);
+    } else {
+      setShowDisclaimerModal(true);
+    }
   };
 
   const handleCancel = async () => {
@@ -115,10 +144,16 @@ export const FastingTimerCard: React.FC<FastingTimerCardProps> = ({ colors, lang
     return '秒';
   };
 
-  // 测试按钮：5秒禁食
   const handleTest5Sec = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    await startFastingSession(5 / 3600); // 5秒 = 5/3600 小时
+    // 检查是否已同意免责声明
+    const agreed = await getFastingDisclaimerAgreed();
+    if (agreed) {
+      await startFastingSession(lastFastingDuration);
+    } else {
+      setPendingQuickStart(true);
+      setShowDisclaimerModal(true);
+    }
   };
 
   return (
@@ -138,7 +173,6 @@ export const FastingTimerCard: React.FC<FastingTimerCardProps> = ({ colors, lang
         </View>
 
         {activeFasting ? (
-          // 倒计时显示
           <View style={styles.timerContainer}>
             <View style={styles.timeSection}>
               <Text style={[styles.timeValue, { color: colors.primary }]}>{formatTime(timeLeft.hours)}</Text>
@@ -156,7 +190,6 @@ export const FastingTimerCard: React.FC<FastingTimerCardProps> = ({ colors, lang
             </View>
           </View>
         ) : (
-          // 开始按钮
           <>
             <TouchableOpacity
               style={[styles.startButton, { backgroundColor: colors.primary }]}
@@ -164,12 +197,11 @@ export const FastingTimerCard: React.FC<FastingTimerCardProps> = ({ colors, lang
             >
               <Text style={styles.startButtonText}>⏰ {getStartLabel()}</Text>
             </TouchableOpacity>
-            {/* 测试按钮：5秒禁食 */}
             <TouchableOpacity
-              style={[styles.testButton, { backgroundColor: colors.warning }]}
+              style={[styles.testButton, { backgroundColor: colors.success }]}
               onPress={handleTest5Sec}
             >
-              <Text style={styles.testButtonText}>⚡ 测试5秒</Text>
+              <Text style={styles.testButtonText}>⚡ {language === 'zh' ? `快速开始 ${lastFastingDuration}小时` : language === 'es' ? `Inicio Rápido ${lastFastingDuration}h` : `Quick Start ${lastFastingDuration}h`}</Text>
             </TouchableOpacity>
           </>
         )}
@@ -186,19 +218,288 @@ export const FastingTimerCard: React.FC<FastingTimerCardProps> = ({ colors, lang
         )}
       </View>
 
+      <FastingDisclaimerModal
+        visible={showDisclaimerModal}
+        onClose={() => {
+          setShowDisclaimerModal(false);
+          setPendingQuickStart(false);
+        }}
+        onAgree={async () => {
+          await saveFastingDisclaimerAgreed(true);
+          setDisclaimerAgreed(true);
+          setShowDisclaimerModal(false);
+          if (pendingQuickStart) {
+            // 快速开始模式
+            setPendingQuickStart(false);
+            await startFastingSession(lastFastingDuration);
+          } else {
+            // 显示时长选择
+            setShowSetupModal(true);
+          }
+        }}
+        colors={colors}
+        language={language}
+      />
+
       <FastingSetupModal
         visible={showSetupModal}
         onClose={() => setShowSetupModal(false)}
         onStart={async (hours) => {
+          await saveLastFastingDuration(hours);
+          setLastFastingDuration(hours);
           await startFastingSession(hours);
           setShowSetupModal(false);
         }}
         colors={colors}
         language={language}
+        initialHours={lastFastingDuration}
       />
     </>
   );
 };
+
+// 免责声明弹窗
+interface FastingDisclaimerModalProps {
+  visible: boolean;
+  onClose: () => void;
+  onAgree: () => void;
+  colors: any;
+  language: 'zh' | 'en' | 'es';
+}
+
+const FastingDisclaimerModal: React.FC<FastingDisclaimerModalProps> = ({
+  visible,
+  onClose,
+  onAgree,
+  colors,
+  language,
+}) => {
+  const [allChecked, setAllChecked] = useState(false);
+  const [checkboxes, setCheckboxes] = useState({
+    healthRisk: false,
+    stopImmediately: false,
+    notMedicalAdvice: false,
+    consultDoctor: false,
+  });
+
+  const toggleCheckbox = (key: keyof typeof checkboxes) => {
+    Haptics.selectionAsync();
+    const newCheckboxes = { ...checkboxes, [key]: !checkboxes[key] };
+    setCheckboxes(newCheckboxes);
+    setAllChecked(Object.values(newCheckboxes).every((v) => v));
+  };
+
+  const getTerms = () => {
+    if (language === 'en') {
+      return {
+        title: 'Fasting Disclaimer & Terms',
+        subtitle: 'Please read and accept the following terms before starting',
+        section1: {
+          title: '⚠️ Health Risks',
+          content: 'Fasting may not be suitable for everyone. If you have any of the following conditions, please consult a doctor before fasting:\n• Pregnant or breastfeeding\n• Eating disorders\n• Diabetes or blood sugar issues\n• Heart disease\n• Under 18 years old\n• Taking prescription medications',
+        },
+        section2: {
+          title: '🚨 Stop Immediately If Unwell',
+          content: 'If you experience any of the following symptoms during fasting, STOP immediately and eat:\n• Dizziness or lightheadedness\n• Palpitations or irregular heartbeat\n• Extreme weakness or fatigue\n• Nausea or vomiting\n• Chest pain\n• Fainting',
+        },
+        section3: {
+          title: '📋 Not Medical Advice',
+          content: 'This app provides fasting tracking tools only. The content is not intended to be a substitute for professional medical advice, diagnosis, or treatment.',
+        },
+        section4: {
+          title: '👨‍⚕️ Consult Your Doctor',
+          content: 'Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition or fasting program.',
+        },
+        agree1: 'I understand the health risks and confirm I am physically able to fast',
+        agree2: 'I promise to stop fasting immediately if I feel unwell',
+        agree3: 'I understand this is not medical advice',
+        agree4: 'I will consult a doctor if I have any health concerns',
+        agree: 'I Agree & Continue',
+        decline: 'Decline',
+      };
+    }
+    if (language === 'es') {
+      return {
+        title: 'Descargo de Responsabilidad y Términos',
+        subtitle: 'Por favor lee y acepta los siguientes términos antes de comenzar',
+        section1: {
+          title: '⚠️ Riesgos para la Salud',
+          content: 'El ayuno puede no ser adecuado para todos. Si tienes alguna de las siguientes condiciones, consulta a un médico antes de ayunar:\n• Embarazo o lactancia\n• Trastornos alimentarios\n• Diabetes o problemas de azúcar en sangre\n• Enfermedades cardíacas\n• Menores de 18 años\n• Tomando medicamentos recetados',
+        },
+        section2: {
+          title: '🚨 Detente Inmediatamente Si Te Sientes Mal',
+          content: 'Si experimentas alguno de los siguientes síntomas durante el ayuno, DETENTE inmediatamente y come:\n• Mareos o aturdimiento\n• Palpitaciones o latidos irregulares\n• Debilidad extrema o fatiga\n• Náuseas o vómitos\n• Dolor en el pecho\n• Desmayo',
+        },
+        section3: {
+          title: '📋 No Es Consejo Médico',
+          content: 'Esta aplicación solo proporciona herramientas de seguimiento de ayuno. El contenido no tiene como objetivo ser un sustituto del consejo médico profesional, diagnóstico o tratamiento.',
+        },
+        section4: {
+          title: '👨‍⚕️ Consulta a Tu Médico',
+          content: 'Siempre busca el consejo de tu médico u otro proveedor de salud calificado si tienes alguna pregunta sobre una condición médica o programa de ayuno.',
+        },
+        agree1: 'Entiendo los riesgos para la salud y confirmo que puedo físicamente ayunar',
+        agree2: 'Prometo detener el ayuno inmediatamente si me siento mal',
+        agree3: 'Entiendo que esto no es consejo médico',
+        agree4: 'Consultaré a un médico si tengo preocupaciones de salud',
+        agree: 'Acepto y Continuar',
+        decline: 'Declinar',
+      };
+    }
+    return {
+      title: '禁食免责声明与条款',
+      subtitle: '开始前请仔细阅读并同意以下条款',
+      section1: {
+        title: '⚠️ 健康风险',
+        content: '禁食可能不适合所有人。如果您有以下任何情况，请在禁食前咨询医生：\n• 孕期或哺乳期\n• 饮食失调\n• 糖尿病或血糖问题\n• 心脏疾病\n• 未满18岁\n• 正在服用处方药物',
+      },
+      section2: {
+        title: '🚨 身体不适立即停止',
+        content: '如果在禁食期间出现以下任何症状，请立即停止并进食：\n• 头晕或眼花\n• 心慌或心跳不规律\n• 极度虚弱或疲劳\n• 恶心或呕吐\n• 胸痛\n• 昏厥',
+      },
+      section3: {
+        title: '📋 非医疗建议',
+        content: '本应用仅提供禁食记录工具。内容不旨在替代专业医疗建议、诊断或治疗。',
+      },
+      section4: {
+        title: '👨‍⚕️ 咨询医生',
+        content: '对于任何医疗状况或禁食计划相关的疑问，请务必咨询您的医生或其他合格的健康提供者。',
+      },
+      agree1: '我了解健康风险，确认身体状况适合禁食',
+      agree2: '我承诺如果感到不适会立即停止禁食',
+      agree3: '我了解这不构成医疗建议',
+      agree4: '如有健康疑虑，我会咨询医生',
+      agree: '同意并继续',
+      decline: '取消',
+    };
+  };
+
+  const terms = getTerms();
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={[styles.disclaimerContent, { backgroundColor: colors.card }]}>
+          <Text style={[styles.disclaimerTitle, { color: colors.text }]}>{terms.title}</Text>
+          <Text style={[styles.disclaimerSubtitle, { color: colors.textSecondary }]}>
+            {terms.subtitle}
+          </Text>
+
+          <ScrollView style={styles.disclaimerScroll} showsVerticalScrollIndicator={false}>
+            {/* Section 1 */}
+            <View style={[styles.disclaimerSection, { backgroundColor: colors.warning + '10' }]}>
+              <Text style={[styles.disclaimerSectionTitle, { color: colors.warning }]}>
+                {terms.section1.title}
+              </Text>
+              <Text style={[styles.disclaimerSectionText, { color: colors.textSecondary }]}>
+                {terms.section1.content}
+              </Text>
+            </View>
+
+            {/* Section 2 */}
+            <View style={[styles.disclaimerSection, { backgroundColor: colors.error + '10' }]}>
+              <Text style={[styles.disclaimerSectionTitle, { color: colors.error }]}>
+                {terms.section2.title}
+              </Text>
+              <Text style={[styles.disclaimerSectionText, { color: colors.textSecondary }]}>
+                {terms.section2.content}
+              </Text>
+            </View>
+
+            {/* Section 3 */}
+            <View style={[styles.disclaimerSection, { backgroundColor: colors.info + '10' }]}>
+              <Text style={[styles.disclaimerSectionTitle, { color: colors.info }]}>
+                {terms.section3.title}
+              </Text>
+              <Text style={[styles.disclaimerSectionText, { color: colors.textSecondary }]}>
+                {terms.section3.content}
+              </Text>
+            </View>
+
+            {/* Section 4 */}
+            <View style={[styles.disclaimerSection, { backgroundColor: colors.success + '10' }]}>
+              <Text style={[styles.disclaimerSectionTitle, { color: colors.success }]}>
+                {terms.section4.title}
+              </Text>
+              <Text style={[styles.disclaimerSectionText, { color: colors.textSecondary }]}>
+                {terms.section4.content}
+              </Text>
+            </View>
+
+            {/* Checkboxes */}
+            <View style={styles.disclaimerCheckboxes}>
+              <DisclaimerCheckbox
+                checked={checkboxes.healthRisk}
+                onPress={() => toggleCheckbox('healthRisk')}
+                text={terms.agree1}
+                colors={colors}
+              />
+              <DisclaimerCheckbox
+                checked={checkboxes.stopImmediately}
+                onPress={() => toggleCheckbox('stopImmediately')}
+                text={terms.agree2}
+                colors={colors}
+              />
+              <DisclaimerCheckbox
+                checked={checkboxes.notMedicalAdvice}
+                onPress={() => toggleCheckbox('notMedicalAdvice')}
+                text={terms.agree3}
+                colors={colors}
+              />
+              <DisclaimerCheckbox
+                checked={checkboxes.consultDoctor}
+                onPress={() => toggleCheckbox('consultDoctor')}
+                text={terms.agree4}
+                colors={colors}
+              />
+            </View>
+          </ScrollView>
+
+          {/* Buttons */}
+          <View style={styles.disclaimerButtons}>
+            <TouchableOpacity
+              style={[styles.disclaimerButton, styles.declineButton, { backgroundColor: colors.backgroundSecondary }]}
+              onPress={onClose}
+            >
+              <Text style={[styles.disclaimerButtonText, { color: colors.text }]}>{terms.decline}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.disclaimerButton,
+                styles.agreeButton,
+                { backgroundColor: allChecked ? colors.primary : colors.divider },
+              ]}
+              onPress={onAgree}
+              disabled={!allChecked}
+            >
+              <Text style={styles.disclaimerAgreeText}>✓ {terms.agree}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+// 单个复选框组件
+const DisclaimerCheckbox: React.FC<{
+  checked: boolean;
+  onPress: () => void;
+  text: string;
+  colors: any;
+}> = ({ checked, onPress, text, colors }) => (
+  <TouchableOpacity style={styles.disclaimerCheckboxRow} onPress={onPress}>
+    <View style={[styles.disclaimerCheckbox, checked && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+      {checked && <Text style={styles.disclaimerCheckmark}>✓</Text>}
+    </View>
+    <Text style={[styles.disclaimerCheckboxText, { color: colors.text }]}>{text}</Text>
+  </TouchableOpacity>
+);
 
 interface FastingSetupModalProps {
   visible: boolean;
@@ -206,11 +507,26 @@ interface FastingSetupModalProps {
   onStart: (hours: number) => void;
   colors: any;
   language: 'zh' | 'en' | 'es';
+  initialHours?: number;
 }
 
-const FastingSetupModal: React.FC<FastingSetupModalProps> = ({ visible, onClose, onStart, colors, language }) => {
-  const [selectedHours, setSelectedHours] = useState(8);
+const FastingSetupModal: React.FC<FastingSetupModalProps> = ({
+  visible,
+  onClose,
+  onStart,
+  colors,
+  language,
+  initialHours = 8,
+}) => {
+  const [selectedHours, setSelectedHours] = useState(initialHours);
   const [warningAcknowledged, setWarningAcknowledged] = useState(false);
+
+  // 当弹窗打开时，更新选择的时长为初始值
+  useEffect(() => {
+    if (visible) {
+      setSelectedHours(initialHours);
+    }
+  }, [visible, initialHours]);
 
   const hours = [1, 2, 4, 6, 8, 10, 12];
 
@@ -221,35 +537,31 @@ const FastingSetupModal: React.FC<FastingSetupModalProps> = ({ visible, onClose,
   };
 
   const getHealthWarningTitle = () => {
-    if (language === 'en') return 'Health Warning';
-    if (language === 'es') return 'Advertencia de Salud';
-    return '健康提醒';
+    if (language === 'en') return 'Reminder';
+    if (language === 'es') return 'Recordatorio';
+    return '温馨提示';
   };
 
   const getHealthWarningText = () => {
     if (language === 'en') {
-      return 'If you feel unwell (dizziness, palpitations, weakness, etc.), please stop fasting immediately and eat. Health comes first!';
+      return 'Listen to your body. If you feel unwell, stop fasting immediately.';
     }
     if (language === 'es') {
-      return 'Si te sientes mal (mareos, palpitaciones, debilidad, etc.), por favor deja de ayunar inmediatamente y come. ¡La salud es lo primero!';
+      return 'Escucha a tu cuerpo. Si te sientes mal, deja de ayunar inmediatamente.';
     }
-    return '如果感到不适（头晕、心慌、虚弱等），请立即停止禁食并进食。健康第一！';
+    return '请听从身体的声音。如果感到不适，请立即停止禁食。';
   };
 
   const getAcknowledgeText = () => {
-    if (language === 'en') return 'I understand the health risks';
-    if (language === 'es') return 'Entiendo los riesgos para la salud';
-    return '我已了解健康风险';
+    if (language === 'en') return 'I understand';
+    if (language === 'es') return 'Entiendo';
+    return '我已了解';
   };
 
   const getStartText = () => {
     if (language === 'en') return 'Start';
     if (language === 'es') return 'Iniciar';
     return '开始';
-  };
-
-  const getCancelText = () => {
-    return t.cancel;
   };
 
   const t = {
@@ -259,14 +571,9 @@ const FastingSetupModal: React.FC<FastingSetupModalProps> = ({ visible, onClose,
   const handleStart = () => {
     if (!warningAcknowledged) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-
-    console.log('Starting fasting session with hours:', selectedHours);
-
     onStart(selectedHours);
-    setSelectedHours(8);
     setWarningAcknowledged(false);
 
-    // 显示开始成功提示
     const getSuccessTitle = () => {
       if (language === 'zh') return '禁食开始！';
       if (language === 'es') return '¡Ayuno iniciado!';
@@ -277,16 +584,12 @@ const FastingSetupModal: React.FC<FastingSetupModalProps> = ({ visible, onClose,
       if (language === 'es') return `¡Cuenta regresiva de ${selectedHours} horas iniciada, ¡ tú puedes!`;
       return `${selectedHours}h countdown started. You got this!`;
     };
-    const title = getSuccessTitle();
-    const message = getSuccessMessage();
-    console.log('Showing alert:', title, message);
     setTimeout(() => {
-      Alert.alert(title, message);
+      Alert.alert(getSuccessTitle(), getSuccessMessage());
     }, 100);
   };
 
   const handleClose = () => {
-    setSelectedHours(8);
     setWarningAcknowledged(false);
     onClose();
   };
@@ -302,34 +605,31 @@ const FastingSetupModal: React.FC<FastingSetupModalProps> = ({ visible, onClose,
         <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
           <Text style={[styles.modalTitle, { color: colors.text }]}>{getModalTitle()}</Text>
 
-          {/* 时长选择 */}
           <View style={styles.hoursGrid}>
-            {hours.map((hours) => (
+            {hours.map((h) => (
               <TouchableOpacity
-                key={hours}
+                key={h}
                 style={[
                   styles.hourButton,
-                  selectedHours === hours && { backgroundColor: colors.primary },
-                  selectedHours !== hours && { backgroundColor: colors.backgroundSecondary },
+                  selectedHours === h ? { backgroundColor: colors.primary } : { backgroundColor: colors.backgroundSecondary },
                 ]}
                 onPress={() => {
                   Haptics.selectionAsync();
-                  setSelectedHours(hours);
+                  setSelectedHours(h);
                 }}
               >
                 <Text
                   style={[
                     styles.hourButtonText,
-                    selectedHours === hours ? { color: '#fff' } : { color: colors.text },
+                    selectedHours === h ? { color: '#fff' } : { color: colors.text },
                   ]}
                 >
-                  {hours}h
+                  {h}h
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          {/* 健康警告 */}
           <View style={[styles.warningBox, { backgroundColor: colors.warning + '15' }]}>
             <Text style={[styles.warningTitle, { color: colors.warning }]}>⚠️ {getHealthWarningTitle()}</Text>
             <Text style={[styles.warningText, { color: colors.textSecondary }]}>
@@ -337,7 +637,6 @@ const FastingSetupModal: React.FC<FastingSetupModalProps> = ({ visible, onClose,
             </Text>
           </View>
 
-          {/* 确认复选框 */}
           <TouchableOpacity
             style={styles.checkboxRow}
             onPress={() => {
@@ -351,13 +650,12 @@ const FastingSetupModal: React.FC<FastingSetupModalProps> = ({ visible, onClose,
             <Text style={[styles.checkboxLabel, { color: colors.text }]}>{getAcknowledgeText()}</Text>
           </TouchableOpacity>
 
-          {/* 按钮 */}
           <View style={styles.modalButtons}>
             <TouchableOpacity
               style={[styles.modalButton, styles.cancelModalButton, { backgroundColor: colors.backgroundSecondary }]}
               onPress={handleClose}
             >
-              <Text style={[styles.modalButtonText, { color: colors.text }]}>{getCancelText()}</Text>
+              <Text style={[styles.modalButtonText, { color: colors.text }]}>{t.cancel}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[
@@ -368,9 +666,7 @@ const FastingSetupModal: React.FC<FastingSetupModalProps> = ({ visible, onClose,
               onPress={handleStart}
               disabled={!warningAcknowledged}
             >
-              <Text style={styles.startButtonText}>
-                ⏰ {getStartText()}
-              </Text>
+              <Text style={styles.startButtonText}>⏰ {getStartText()}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -553,6 +849,94 @@ const styles = StyleSheet.create({
   cancelModalButton: {},
   startModalButton: {},
   modalButtonText: {
+    fontSize: fs(16),
+    fontWeight: '600',
+  },
+  // Disclaimer modal styles
+  disclaimerContent: {
+    borderRadius: rs(24),
+    padding: rs(24),
+    width: '100%',
+    maxWidth: rs(400),
+    maxHeight: '80%',
+  },
+  disclaimerTitle: {
+    fontSize: fs(22),
+    fontWeight: 'bold',
+    marginBottom: vs(8),
+    textAlign: 'center',
+  },
+  disclaimerSubtitle: {
+    fontSize: fs(14),
+    marginBottom: vs(16),
+    textAlign: 'center',
+  },
+  disclaimerScroll: {
+    maxHeight: vs(400),
+    marginBottom: vs(16),
+  },
+  disclaimerSection: {
+    borderRadius: rs(12),
+    padding: rs(16),
+    marginBottom: vs(12),
+  },
+  disclaimerSectionTitle: {
+    fontSize: fs(15),
+    fontWeight: '700',
+    marginBottom: vs(8),
+  },
+  disclaimerSectionText: {
+    fontSize: fs(13),
+    lineHeight: vs(20),
+  },
+  disclaimerCheckboxes: {
+    marginTop: vs(8),
+  },
+  disclaimerCheckboxRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: vs(12),
+    paddingVertical: vs(4),
+  },
+  disclaimerCheckbox: {
+    width: rs(24),
+    height: rs(24),
+    borderRadius: rs(6),
+    borderWidth: 2,
+    borderColor: '#ccc',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: rs(12),
+    marginTop: vs(2),
+  },
+  disclaimerCheckmark: {
+    color: '#fff',
+    fontSize: fs(14),
+    fontWeight: 'bold',
+  },
+  disclaimerCheckboxText: {
+    fontSize: fs(13),
+    flex: 1,
+    lineHeight: vs(20),
+  },
+  disclaimerButtons: {
+    flexDirection: 'row',
+    gap: rs(12),
+  },
+  disclaimerButton: {
+    flex: 1,
+    paddingVertical: vs(14),
+    borderRadius: rs(12),
+    alignItems: 'center',
+  },
+  declineButton: {},
+  agreeButton: {},
+  disclaimerButtonText: {
+    fontSize: fs(16),
+    fontWeight: '600',
+  },
+  disclaimerAgreeText: {
+    color: '#fff',
     fontSize: fs(16),
     fontWeight: '600',
   },

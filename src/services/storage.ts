@@ -23,6 +23,8 @@ const KEYS = {
   LAST_WEIGHT: '@guowu_last_weight', // 上次选择的体重
   FASTING_SESSIONS: '@guowu_fasting_sessions', // 单次禁食记录
   ACTIVE_FASTING_STATE: '@guowu_active_fasting_state', // 当前活跃的禁食状态
+  FASTING_DISCLAIMER_AGREED: '@guowu_fasting_disclaimer_agreed', // 禁食免责声明同意状态
+  LAST_FASTING_DURATION: '@guowu_last_fasting_duration', // 上次选择的禁食时长
 };
 
 // 设置相关
@@ -572,4 +574,42 @@ const getDaysDifference = (date1: string, date2: string): number => {
   const d2 = new Date(date2);
   const diffTime = d2.getTime() - d1.getTime();
   return Math.round(diffTime / (1000 * 60 * 60 * 24));
+};
+
+// 禁食免责声明相关
+export const getFastingDisclaimerAgreed = async (): Promise<boolean> => {
+  try {
+    const data = await AsyncStorage.getItem(KEYS.FASTING_DISCLAIMER_AGREED);
+    return data === 'true';
+  } catch (error) {
+    console.error('Error getting disclaimer agreement:', error);
+    return false;
+  }
+};
+
+export const saveFastingDisclaimerAgreed = async (agreed: boolean): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(KEYS.FASTING_DISCLAIMER_AGREED, agreed ? 'true' : 'false');
+  } catch (error) {
+    console.error('Error saving disclaimer agreement:', error);
+  }
+};
+
+// 上次禁食时长相关
+export const getLastFastingDuration = async (): Promise<number> => {
+  try {
+    const data = await AsyncStorage.getItem(KEYS.LAST_FASTING_DURATION);
+    return data ? parseInt(data, 10) : 8; // 默认8小时
+  } catch (error) {
+    console.error('Error getting last fasting duration:', error);
+    return 8;
+  }
+};
+
+export const saveLastFastingDuration = async (hours: number): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(KEYS.LAST_FASTING_DURATION, hours.toString());
+  } catch (error) {
+    console.error('Error saving last fasting duration:', error);
+  }
 };

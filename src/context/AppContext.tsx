@@ -812,6 +812,42 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     await saveFastingSession(session);
     await saveActiveFastingState(activeState);
 
+    // 调度完成通知
+    if (settings.enableNotifications && Platform.OS !== 'web') {
+      try {
+        const triggerDate = new Date(endTime);
+        console.log('Scheduling notification at:', triggerDate.toISOString());
+        console.log('Current time:', new Date().toISOString());
+
+        const identifier = await Notifications.scheduleNotificationAsync({
+          content: {
+            title: language === 'zh' ? '🎉 禁食结束！' : language === 'es' ? '¡Ayuno terminado!' : 'Fasting Complete!',
+            body: language === 'zh'
+              ? `恭喜！你已完成${durationHours}小时禁食`
+              : language === 'es'
+              ? `¡Felicidades! Has completado ${durationHours} horas de ayuno`
+              : `Congratulations! You've completed ${durationHours} hours of fasting`,
+            sound: 'default',
+            priority: Notifications.AndroidNotificationPriority.HIGH,
+          },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: triggerDate,
+          },
+        });
+        console.log('Fasting completion notification scheduled with ID:', identifier);
+
+        // 调试：列出所有已调度的通知
+        const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+        console.log('All scheduled notifications:', scheduled.length);
+        scheduled.forEach(n => {
+          console.log('- ID:', n.identifier, 'Trigger:', JSON.stringify(n.trigger));
+        });
+      } catch (error) {
+        console.error('Error scheduling notification:', error);
+      }
+    }
+
     // 更新状态
     setActiveFasting(activeState);
     const updatedSessions = await getFastingSessions();
@@ -851,24 +887,37 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     await updateFastingSessionStatus(activeFasting.sessionId, 'completed', Date.now());
     await saveActiveFastingState(null);
 
-    // 发送完成通知
+    // 立即显示完成通知
     if (settings.enableNotifications && Platform.OS !== 'web') {
       try {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: language === 'zh' ? '🎉 禁食结束！' : language === 'es' ? '¡Ayuno terminado!' : 'Fasting Complete!',
-            body: language === 'zh'
-              ? `恭喜！你已完成${activeFasting.durationHours}小时禁食`
-              : language === 'es'
-              ? `¡Felicidades! Has completado ${activeFasting.durationHours} horas de ayuno`
-              : `Congratulations! You've completed ${activeFasting.durationHours} hours of fasting`,
-            sound: 'default',
-            priority: Notifications.AndroidNotificationPriority.HIGH,
-          },
-          trigger: null, // 立即显示
+        await Notifications.presentNotificationAsync({
+          title: language === 'zh' ? '🎉 禁食结束！' : language === 'es' ? '¡Ayuno terminado!' : 'Fasting Complete!',
+          body: language === 'zh'
+            ? `恭喜！你已完成${activeFasting.durationHours}小时禁食`
+            : language === 'es'
+            ? `¡Felicidades! Has completado ${activeFasting.durationHours} horas de ayuno`
+            : `Congratulations! You've completed ${activeFasting.durationHours} hours of fasting`,
+          sound: 'default',
+          priority: Notifications.AndroidNotificationPriority.HIGH,
         });
+        console.log('Fasting completion notification presented immediately');
+
+        // 取消其他已调度的通知
+        await Notifications.cancelAllScheduledNotificationsAsync();
+        // 重新调度每日提醒
+        await scheduleDailyReminder();
       } catch (error) {
-        console.error('Error sending completion notification:', error);
+        console.error('Error presenting completion notification:', error);
+      }
+    } else {
+      // 如果没有启用通知，仍然需要清理已调度的通知
+      if (Platform.OS !== 'web') {
+        try {
+          await Notifications.cancelAllScheduledNotificationsAsync();
+          await scheduleDailyReminder();
+        } catch (error) {
+          console.error('Error cancelling scheduled notification:', error);
+        }
       }
     }
 

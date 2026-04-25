@@ -319,6 +319,18 @@ export const SettingsScreen: React.FC = () => {
             Linking.openURL('https://github.com/lijingmt/guowubushi-fasting/blob/main/PRIVACY.md');
           }}
         />
+        <Divider />
+        <SettingItem
+          label="👋 重置欢迎页"
+          value="重新显示用户协议"
+          onPress={async () => {
+            await AsyncStorage.removeItem('@guowu_terms_agreed');
+            Alert.alert(
+              language === 'zh' ? '已重置' : 'Reset Complete',
+              language === 'zh' ? '下次启动将显示欢迎页面' : 'Welcome screen will show on next launch'
+            );
+          }}
+        />
       </Card>
 
       {/* 开发者测试选项 - 仅开发模式显示 */}
@@ -350,6 +362,15 @@ export const SettingsScreen: React.FC = () => {
               label="🗑️ 清除数据"
               value="删除所有打卡记录"
               onPress={clearMockData}
+            />
+            <Divider />
+            <SettingItem
+              label="👋 重置欢迎页"
+              value="重新显示用户协议"
+              onPress={async () => {
+                await AsyncStorage.removeItem('@guowu_terms_agreed');
+                Alert.alert('已重置', '下次启动将显示欢迎页面');
+              }}
             />
           </Card>
         </>
