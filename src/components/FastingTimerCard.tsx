@@ -289,6 +289,18 @@ const FastingDisclaimerModal: React.FC<FastingDisclaimerModalProps> = ({
     setAllChecked(Object.values(newCheckboxes).every((v) => v));
   };
 
+  const handleAgreeAll = () => {
+    Haptics.selectionAsync();
+    const allTrue = {
+      healthRisk: true,
+      stopImmediately: true,
+      notMedicalAdvice: true,
+      consultDoctor: true,
+    };
+    setCheckboxes(allTrue);
+    setAllChecked(true);
+  };
+
   const getTerms = () => {
     if (language === 'en') {
       return {
@@ -314,6 +326,7 @@ const FastingDisclaimerModal: React.FC<FastingDisclaimerModalProps> = ({
         agree2: 'I promise to stop fasting immediately if I feel unwell',
         agree3: 'I understand this is not medical advice',
         agree4: 'I will consult a doctor if I have any health concerns',
+        agreeAll: '✓ Agree All',
         agree: 'I Agree & Continue',
         decline: 'Decline',
       };
@@ -342,6 +355,7 @@ const FastingDisclaimerModal: React.FC<FastingDisclaimerModalProps> = ({
         agree2: 'Prometo detener el ayuno inmediatamente si me siento mal',
         agree3: 'Entiendo que esto no es consejo médico',
         agree4: 'Consultaré a un médico si tengo preocupaciones de salud',
+        agreeAll: '✓ Aceptar Todo',
         agree: 'Acepto y Continuar',
         decline: 'Declinar',
       };
@@ -369,6 +383,7 @@ const FastingDisclaimerModal: React.FC<FastingDisclaimerModalProps> = ({
       agree2: '我承诺如果感到不适会立即停止禁食',
       agree3: '我了解这不构成医疗建议',
       agree4: '如有健康疑虑，我会咨询医生',
+      agreeAll: '✓ 同意全部',
       agree: '同意并继续',
       decline: '取消',
     };
@@ -433,6 +448,12 @@ const FastingDisclaimerModal: React.FC<FastingDisclaimerModalProps> = ({
 
             {/* Checkboxes */}
             <View style={styles.disclaimerCheckboxes}>
+              <TouchableOpacity
+                style={[styles.agreeAllButton, { backgroundColor: colors.primary + '15', borderColor: colors.primary }]}
+                onPress={handleAgreeAll}
+              >
+                <Text style={[styles.agreeAllButtonText, { color: colors.primary }]}>{terms.agreeAll}</Text>
+              </TouchableOpacity>
               <DisclaimerCheckbox
                 checked={checkboxes.healthRisk}
                 onPress={() => toggleCheckbox('healthRisk')}
@@ -891,6 +912,20 @@ const styles = StyleSheet.create({
   },
   disclaimerCheckboxes: {
     marginTop: vs(8),
+  },
+  agreeAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: vs(12),
+    paddingHorizontal: rs(20),
+    borderRadius: rs(12),
+    borderWidth: 1,
+    marginBottom: vs(8),
+  },
+  agreeAllButtonText: {
+    fontSize: fs(15),
+    fontWeight: '600',
   },
   disclaimerCheckboxRow: {
     flexDirection: 'row',
