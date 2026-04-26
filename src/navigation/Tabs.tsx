@@ -101,8 +101,9 @@ export const AppNavigator = () => {
         screenOptions={{
           headerShown: true,
           headerShadowVisible: false,
+          headerStyle: { backgroundColor: colors.background },
           contentStyle: { backgroundColor: colors.background },
-          headerTitleStyle: { fontSize: 18, fontWeight: '600' },
+          headerTitleStyle: { fontSize: 18, fontWeight: '600', color: colors.text },
           headerTintColor: colors.text,
         }}
       >
