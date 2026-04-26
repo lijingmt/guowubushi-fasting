@@ -101,10 +101,10 @@ export const AppNavigator = () => {
         screenOptions={{
           headerShown: true,
           headerShadowVisible: false,
-          headerStyle: { backgroundColor: colors.background },
+          headerStyle: { backgroundColor: colors.card },
           contentStyle: { backgroundColor: colors.background },
           headerTitleStyle: { fontSize: 18, fontWeight: '600', color: colors.text },
-          headerTintColor: colors.text,
+          headerTintColor: colors.primary,
         }}
       >
         <Stack.Screen
