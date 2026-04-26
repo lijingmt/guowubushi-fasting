@@ -5,7 +5,9 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Platform,
 } from 'react-native';
+import { Audio } from 'expo-av';
 import { useApp } from '../context/AppContext';
 import { fs, rs, vs, layout } from '../theme/responsive';
 import * as Haptics from 'expo-haptics';
@@ -23,8 +25,37 @@ export const MeditationScreen = () => {
   const [hasActiveSession, setHasActiveSession] = useState(false);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
+
+  // 播放钟声
+  const playBellSound = async () => {
+    try {
+      if (soundRef.current) {
+        await soundRef.current.unloadAsync();
+      }
+      const { sound } = await Audio.Sound.createAsync(
+        require('../../assets/sounds/bell.mp3'),
+        { shouldPlay: true, volume: 1.0 }
+      );
+      soundRef.current = sound;
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          sound.unloadAsync();
+        }
+      });
+    } catch (error) {
+      console.error('Error playing bell sound:', error);
+    }
+  };
 
   useEffect(() => {
+    // 配置音频
+    Audio.setAudioModeAsync({
+      allowsRecordingIOS: false,
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: true,
+    }).catch(console.error);
+
     loadSettings();
     return () => {
       cleanup();
@@ -84,6 +115,9 @@ export const MeditationScreen = () => {
     setHasActiveSession(false);
 
     await addPractice('meditation', selectedDuration);
+
+    // 播放钟声
+    await playBellSound();
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
