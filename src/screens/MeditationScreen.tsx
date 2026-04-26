@@ -46,7 +46,7 @@ export const MeditationScreen = () => {
         await bellSoundRef.current.unloadAsync();
       }
       const { sound } = await Audio.Sound.createAsync(
-        require('../../assets/sounds/bell.mp3'),
+        require('../../assets/sounds/temple_bell.mp3'),
         { shouldPlay: true, volume: 1.0 }
       );
       bellSoundRef.current = sound;
