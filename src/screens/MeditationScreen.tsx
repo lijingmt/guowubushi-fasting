@@ -13,17 +13,22 @@ import { useApp } from '../context/AppContext';
 import { fs, rs, vs, layout } from '../theme/responsive';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { MeditationShareCard } from '../components/MeditationShareCard';
+import { MeditationAnimation } from '../components/MeditationAnimation';
 
 const MEDITATION_DURATION_KEY = '@guowu_meditation_duration';
 const MEDITATION_SOUND_KEY = '@guowu_meditation_sound';
 
 const DURATIONS = [1, 5, 10, 15, 30, 60, 120, 180, 300];
 
-type BackgroundSound = 'none' | 'insects';
+type BackgroundSound = 'none' | 'insects' | 'ocean' | 'rain' | 'birds';
 
 const BACKGROUND_SOUNDS: Record<BackgroundSound, { zh: string; en: string; es: string }> = {
   none: { zh: '无', en: 'None', es: 'Ninguno' },
   insects: { zh: '🦗 虫鸣', en: '🦗 Insects', es: '🦗 Insectos' },
+  ocean: { zh: '🌊 海潮', en: '🌊 Ocean', es: '🌊 Océano' },
+  rain: { zh: '🌧️ 雨声', en: '🌧️ Rain', es: '🌧️ Lluvia' },
+  birds: { zh: '🐦 鸟鸣', en: '🐦 Birds', es: '🐦 Pájaros' },
 };
 
 export const MeditationScreen = () => {
@@ -31,6 +36,7 @@ export const MeditationScreen = () => {
   const [selectedDuration, setSelectedDuration] = useState(15);
   const [backgroundSound, setBackgroundSound] = useState<BackgroundSound>('none');
   const [showSoundPicker, setShowSoundPicker] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [hasActiveSession, setHasActiveSession] = useState(false);
@@ -75,6 +81,12 @@ export const MeditationScreen = () => {
       let source: any;
       if (sound === 'insects') {
         source = require('../../assets/sounds/insects.mp3');
+      } else if (sound === 'ocean') {
+        source = require('../../assets/sounds/ocean.mp3');
+      } else if (sound === 'rain') {
+        source = require('../../assets/sounds/rain.mp3');
+      } else if (sound === 'birds') {
+        source = require('../../assets/sounds/birds.mp3');
       }
 
       if (source) {
@@ -130,7 +142,7 @@ export const MeditationScreen = () => {
         setSelectedDuration(parseInt(savedDuration, 10));
       }
       const savedSound = await AsyncStorage.getItem(MEDITATION_SOUND_KEY);
-      if (savedSound && (savedSound === 'none' || savedSound === 'insects')) {
+      if (savedSound && (savedSound === 'none' || savedSound === 'insects' || savedSound === 'ocean' || savedSound === 'rain' || savedSound === 'birds')) {
         setBackgroundSound(savedSound as BackgroundSound);
       }
     } catch (error) {
@@ -323,6 +335,10 @@ export const MeditationScreen = () => {
 
         {hasActiveSession ? (
           <View style={[styles.timerDisplay, { backgroundColor: colors.card }]}>
+            {/* 背景音效动画 */}
+            {isTimerRunning && backgroundSound !== 'none' && (
+              <MeditationAnimation soundType={backgroundSound as 'rain' | 'ocean' | 'insects' | 'birds'} />
+            )}
             <Text style={[styles.timerValue, { color: colors.primary }]}>{formatTime(timeLeft)}</Text>
             <Text style={[styles.timerLabel, { color: colors.textSecondary }]}>
               {getMeditatingLabel()}
@@ -394,6 +410,21 @@ export const MeditationScreen = () => {
         </Text>
       </View>
 
+      {/* 分享按钮 */}
+      <TouchableOpacity
+        style={[styles.shareButton, { backgroundColor: colors.primary }]}
+        onPress={() => setShowShareModal(true)}
+      >
+        <Text style={styles.shareButtonText}>
+          📤 {language === 'zh' ? '分享我的打坐' : language === 'es' ? 'Compartir' : 'Share My Meditation'}
+        </Text>
+      </TouchableOpacity>
+
+      {/* 音效来源说明 */}
+      <Text style={[styles.attributionText, { color: colors.textLight }]}>
+        {language === 'zh' ? '部分音效来源' : language === 'es' ? 'Algunas fuentes de sonido' : 'Some Sound Effects'}: Pixabay (royalty-free)
+      </Text>
+
       {/* 背景音乐选择弹窗 */}
       <Modal
         visible={showSoundPicker}
@@ -439,6 +470,18 @@ export const MeditationScreen = () => {
           </View>
         </View>
       </Modal>
+
+      {/* 分享弹窗 */}
+      {showShareModal && (
+        <MeditationShareCard
+          totalMinutes={stats.totalMeditationMinutes || 0}
+          sessionCount={stats.meditationSessionCount || 0}
+          longestSession={stats.longestMeditationSession || 0}
+          language={language}
+          colors={colors}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
     </ScrollView>
   );
 };
@@ -580,6 +623,24 @@ const styles = StyleSheet.create({
   todayStatsValue: {
     fontSize: fs(20),
     fontWeight: 'bold',
+  },
+  shareButton: {
+    marginHorizontal: layout.contentPadding,
+    marginTop: vs(12),
+    paddingVertical: vs(16),
+    borderRadius: rs(16),
+    alignItems: 'center',
+  },
+  shareButtonText: {
+    color: '#fff',
+    fontSize: fs(18),
+    fontWeight: '600',
+  },
+  attributionText: {
+    fontSize: fs(11),
+    textAlign: 'center',
+    marginTop: vs(8),
+    paddingHorizontal: layout.contentPadding,
   },
   // Modal styles
   modalOverlay: {

@@ -329,8 +329,8 @@ export const SettingsScreen: React.FC = () => {
         />
         <Divider />
         <SettingItem
-          label="👋 重置欢迎页"
-          value="重新显示用户协议"
+          label={language === 'zh' ? '👋 重置欢迎页' : '👋 Reset Welcome'}
+          value={language === 'zh' ? '重新显示用户协议' : 'Show welcome screen again'}
           onPress={async () => {
             await AsyncStorage.removeItem('@guowu_terms_agreed');
             Alert.alert(
@@ -373,16 +373,30 @@ export const SettingsScreen: React.FC = () => {
             />
             <Divider />
             <SettingItem
-              label="👋 重置欢迎页"
-              value="重新显示用户协议"
+              label={language === 'zh' ? '👋 重置欢迎页' : '👋 Reset Welcome'}
+              value={language === 'zh' ? '重新显示用户协议' : 'Show welcome screen again'}
               onPress={async () => {
                 await AsyncStorage.removeItem('@guowu_terms_agreed');
-                Alert.alert('已重置', '下次启动将显示欢迎页面');
+                Alert.alert(
+                  language === 'zh' ? '已重置' : 'Reset Complete',
+                  language === 'zh' ? '下次启动将显示欢迎页面' : 'Welcome screen will show on next launch'
+                );
               }}
             />
           </Card>
         </>
       )}
+
+      {/* App 图标说明 */}
+      <View style={styles.iconAttribution}>
+        <Text style={[styles.iconAttributionText, { color: colors.textLight }]}>
+          {language === 'zh'
+            ? 'App图标由AI原创设计 (2026年4月16日)'
+            : language === 'es'
+            ? 'Icono de la App diseñado originalmente por IA (16 de abril de 2026)'
+            : 'App icon originally designed by AI (April 16, 2026)'}
+        </Text>
+      </View>
 
       {/* 时间选择器 */}
       <Modal
@@ -748,5 +762,15 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  iconAttribution: {
+    marginTop: 20,
+    marginBottom: 10,
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  iconAttributionText: {
+    fontSize: 12,
+    textAlign: 'center',
   },
 });
