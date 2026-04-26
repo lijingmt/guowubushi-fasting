@@ -211,22 +211,24 @@ export const MeditationScreen = () => {
                     saveSettings(duration);
                   }}
                 >
-                  <Text
-                    style={[
-                      styles.durationValue,
-                      { color: selectedDuration === duration ? '#fff' : colors.text },
-                    ]}
-                  >
-                    {duration}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.durationLabel,
-                      { color: selectedDuration === duration ? '#fff' : colors.textSecondary },
-                    ]}
-                  >
-                    {getMinutesLabel()}
-                  </Text>
+                  <View style={styles.durationContent}>
+                    <Text
+                      style={[
+                        styles.durationValue,
+                        { color: selectedDuration === duration ? '#fff' : colors.text },
+                      ]}
+                    >
+                      {duration}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.durationLabel,
+                        { color: selectedDuration === duration ? '#fff' : colors.textSecondary },
+                      ]}
+                    >
+                      {language === 'zh' ? '分钟' : 'm'}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               ))}
             </View>
@@ -301,18 +303,22 @@ const styles = StyleSheet.create({
   },
   durationCard: {
     width: (rs(320) - rs(48)) / 3,
-    aspectRatio: 1,
+    height: rs(50),
     borderRadius: rs(16),
     justifyContent: 'center',
     alignItems: 'center',
   },
+  durationContent: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
   durationValue: {
-    fontSize: fs(24),
+    fontSize: fs(18),
     fontWeight: 'bold',
   },
   durationLabel: {
-    fontSize: fs(12),
-    marginTop: vs(4),
+    fontSize: fs(14),
+    marginLeft: rs(2),
   },
   timerDisplay: {
     borderRadius: rs(16),

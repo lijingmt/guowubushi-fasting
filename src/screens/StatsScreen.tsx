@@ -349,14 +349,14 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
-    paddingTop: 70,
+    paddingTop: 16,
     paddingBottom: 32,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#333',
-    marginTop: 50,
+    marginTop: 8,
     marginBottom: 16,
   },
   tabContainer: {

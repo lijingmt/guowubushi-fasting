@@ -217,11 +217,11 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
-    paddingTop: 70,
+    paddingTop: 16,
     paddingBottom: 32,
   },
   header: {
-    marginTop: 50,
+    marginTop: 8,
     marginBottom: 16,
   },
   title: {

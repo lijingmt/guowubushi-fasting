@@ -93,13 +93,39 @@ const TabIcon = ({ name, color }: { name: string; color: string }) => {
 };
 
 export const AppNavigator = () => {
+  const { t, colors } = useApp();
+
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Main" component={TabNavigator} />
-        <Stack.Screen name="Stats" component={StatsScreen} />
-        <Stack.Screen name="History" component={HistoryScreen} />
-        <Stack.Screen name="Meals" component={MealsScreen} />
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: true,
+          headerShadowVisible: false,
+          contentStyle: { backgroundColor: colors.background },
+          headerTitleStyle: { fontSize: 18, fontWeight: '600' },
+          headerTintColor: colors.text,
+        }}
+      >
+        <Stack.Screen
+          name="Main"
+          component={TabNavigator}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Stats"
+          component={StatsScreen}
+          options={{ title: t.statistics }}
+        />
+        <Stack.Screen
+          name="History"
+          component={HistoryScreen}
+          options={{ title: t.checkInHistory }}
+        />
+        <Stack.Screen
+          name="Meals"
+          component={MealsScreen}
+          options={{ title: t.meals }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );
