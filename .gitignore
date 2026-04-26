@@ -41,3 +41,4 @@ yarn-error.*
 
 # Allow iOS icon files
 !/ios/app/Images.xcassets/AppIcon.appiconset/
+assets/sounds/*.mp3
