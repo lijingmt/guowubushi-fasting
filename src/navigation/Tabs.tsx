@@ -73,36 +73,6 @@ const TabNavigator = () => {
         }}
       />
       <Tab.Screen
-        name="History"
-        component={HistoryScreen}
-        options={{
-          tabBarLabel: t.tabHistory,
-          tabBarIcon: ({ color }) => (
-            <TabIcon name="📅" color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Meals"
-        component={MealsScreen}
-        options={{
-          tabBarLabel: t.tabMeals,
-          tabBarIcon: ({ color }) => (
-            <TabIcon name="🍽️" color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Stats"
-        component={StatsScreen}
-        options={{
-          tabBarLabel: t.tabStats,
-          tabBarIcon: ({ color }) => (
-            <TabIcon name="📊" color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
         name="Settings"
         component={SettingsScreen}
         options={{
@@ -127,6 +97,9 @@ export const AppNavigator = () => {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Main" component={TabNavigator} />
+        <Stack.Screen name="Stats" component={StatsScreen} />
+        <Stack.Screen name="History" component={HistoryScreen} />
+        <Stack.Screen name="Meals" component={MealsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { captureRef } from 'react-native-view-shot';
-import * as FileSystem from 'expo-file-system';
+import { Paths, File } from 'expo-file-system';
 import { shareAsync } from 'expo-sharing';
 import { responsiveSize, fs, rs, vs } from '../theme/responsive';
 
@@ -89,12 +89,11 @@ export const AchievementShareCard: React.FC<AchievementShareCardProps> = ({
         quality: 1,
       });
 
-      const localUri = await FileSystem.copyAsync({
-        from: uri,
-        to: FileSystem.cacheDirectory + 'achievement.png',
-      });
+      const sourceFile = new File(uri);
+      const destFile = new File(Paths.cache, 'achievement.png');
+      await sourceFile.copy(destFile);
 
-      await shareAsync(localUri, {
+      await shareAsync(destFile.uri, {
         mimeType: 'image/png',
         dialogTitle: language === 'zh' ? '分享成就' : language === 'es' ? 'Compartir logro' : 'Share Achievement',
       });

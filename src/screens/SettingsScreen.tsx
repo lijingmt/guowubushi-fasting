@@ -11,17 +11,20 @@ import {
   TextInput,
   Linking,
   Share,
-  Clipboard,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useApp } from '../context/AppContext';
 import { Card } from '../components/Card';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 // 开发者模式
 const IS_DEV = __DEV__;
 
 export const SettingsScreen: React.FC = () => {
+  const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const {
     t,
     settings,
@@ -233,19 +236,24 @@ export const SettingsScreen: React.FC = () => {
         )}
       </Card>
 
-      {/* 目标设置 */}
-      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t.goalSettings}</Text>
+      {/* 数据记录 */}
+      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+        {language === 'zh' ? '数据记录' : language === 'es' ? 'Registros' : 'Records'}
+      </Text>
       <Card>
         <SettingItem
-          label={t.dailyCalorieGoal}
-          value={`${settings.dailyCalorieGoal} kcal`}
-          onPress={() => {
-            Alert.alert(
-              t.calorieGoalTitle,
-              t.calorieGoalHint,
-              [{ text: t.know }]
-            );
-          }}
+          label={language === 'zh' ? '📊 统计数据' : language === 'es' ? '📊 Estadísticas' : '📊 Statistics'}
+          onPress={() => navigation.navigate('Stats')}
+        />
+        <Divider />
+        <SettingItem
+          label={language === 'zh' ? '📅 打卡历史' : language === 'es' ? '📅 Historial' : '📅 History'}
+          onPress={() => navigation.navigate('History')}
+        />
+        <Divider />
+        <SettingItem
+          label={language === 'zh' ? '🍽️ 饮食记录' : language === 'es' ? '🍽️ Comidas' : '🍽️ Meals'}
+          onPress={() => navigation.navigate('Meals')}
         />
       </Card>
 

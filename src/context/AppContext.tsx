@@ -890,17 +890,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // 立即显示完成通知
     if (settings.enableNotifications && Platform.OS !== 'web') {
       try {
-        await Notifications.presentNotificationAsync({
-          title: language === 'zh' ? '🎉 禁食结束！' : language === 'es' ? '¡Ayuno terminado!' : 'Fasting Complete!',
-          body: language === 'zh'
-            ? `恭喜！你已完成${activeFasting.durationHours}小时禁食`
-            : language === 'es'
-            ? `¡Felicidades! Has completado ${activeFasting.durationHours} horas de ayuno`
-            : `Congratulations! You've completed ${activeFasting.durationHours} hours of fasting`,
-          sound: 'default',
-          priority: Notifications.AndroidNotificationPriority.HIGH,
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: language === 'zh' ? '🎉 禁食结束！' : language === 'es' ? '¡Ayuno terminado!' : 'Fasting Complete!',
+            body: language === 'zh'
+              ? `恭喜！你已完成${activeFasting.durationHours}小时禁食`
+              : language === 'es'
+              ? `¡Felicidades! Has completado ${activeFasting.durationHours} horas de ayuno`
+              : `Congratulations! You've completed ${activeFasting.durationHours} hours of fasting`,
+            sound: true,
+          },
+          trigger: null, // Show immediately
         });
-        console.log('Fasting completion notification presented immediately');
+        console.log('Fasting completion notification scheduled');
 
         // 取消其他已调度的通知
         await Notifications.cancelAllScheduledNotificationsAsync();

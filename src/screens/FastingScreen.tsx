@@ -8,7 +8,7 @@ import { responsiveSize, fs, rs, vs } from '../theme/responsive';
 import { LinearGradient } from 'expo-linear-gradient';
 import { captureRef } from 'react-native-view-shot';
 import QRCode from 'react-native-qrcode-svg';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 import { shareAsync } from 'expo-sharing';
 import * as Haptics from 'expo-haptics';
 
@@ -188,9 +188,9 @@ export const FastingScreen: React.FC = () => {
                   setShowSharePreview(false);
                   return;
                 }
-              } catch (err) {
+              } catch (err: unknown) {
                 // Share was cancelled or failed, fall through to download
-                if (err.name !== 'AbortError') {
+                if (err instanceof Error && err.name !== 'AbortError') {
                   console.log('Share failed:', err);
                 }
               }

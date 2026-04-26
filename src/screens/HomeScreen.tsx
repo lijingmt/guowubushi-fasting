@@ -8,7 +8,7 @@ import * as Haptics from 'expo-haptics';
 import { responsiveSize, fs, rs, vs, layout, responsive } from '../theme/responsive';
 import { LinearGradient } from 'expo-linear-gradient';
 import { captureRef } from 'react-native-view-shot';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 import { shareAsync } from 'expo-sharing';
 
 export const HomeScreen: React.FC = () => {
@@ -186,9 +186,9 @@ export const HomeScreen: React.FC = () => {
                   setShowSharePreview(false);
                   return;
                 }
-              } catch (err) {
+              } catch (err: unknown) {
                 // Share was cancelled or failed, fall through to download
-                if (err.name !== 'AbortError') {
+                if (err instanceof Error && err.name !== 'AbortError') {
                   console.log('Share failed:', err);
                 }
               }
