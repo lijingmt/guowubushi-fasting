@@ -15,7 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const MEDITATION_DURATION_KEY = '@guowu_meditation_duration';
 
-const DURATIONS = [5, 10, 15, 30, 60];
+const DURATIONS = [1, 5, 10, 15, 30, 60];
 
 export const MeditationScreen = () => {
   const { t, addPractice, stats, colors, language } = useApp();
