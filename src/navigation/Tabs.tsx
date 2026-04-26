@@ -10,6 +10,7 @@ import { StatsScreen } from '../screens/StatsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { HistoryScreen } from '../screens/HistoryScreen';
 import { FastingScreen } from '../screens/FastingScreen';
+import { MeditationScreen } from '../screens/MeditationScreen';
 import { responsiveSize, fs, vs, rs, layout, responsive } from '../theme/responsive';
 
 const Tab = createBottomTabNavigator();
@@ -58,6 +59,16 @@ const TabNavigator = () => {
           tabBarLabel: language === 'zh' ? '禁食' : language === 'es' ? 'Ayuno' : 'Fasting',
           tabBarIcon: ({ color }) => (
             <TabIcon name="⏰" color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Meditation"
+        component={MeditationScreen}
+        options={{
+          tabBarLabel: language === 'zh' ? '打坐' : language === 'es' ? 'Meditación' : 'Meditation',
+          tabBarIcon: ({ color }) => (
+            <TabIcon name="🧘" color={color} />
           ),
         }}
       />
