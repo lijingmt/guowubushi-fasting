@@ -43,3 +43,4 @@ yarn-error.*
 !/ios/app/Images.xcassets/AppIcon.appiconset/
 assets/sounds/*.mp3
 assets/sounds/insects.mp3
+webassets/
