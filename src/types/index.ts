@@ -6,7 +6,7 @@ export interface UserSettings {
   enableNotifications: boolean; // 启用通知
   weightUnit: 'kg' | 'lb'; // 体重单位
   theme: 'light' | 'dark' | 'auto'; // 主题
-  language: 'zh' | 'en' | 'es' | 'ja' | 'ko' | 'fr' | 'de' | 'pt' | 'ru' | 'ar' | 'it' | 'hi' | 'vi' | 'th'; // 语言
+  language: 'zh' | 'zh-Hant' | 'en' | 'es' | 'ja' | 'ko' | 'fr' | 'de' | 'pt' | 'ru' | 'ar' | 'it' | 'hi' | 'vi' | 'th'; // 语言
 }
 
 // 打坐类型

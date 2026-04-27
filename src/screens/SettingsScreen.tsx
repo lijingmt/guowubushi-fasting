@@ -26,6 +26,7 @@ const IS_DEV = __DEV__;
 // 语言列表 - 包含原生名称
 const LANGUAGE_LIST = [
   { code: 'zh', name: '中文', nativeName: '简体中文' },
+  { code: 'zh-Hant', name: 'Chinese (Traditional)', nativeName: '繁體中文' },
   { code: 'en', name: 'English', nativeName: 'English' },
   { code: 'es', name: 'Español', nativeName: 'Español' },
   { code: 'ja', name: 'Japanese', nativeName: '日本語' },

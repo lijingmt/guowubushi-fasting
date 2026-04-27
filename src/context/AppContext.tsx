@@ -78,8 +78,13 @@ const detectDeviceLanguage =(): 'zh' | 'en' | 'es' | 'ja' | 'ko' | 'fr' | 'de' |
       return supportedLanguages[deviceLanguage];
     }
 
-    // 中文设备（包括 zh-CN, zh-TW, zh-HK 等）→ 中文
+    // 中文设备（包括 zh-CN, zh-TW, zh-HK 等）→ 简体/繁体中文
     if (deviceLanguage.startsWith('zh')) {
+      // zh-TW, zh-HK, zh-MO → 繁体中文
+      if (deviceLanguage.includes('TW') || deviceLanguage.includes('HK') || deviceLanguage.includes('MO')) {
+        return 'zh-Hant';
+      }
+      // zh-CN, zh-SG → 简体中文
       return 'zh';
     }
   }
