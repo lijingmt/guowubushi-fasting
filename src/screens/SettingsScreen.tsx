@@ -23,6 +23,24 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 // 开发者模式
 const IS_DEV = __DEV__;
 
+// 语言列表 - 包含原生名称
+const LANGUAGE_LIST = [
+  { code: 'zh', name: '中文', nativeName: '简体中文' },
+  { code: 'en', name: 'English', nativeName: 'English' },
+  { code: 'es', name: 'Español', nativeName: 'Español' },
+  { code: 'ja', name: 'Japanese', nativeName: '日本語' },
+  { code: 'ko', name: 'Korean', nativeName: '한국어' },
+  { code: 'fr', name: 'French', nativeName: 'Français' },
+  { code: 'de', name: 'German', nativeName: 'Deutsch' },
+  { code: 'pt', name: 'Portuguese', nativeName: 'Português' },
+  { code: 'ru', name: 'Russian', nativeName: 'Русский' },
+  { code: 'ar', name: 'Arabic', nativeName: 'العربية' },
+  { code: 'it', name: 'Italian', nativeName: 'Italiano' },
+  { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी' },
+  { code: 'vi', name: 'Vietnamese', nativeName: 'Tiếng Việt' },
+  { code: 'th', name: 'Thai', nativeName: 'ไทย' },
+];
+
 export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const {
@@ -262,7 +280,7 @@ export const SettingsScreen: React.FC = () => {
       <Card>
         <SettingItem
           label={t.language}
-          value={settings.language === 'zh' ? t.langZh : settings.language === 'en' ? t.langEn : t.langEs}
+          value={LANGUAGE_LIST.find(l => l.code === settings.language)?.nativeName || settings.language}
           onPress={() => {
             setShowLanguagePicker(true);
           }}
@@ -467,41 +485,28 @@ export const SettingsScreen: React.FC = () => {
         onRequestClose={() => setShowLanguagePicker(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+          <View style={[styles.modalContentLarge, { backgroundColor: colors.card }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>{t.language}</Text>
 
-            <TouchableOpacity
-              style={[styles.optionButton, { backgroundColor: colors.backgroundSecondary }]}
-              onPress={async () => {
-                await updateSettings({ language: 'zh' });
-                setShowLanguagePicker(false);
-              }}
-            >
-              <Text style={[styles.optionText, { color: colors.text }]}>{t.langZh}</Text>
-              {settings.language === 'zh' && <Text style={[styles.checkIcon, { color: colors.primary }]}>✓</Text>}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.optionButton, { backgroundColor: colors.backgroundSecondary }]}
-              onPress={async () => {
-                await updateSettings({ language: 'en' });
-                setShowLanguagePicker(false);
-              }}
-            >
-              <Text style={[styles.optionText, { color: colors.text }]}>{t.langEn}</Text>
-              {settings.language === 'en' && <Text style={[styles.checkIcon, { color: colors.primary }]}>✓</Text>}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.optionButton, { backgroundColor: colors.backgroundSecondary }]}
-              onPress={async () => {
-                await updateSettings({ language: 'es' });
-                setShowLanguagePicker(false);
-              }}
-            >
-              <Text style={[styles.optionText, { color: colors.text }]}>{t.langEs}</Text>
-              {settings.language === 'es' && <Text style={[styles.checkIcon, { color: colors.primary }]}>✓</Text>}
-            </TouchableOpacity>
+            <ScrollView style={styles.languageList} showsVerticalScrollIndicator={false}>
+              {LANGUAGE_LIST.map((lang) => (
+                <TouchableOpacity
+                  key={lang.code}
+                  style={[styles.optionButton, { backgroundColor: colors.backgroundSecondary }]}
+                  onPress={async () => {
+                    await updateSettings({ language: lang.code as any });
+                    setShowLanguagePicker(false);
+                  }}
+                >
+                  <Text style={[styles.optionText, { color: colors.text }]}>
+                    {lang.nativeName}
+                  </Text>
+                  {settings.language === lang.code && (
+                    <Text style={[styles.checkIcon, { color: colors.primary }]}>✓</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
 
             <TouchableOpacity
               style={[styles.modalButton, styles.modalButtonCancel, { backgroundColor: colors.divider }]}
@@ -683,6 +688,18 @@ const styles = StyleSheet.create({
     padding: 24,
     width: '80%',
     maxWidth: 300,
+  },
+  modalContentLarge: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
+    maxWidth: 360,
+    maxHeight: '70%',
+  },
+  languageList: {
+    maxHeight: 350,
+    marginBottom: 10,
   },
   modalTitle: {
     fontSize: 18,

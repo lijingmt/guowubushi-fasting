@@ -50,30 +50,41 @@ import { translations } from '../i18n/translations';
 import { Colors, lightColors, darkColors } from '../theme/colors';
 
 // 检测设备语言并返回对应的应用语言
-const detectDeviceLanguage = (): 'zh' | 'en' | 'es' => {
+const detectDeviceLanguage =(): 'zh' | 'en' | 'es' | 'ja' | 'ko' | 'fr' | 'de' | 'pt' | 'ru' | 'ar' | 'it' | 'hi' | 'vi' | 'th' => {
   const deviceLocales = getLocales();
   if (deviceLocales && deviceLocales.length > 0) {
     const deviceLanguage = deviceLocales[0].languageCode?.toLowerCase() || '';
 
-    // 英文设备 → 英文
-    if (deviceLanguage === 'en') {
-      return 'en';
-    }
+    // 支持的语言映射
+    const supportedLanguages: Record<string, 'zh' | 'en' | 'es' | 'ja' | 'ko' | 'fr' | 'de' | 'pt' | 'ru' | 'ar' | 'it' | 'hi' | 'vi' | 'th'> = {
+      'zh': 'zh',  // 中文
+      'en': 'en',  // 英文
+      'es': 'es',  // 西班牙语
+      'ja': 'ja',  // 日语
+      'ko': 'ko',  // 韩语
+      'fr': 'fr',  // 法语
+      'de': 'de',  // 德语
+      'pt': 'pt',  // 葡萄牙语
+      'ru': 'ru',  // 俄语
+      'ar': 'ar',  // 阿拉伯语
+      'it': 'it',  // 意大利语
+      'hi': 'hi',  // 印地语
+      'vi': 'vi',  // 越南语
+      'th': 'th',  // 泰语
+    };
 
-    // 西班牙语设备 → 西班牙语
-    if (deviceLanguage === 'es') {
-      return 'es';
+    // 检查是否支持设备语言
+    if (deviceLanguage in supportedLanguages) {
+      return supportedLanguages[deviceLanguage];
     }
 
     // 中文设备（包括 zh-CN, zh-TW, zh-HK 等）→ 中文
     if (deviceLanguage.startsWith('zh')) {
       return 'zh';
     }
-
-    // 其他语言默认中文
-    return 'zh';
   }
-  return 'zh';
+  // 默认英文
+  return 'en';
 };
 
 // 配置通知行为
@@ -96,7 +107,7 @@ interface AppContextType {
   // 设置
   settings: UserSettings;
   updateSettings: (settings: Partial<UserSettings>) => Promise<void>;
-  language: 'zh' | 'en' | 'es';
+  language: 'zh' | 'en' | 'es' | 'ja' | 'ko' | 'fr' | 'de' | 'pt' | 'ru' | 'ar' | 'it' | 'hi' | 'vi' | 'th';
   t: typeof translations.zh;
 
   // 打卡
@@ -159,7 +170,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // 设置
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
-  const [language, setLanguage] = useState<'zh' | 'en' | 'es'>('zh');
+  const [language, setLanguage] = useState<'zh' | 'en' | 'es' | 'ja' | 'ko' | 'fr' | 'de' | 'pt' | 'ru' | 'ar' | 'it' | 'hi' | 'vi' | 'th'>('zh');
 
   // 根据主题设置确定颜色
   const colors: Colors = (() => {
@@ -211,6 +222,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     totalMeditationMinutes: 0,
     totalMeditationDays: 0,
     longestMeditationStreak: 0,
+    meditationSessionCount: 0,
+    longestMeditationSession: 0,
     totalStandingMeditationMinutes: 0,
     totalStandingMeditationDays: 0,
     totalMerit: 0,
@@ -539,6 +552,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const meditationDates = [...new Set(meditationRecords.map((r) => r.date))];
     totalMeditationDays = meditationDates.length;
     totalMeditationMinutes = meditationRecords.reduce((sum, r) => sum + (r.duration || 0), 0);
+    const meditationSessionCount = meditationRecords.length;
+    const longestMeditationSession = meditationRecords.length > 0
+      ? Math.max(...meditationRecords.map((r) => r.duration || 0))
+      : 0;
 
     // 计算打坐连续天数
     const sortedMeditationDates = meditationDates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
@@ -588,6 +605,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       totalMeditationMinutes,
       totalMeditationDays,
       longestMeditationStreak,
+      meditationSessionCount,
+      longestMeditationSession,
       totalStandingMeditationMinutes,
       totalStandingMeditationDays,
       totalMerit,

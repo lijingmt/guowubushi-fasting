@@ -6,7 +6,7 @@ export interface UserSettings {
   enableNotifications: boolean; // 启用通知
   weightUnit: 'kg' | 'lb'; // 体重单位
   theme: 'light' | 'dark' | 'auto'; // 主题
-  language: 'zh' | 'en' | 'es'; // 语言
+  language: 'zh' | 'en' | 'es' | 'ja' | 'ko' | 'fr' | 'de' | 'pt' | 'ru' | 'ar' | 'it' | 'hi' | 'vi' | 'th'; // 语言
 }
 
 // 打坐类型
@@ -92,6 +92,8 @@ export interface UserStats {
   totalMeditationMinutes: number; // 总打坐分钟数
   totalMeditationDays: number; // 打坐天数
   longestMeditationStreak: number; // 最长打坐连续天数
+  meditationSessionCount: number; // 打坐次数
+  longestMeditationSession: number; // 最长单次打坐时长（分钟）
   totalStandingMeditationMinutes: number; // 总站桩分钟数
   totalStandingMeditationDays: number; // 站桩天数
   totalMerit: number; // 总功德值
