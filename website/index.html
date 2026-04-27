@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>过午不食 - App 下载</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 420px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+        .icon { font-size: 80px; margin-bottom: 20px; }
+        h1 { color: #2E7D32; margin-bottom: 10px; font-size: 28px; }
+        .version { color: #666; margin-bottom: 30px; font-size: 14px; }
+        .platform-title {
+            font-size: 14px;
+            color: #999;
+            margin: 20px 0 10px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .download-btn {
+            display: block;
+            width: 100%;
+            color: white;
+            text-decoration: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: 600;
+            transition: transform 0.2s;
+            margin: 8px 0;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-android {
+            background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+        }
+        .btn-ios {
+            background: linear-gradient(135deg, #2196F3 0%, #1565C0 100%);
+        }
+        .download-btn:hover { transform: scale(1.02); }
+        .qr-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 10px;
+        }
+        .qr-title {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        .qr-code {
+            width: 180px;
+            height: 180px;
+            margin: 0 auto;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 10px;
+            background: white;
+        }
+        .qr-code img {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .footer { margin-top: 20px; color: #999; font-size: 12px; }
+        .file-info { font-size: 11px; color: #aaa; margin-top: 5px; }
+        .divider {
+            height: 1px;
+            background: #eee;
+            margin: 25px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">🥗</div>
+        <h1>过午不食</h1>
+        <p class="version">版本 1.0.17 - 修行自律，健康生活</p>
+
+        <!-- iOS 下载 -->
+        <p class="platform-title">iOS 下载</p>
+        <a href="https://apps.apple.com/us/app/fasting-until-morning/id6762360504" class="download-btn btn-ios">
+            📱 App Store 下载
+        </a>
+        <p class="file-info">适用于 iOS 15.0 及以上版本</p>
+
+        <div class="divider"></div>
+
+        <!-- Android 下载 -->
+        <p class="platform-title">Android 下载</p>
+        <a href="guowubushi-20260427-182312.apk" class="download-btn btn-android">
+            ⬇️ 下载 APK
+        </a>
+        <p class="file-info">适用于 Android 7.0 及以上版本</p>
+
+        <div class="qr-section">
+            <div class="qr-title">📱 Android 扫码下载</div>
+            <div class="qr-code">
+                <img src="qr-android.png" alt="Android APK 二维码">
+            </div>
+        </div>
+
+        <p class="footer">© 2026 过午不食</p>
+    </div>
+</body>
+</html>
