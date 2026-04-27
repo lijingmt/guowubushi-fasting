@@ -3,6 +3,7 @@ import { Text, View, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../context/AppContext';
 import { HomeScreen } from '../screens/HomeScreen';
 import { MealsScreen } from '../screens/MealsScreen';
@@ -18,6 +19,7 @@ const Stack = createNativeStackNavigator();
 
 const TabNavigator = () => {
   const { t, colors, language } = useApp();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tab.Navigator
@@ -28,7 +30,7 @@ const TabNavigator = () => {
           borderTopWidth: 1,
           borderTopColor: colors.border,
           height: 90,
-          paddingBottom: Platform.OS === 'ios' ? 20 : 15,
+          paddingBottom: Platform.OS === 'ios' ? 20 : 45 + insets.bottom,
           paddingTop: 10,
         },
         tabBarActiveTintColor: colors.tabBarActive,
