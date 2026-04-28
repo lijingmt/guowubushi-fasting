@@ -1,91 +1,154 @@
-# 过午不食 (Intermittent Fasting App)
+# 过午不食 (Fasting Until Morning)
 
-一个跨平台的禁食追踪移动应用，支持iOS和Android。
+<div align="center">
+
+**一个跨平台的修行健康管理应用**
+
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![React Native](https://img.shields.io/badge/React%20Native-0.81.5-61dafb.svg)](https://reactnative.dev/)
+[![Expo](https://img.shields.io/badge/Expo-54.0-000000.svg)](https://expo.dev/)
+
+[App Store](https://apps.apple.com/us/app/fasting-until-morning/id6762360504) | [GitHub](https://github.com/lijingmt/guowubushi-fasting) | [下载APK](http://192.168.1.205/guowubushi/)
+
+</div>
+
+---
 
 ## 项目概述
 
-"过午不食"是一款基于传统饮食习惯的健康管理App，帮助用户追踪禁食时间、记录饮食摄入、监控体重变化，并提供丰富的统计和成就系统。
+"过午不食"是一款结合传统修行习惯的健康管理App，帮助用户：
+- 🔥 追踪每日"过午不食"打卡
+- 🧘 记录打坐、站桩、诵经、听经等修行
+- ⏰ 支持单次禁食会话
+- 📊 统计连续天数、节省卡路里、功德值
+- 💧 饮水记录、体重管理、饮食追踪
+- 🌍 支持15种语言
+
+---
+
+## 核心功能
+
+### 📅 每日打卡
+- 记录是否完成"过午不食"
+- **1天宽限期机制**：中断1天内补打卡，连胜不断
+- 支持添加备注（如"禁欲完成"）
+- 每日提醒通知
+
+### 🧘 打坐修行
+- **打坐**：支持1分钟、15分钟、30分钟、1小时、2小时、3小时、5小时
+- **站桩**：记录站桩时长
+- **诵经**：+10功德值
+- **听经**：+5功德值
+- **背景音效**：虫鸣、鸟鸣、雨声、海浪、寺庙钟声
+- **结束铃声**：寺庙钟声提示
+- **呼吸动画**：帮助调节呼吸节奏
+- **分享功能**：生成修行成就卡片
+
+### ⏱️ 单次禁食
+- 自定义禁食时长（2-72小时）
+- 实时计时器显示
+- 完成后自动统计节省卡路里
+- 禁食结束通知
+
+### 🍽️ 饮食记录
+- 餐食记录（早餐/午餐/晚餐/零食）
+- 卡路里追踪
+- 记录是否过午后进食
+
+### ⚖️ 体重管理
+- 体重记录和追踪
+- 体重变化图表
+- 计算减重效果
+
+### 💧 饮水记录
+- 记录每次饮水量
+- 每日饮水统计
+
+### 📊 数据统计
+- 禁食连续天数（含宽限期）
+- 禁欲连续天数
+- 打坐连续天数和总时长
+- 节省卡路里和餐数
+- 功德值统计
+- 单次禁食统计
+
+### ⚙️ 设置
+- 过午时间自定义（默认12:00）
+- 每日提醒时间
+- 主题切换（浅色/深色/自动）
+- 15种语言支持
+- 健康数据同步（Apple Health / Google Fit）
+
+---
 
 ## 技术栈
 
-- **框架**: React Native + Expo
-- **语言**: TypeScript
-- **状态管理**: React Context API
-- **数据存储**: AsyncStorage
-- **导航**: React Navigation 6
-- **图表**: React Native Chart Kit
-- **通知**: Expo Notifications
+| 技术 | 版本 | 说明 |
+|------|------|------|
+| React Native | 0.81.5 | 跨平台框架 |
+| Expo | 54.0 | 开发工具链 |
+| TypeScript | 5.9 | 类型安全 |
+| React Navigation | 7.x | 路由导航 |
+| AsyncStorage | 2.2 | 本地存储 |
+| Reanimated | 4.x | 动画引擎 |
+| Chart Kit | 6.x | 图表组件 |
+
+---
 
 ## 项目结构
 
 ```
 GuowuBushiFasting/
 ├── src/
-│   ├── components/       # 可复用组件
+│   ├── screens/              # 页面组件
+│   │   ├── HomeScreen.tsx           # 首页（打卡）
+│   │   ├── FastingScreen.tsx        # 单次禁食
+│   │   ├── MeditationScreen.tsx     # 打坐修行
+│   │   ├── MealsScreen.tsx          # 饮食记录
+│   │   ├── StatsScreen.tsx          # 数据统计
+│   │   ├── HistoryScreen.tsx        # 打卡历史
+│   │   └── SettingsScreen.tsx       # 设置
+│   ├── components/           # UI组件
 │   │   ├── Card.tsx
-│   │   ├── FastingTimer.tsx
-│   │   └── StatCard.tsx
-│   ├── screens/          # 页面组件
-│   │   ├── HomeScreen.tsx
-│   │   ├── FastingScreen.tsx
-│   │   ├── MealsScreen.tsx
-│   │   ├── StatsScreen.tsx
-│   │   └── SettingsScreen.tsx
-│   ├── navigation/       # 导航配置
-│   │   └── Tabs.tsx
-│   ├── context/          # 全局状态管理
+│   │   ├── CheckInCard.tsx
+│   │   ├── FastingTimerCard.tsx
+│   │   ├── MeditationAnimation.tsx
+│   │   ├── MeditationShareCard.tsx
+│   │   └── ...
+│   ├── context/              # 全局状态
 │   │   └── AppContext.tsx
-│   ├── services/         # 数据服务
+│   ├── services/             # 数据服务
 │   │   └── storage.ts
-│   ├── i18n/             # 国际化
+│   ├── i18n/                 # 国际化
 │   │   └── translations.ts
-│   ├── constants/        # 常量配置
+│   ├── theme/                # 主题
+│   │   ├── colors.ts
+│   │   └── responsive.ts
+│   ├── types/                # TypeScript类型
+│   │   └── index.ts
+│   ├── constants/            # 常量
 │   │   └── achievements.ts
-│   └── types/            # TypeScript类型定义
-│       └── index.ts
-├── App.tsx               # 应用入口
-├── app.json              # Expo配置
-└── package.json
+│   └── navigation/           # 导航
+│       └── Tabs.tsx
+├── assets/                   # 静态资源
+│   ├── sounds/               # 音效文件
+│   │   ├── insects.mp3       # 虫鸣
+│   │   ├── birds.mp3         # 鸟鸣
+│   │   ├── rain.mp3          # 雨声
+│   │   ├── ocean.mp3         # 海浪
+│   │   └── temple_bell.mp3   # 寺庙钟声
+│   └── icon.png
+├── website/                  # 下载页面
+└── .claude/skills/           # 开发文档
 ```
 
-## 核心功能
-
-### 1. 禁食计时器
-- 开始/结束禁食
-- 实时计时显示
-- 过午时间自定义
-- 状态提醒
-
-### 2. 饮食记录
-- 餐食记录（早/午/晚/零食）
-- 卡路里追踪
-- 常见食物热量参考
-- 每日卡路里目标
-
-### 3. 数据统计
-- 禁食天数统计
-- 连续天数追踪
-- 体重变化图表
-- 每周/月报告
-
-### 4. 成就系统
-- 12种成就类型
-- 解锁进度追踪
-- 成就徽章展示
-
-### 5. 用户设置
-- 过午时间设置
-- 卡路里目标
-- 通知提醒
-- 主题切换
-- 语言切换（中文/英文）
-- 健康数据同步
+---
 
 ## 开发指南
 
 ### 环境要求
 - Node.js >= 18
-- Xcode (iOS开发)
+- Xcode 15+ (iOS开发)
 - Android Studio (Android开发)
 
 ### 安装依赖
@@ -109,81 +172,136 @@ npm run web
 
 #### iOS
 ```bash
-# 使用EAS构建
-eas build --platform ios
+# 使用Xcode构建
+npx expo run:ios --configuration Release
 
-# 或使用本地构建
-eas build --platform ios --local
+# 或使用EAS构建
+eas build --platform ios
 ```
 
 #### Android
 ```bash
-# 使用EAS构建
-eas build --platform android
+# 构建APK
+cd android && ./gradlew assembleRelease
 
-# 或使用本地构建
-eas build --platform android --local
+# 构建AAB (Google Play)
+cd android && ./gradlew bundleRelease
 ```
 
-## 发布流程
+---
 
-### iOS App Store
+## 版本发布
 
-1. **配置证书**
-   - 在Apple Developer创建App ID
-   - 配置推送通知证书
+详细的发布流程请参考：
+- [Android发布流程](.claude/skills/android-release.md)
+- [版本升级](.claude/skills/bump-version.md)
+- [项目结构文档](.claude/skills/project-structure.md)
 
-2. **更新app.json**
-   - 设置正确的bundleIdentifier
-   - 更新版本号
+---
 
-3. **构建**
-   ```bash
-   eas build --platform ios --profile production
-   ```
+## 应用信息
 
-4. **提交到App Store**
-   - 使用EAS Submit
-   - 或手动上传到App Store Connect
-
-### Android Play Store
-
-1. **配置签名**
-   - 创建keystore文件
-   - 配置app.json中的android属性
-
-2. **构建**
-   ```bash
-   eas build --platform android --profile production
-   ```
-
-3. **提交到Google Play**
-   - 使用EAS Submit
-   - 或手动上传到Google Play Console
-
-## 应用配置
-
-### Bundle ID
-- iOS: `com.guowu.fasting`
-- Android: `com.guowu.fasting`
+### 标识符
+| 项目 | 值 |
+|------|-----|
+| Bundle ID | `com.guowu.fasting` |
+| Package Name | `com.guowu.fasting` |
+| App Store ID | `6762360504` |
 
 ### 权限说明
-- **通知权限**: 用于禁食提醒
-- **健康数据**: 用于同步禁食和饮食记录到HealthKit/Google Fit
+| 权限 | 用途 |
+|------|------|
+| 通知 | 每日打卡提醒、禁食完成通知 |
+| 健康数据 | 同步到Apple Health/Google Fit |
+| 存储 | 保存打卡记录和设置 |
+
+---
+
+## 多语言支持
+
+<details>
+<summary>支持的语言（点击展开）</summary>
+
+- 🇨🇳 简体中文 (zh)
+- 🇹🇼 繁体中文 (zh-Hant)
+- 🇺🇸 英语 (en)
+- 🇪🇸 西班牙语 (es)
+- 🇯🇵 日语 (ja)
+- 🇰🇷 韩语 (ko)
+- 🇫🇷 法语 (fr)
+- 🇩🇪 德语 (de)
+- 🇵🇹 葡萄牙语 (pt)
+- 🇷🇺 俄语 (ru)
+- 🇸🇦 阿拉伯语 (ar)
+- 🇮🇹 意大利语 (it)
+- 🇮🇳 印地语 (hi)
+- 🇻🇳 越南语 (vi)
+- 🇹🇭 泰语 (th)
+
+</details>
+
+---
+
+## 更新日志
+
+### v1.0.18 (最新)
+- ✨ 添加视觉晶晶联名品牌标识
+- 🐛 修复Samsung设备底部导航栏遮挡问题
+- 📱 优化Android权限配置
+- 🔒 启用R8混淆减小APK大小
+
+### v1.0.17
+- 🌍 完善全部15种语言翻译
+- 🎨 更新启动页设计
+- 🧘 添加打坐背景音效
+- 🔔 添加寺庙钟声提示音
+
+### v1.0.16
+- 🧘 添加打坐功能
+- ⏰ 添加单次禁食功能
+- 🎨 添加启动页和欢迎页
+
+---
+
+## 开发文档
+
+项目包含完整的开发技能文档：
+
+- **[项目结构](.claude/skills/project-structure.md)** - 完整的项目架构和代码逻辑说明
+- **[Android发布](.claude/skills/android-release.md)** - Google Play发布流程
+- **[版本升级](.claude/skills/bump-version.md)** - 版本号升级流程
+
+---
 
 ## 贡献指南
 
-1. Fork本仓库
+欢迎贡献代码、报告问题或提出建议！
+
+1. Fork 本仓库
 2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
 3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
 4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启Pull Request
+5. 开启 Pull Request
+
+---
 
 ## 许可证
 
-本项目采用 MIT 许可证
+本项目采用 [MIT](LICENSE) 许可证
+
+---
 
 ## 联系方式
 
-- 项目主页: [GitHub URL]
-- 问题反馈: [Issues URL]
+- GitHub: [lijingmt/guowubushi-fasting](https://github.com/lijingmt/guowubushi-fasting)
+- Issues: [问题反馈](https://github.com/lijingmt/guowubushi-fasting/issues)
+
+---
+
+<div align="center">
+
+**纯开源项目，「放心食用」🍵**
+
+Made with ❤️ by [视觉晶晶](https://github.com/lijingmt) × [过午不食](https://github.com/lijingmt/guowubushi-fasting)
+
+</div>
