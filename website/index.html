@@ -115,6 +115,34 @@
             vertical-align: middle;
             margin-right: 4px;
         }
+        .brand-partnership {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .partnership-title {
+            font-size: 11px;
+            color: #999;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .brand-logos {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+        .brand-logo {
+            max-width: 80px;
+            max-height: 40px;
+            object-fit: contain;
+        }
+        .partnership-x {
+            color: #ccc;
+            font-size: 18px;
+            font-weight: 300;
+        }
     </style>
 </head>
 <body>
@@ -163,6 +191,16 @@
             </svg>
             GitHub 源代码
         </a>
+
+        <!-- 联名品牌 -->
+        <div class="brand-partnership">
+            <p class="partnership-title">联名品牌 Co-Branded</p>
+            <div class="brand-logos">
+                <img src="brand-logo.jpg" alt="视觉晶晶" class="brand-logo">
+                <span class="partnership-x">×</span>
+                <img src="app-icon.png" alt="过午不食" class="brand-logo" style="border-radius: 10px;">
+            </div>
+        </div>
 
         <p class="footer">© 2026 过午不食 · 开源项目</p>
     </div>
