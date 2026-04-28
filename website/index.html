@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>过午不食 - App 下载</title>
+    <link rel="icon" type="image/png" href="app-icon.png">
+    <link rel="apple-touch-icon" href="app-icon.png">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -23,7 +25,18 @@
             text-align: center;
             box-shadow: 0 20px 60px rgba(0,0,0,0.2);
         }
-        .icon { font-size: 80px; margin-bottom: 20px; }
+        .app-icon {
+            width: 100px;
+            height: 100px;
+            border-radius: 22px;
+            margin: 0 auto 20px;
+            box-shadow: 0 4px 20px rgba(76, 175, 80, 0.3);
+        }
+        .app-icon img {
+            width: 100%;
+            height: 100%;
+            border-radius: 22px;
+        }
         h1 { color: #2E7D32; margin-bottom: 10px; font-size: 28px; }
         .version { color: #666; margin-bottom: 30px; font-size: 14px; }
         .platform-title {
@@ -52,6 +65,9 @@
         }
         .btn-ios {
             background: linear-gradient(135deg, #2196F3 0%, #1565C0 100%);
+        }
+        .btn-github {
+            background: linear-gradient(135deg, #333 0%, #24292e 100%);
         }
         .download-btn:hover { transform: scale(1.02); }
         .qr-section {
@@ -86,13 +102,34 @@
             background: #eee;
             margin: 25px 0;
         }
+        .opensource-badge {
+            display: inline-block;
+            background: #f0f0f0;
+            color: #333;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        .opensource-badge svg {
+            vertical-align: middle;
+            margin-right: 4px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="icon">🥗</div>
+        <div class="app-icon">
+            <img src="app-icon.png" alt="过午不食">
+        </div>
         <h1>过午不食</h1>
-        <p class="version">版本 1.0.17 - 修行自律，健康生活</p>
+        <p class="version">版本 1.0.18 - 修行自律，健康生活</p>
+        <div class="opensource-badge">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+            </svg>
+            纯开源项目，「放心食用」🍵
+        </div>
 
         <!-- iOS 下载 -->
         <p class="platform-title">iOS 下载</p>
@@ -117,7 +154,17 @@
             </div>
         </div>
 
-        <p class="footer">© 2026 过午不食</p>
+        <div class="divider"></div>
+
+        <!-- GitHub 源码 -->
+        <a href="https://github.com/lijingmt/guowubushi-fasting" class="download-btn btn-github" target="_blank">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="white" style="vertical-align: middle; margin-right: 8px;">
+                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+            </svg>
+            GitHub 源代码
+        </a>
+
+        <p class="footer">© 2026 过午不食 · 开源项目</p>
     </div>
 </body>
 </html>
