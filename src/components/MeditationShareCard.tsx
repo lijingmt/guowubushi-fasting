@@ -81,21 +81,43 @@ export const MeditationShareCard: React.FC<MeditationShareCardProps> = ({
 
   const shareAchievement = async () => {
     try {
+      console.log('Starting share capture...');
+
+      // Capture the view
       const uri = await captureRef(viewRef, {
         format: 'png',
         quality: 1,
       });
 
-      const sourceFile = new File(uri);
-      const destFile = new File(Paths.cache, 'meditation_share.png');
-      await sourceFile.copy(destFile);
+      console.log('Captured URI:', uri);
 
-      await shareAsync(destFile.uri, {
+      // For some platforms, the URI might already be in the right location
+      let shareUri = uri;
+
+      // Only copy if needed (iOS sometimes returns a temp URI)
+      if (!uri.includes('cache') && !uri.includes('Caches')) {
+        const sourceFile = new File(uri);
+        const destFile = new File(Paths.cache, `meditation_share_${Date.now()}.png`);
+        await sourceFile.copy(destFile);
+        shareUri = destFile.uri;
+      }
+
+      console.log('Sharing URI:', shareUri);
+
+      await shareAsync(shareUri, {
         mimeType: 'image/png',
         dialogTitle: language === 'zh' ? '分享打坐成就' : language === 'es' ? 'Compartir' : 'Share Meditation',
       });
     } catch (error) {
       console.error('Error sharing meditation:', error);
+      // Show fallback - just share text
+      shareAsync('', {
+        message: language === 'zh'
+          ? `我在"过午不食"App中累计打坐${totalMinutes}分钟，最长时间${longestSession}分钟！下载体验：https://apps.apple.com/app/id6762360504`
+          : language === 'es'
+          ? `He meditado ${totalMinutes} minutos en "过午不食", ¡descárgalo! https://apps.apple.com/app/id6762360504`
+          : `I've meditated ${totalMinutes} minutes in "Fasting Until Morning"! Download: https://apps.apple.com/app/id6762360504`,
+      });
     }
   };
 
@@ -257,9 +279,12 @@ const styles = StyleSheet.create({
   // Hidden card for capture
   hiddenCard: {
     position: 'absolute',
-    left: -1000,
+    left: 0,
+    top: 0,
     width: 375,
     height: 600,
+    opacity: 0,
+    zIndex: -1000,
   },
   cardContainer: {
     width: '100%',
