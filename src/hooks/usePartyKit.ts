@@ -30,6 +30,7 @@ interface UsePartyKitReturn {
 export function usePartyKit(): UsePartyKitReturn {
   const wsRef = useRef<WebSocket | null>(null);
   const userIdRef = useRef<string>('');
+  const pendingOnlineRef = useRef<{ userId: string; nickname: string; activity: OnlineUser['activity'] } | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectDelayRef = useRef(1000);
 
@@ -62,6 +63,16 @@ export function usePartyKit(): UsePartyKitReturn {
         console.log('[PartyKit] Connected');
         setIsConnected(true);
         reconnectDelayRef.current = 1000;
+
+        // Send pending online message if any
+        if (pendingOnlineRef.current) {
+          const p = pendingOnlineRef.current;
+          ws.send(JSON.stringify({
+            type: 'online',
+            payload: { id: p.userId, nickname: p.nickname, activity: p.activity, startedAt: Date.now() },
+          }));
+          pendingOnlineRef.current = null;
+        }
       };
 
       ws.onmessage = (event) => {
@@ -155,11 +166,17 @@ export function usePartyKit(): UsePartyKitReturn {
   }, []);
 
   const sendOnline = useCallback((userId: string, nickname: string, activity: OnlineUser['activity']) => {
-    send({
+    const data = {
       type: 'online',
       payload: { id: userId, nickname, activity, startedAt: Date.now() },
-    });
-  }, [send]);
+    };
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(data));
+    } else {
+      // Save for when connection opens
+      pendingOnlineRef.current = { userId, nickname, activity };
+    }
+  }, []);
 
   const sendOffline = useCallback((userId: string) => {
     send({ type: 'offline', userId });
