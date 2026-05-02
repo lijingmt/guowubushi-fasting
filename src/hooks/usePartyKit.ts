@@ -58,6 +58,7 @@ export function usePartyKit(): UsePartyKitReturn {
   const wsRef = useRef<WebSocket | null>(null);
   const userIdRef = useRef<string>('');
   const pendingOnlineRef = useRef<{ userId: string; nickname: string; activity: OnlineUser['activity'] } | null>(null);
+  const lastOnlineRef = useRef<{ userId: string; nickname: string; activity: OnlineUser['activity'] } | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectDelayRef = useRef(1000);
 
@@ -94,11 +95,12 @@ export function usePartyKit(): UsePartyKitReturn {
         setIsConnected(true);
         reconnectDelayRef.current = 1000;
 
-        if (pendingOnlineRef.current) {
-          const p = pendingOnlineRef.current;
+        // Restore online status on reconnect
+        const online = pendingOnlineRef.current || lastOnlineRef.current;
+        if (online) {
           ws.send(JSON.stringify({
             type: 'online',
-            payload: { id: p.userId, nickname: p.nickname, activity: p.activity, startedAt: Date.now() },
+            payload: { id: online.userId, nickname: online.nickname, activity: online.activity, startedAt: Date.now() },
           }));
           pendingOnlineRef.current = null;
         }
@@ -240,6 +242,7 @@ export function usePartyKit(): UsePartyKitReturn {
   }, []);
 
   const sendOnline = useCallback((userId: string, nickname: string, activity: OnlineUser['activity']) => {
+    lastOnlineRef.current = { userId, nickname, activity };
     const data = {
       type: 'online',
       payload: { id: userId, nickname, activity, startedAt: Date.now() },
@@ -300,13 +303,15 @@ export function usePartyKit(): UsePartyKitReturn {
   useEffect(() => {
     const handleAppState = (nextState: string) => {
       if (nextState === 'background') {
+        // Don't send offline - user is still meditating/fasting
+        // Just close the WebSocket silently to save battery
         if (wsRef.current) {
-          send({ type: 'offline', userId: userIdRef.current });
           wsRef.current.close();
           wsRef.current = null;
           setIsConnected(false);
         }
       } else if (nextState === 'active') {
+        // Reconnect and re-send online status automatically
         if (userIdRef.current && !wsRef.current) {
           reconnectDelayRef.current = 1000;
           connect(userIdRef.current, '');
