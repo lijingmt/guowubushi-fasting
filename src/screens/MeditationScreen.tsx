@@ -7,6 +7,8 @@ import {
   ScrollView,
   Platform,
   Modal,
+  AppState,
+  AppStateStatus,
 } from 'react-native';
 import { Audio } from 'expo-av';
 import { useApp } from '../context/AppContext';
@@ -44,6 +46,7 @@ export const MeditationScreen = () => {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const bellSoundRef = useRef<Audio.Sound | null>(null);
   const backgroundSoundRef = useRef<Audio.Sound | null>(null);
+  const backgroundTimeRef = useRef<number>(0);
 
   // 播放钟声（用于完成和暂停）
   const playBellSound = async () => {
@@ -123,10 +126,33 @@ export const MeditationScreen = () => {
     }).catch(console.error);
 
     loadSettings();
+
+    // 监听应用状态变化
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
     return () => {
       cleanup();
+      subscription.remove();
     };
   }, []);
+
+  // 处理应用状态变化（后台/前台）
+  const handleAppStateChange = (nextAppState: AppStateStatus) => {
+    if (nextAppState === 'background' && isTimerRunning && timeLeft > 0) {
+      // 进入后台时，记录当前时间
+      backgroundTimeRef.current = Date.now();
+    } else if (nextAppState === 'active' && backgroundTimeRef.current > 0) {
+      // 回到前台时，计算经过的时间并更新倒计时
+      const elapsed = Math.floor((Date.now() - backgroundTimeRef.current) / 1000);
+      if (elapsed > 0 && timeLeft > elapsed) {
+        setTimeLeft(timeLeft - elapsed);
+      } else if (elapsed >= timeLeft) {
+        // 时间已过，完成打坐
+        completeSession();
+      }
+      backgroundTimeRef.current = 0;
+    }
+  };
 
   const cleanup = () => {
     if (timerRef.current) {

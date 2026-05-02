@@ -75,6 +75,21 @@
             font-size: 14px;
             padding: 10px 20px;
         }
+        .btn-play {
+            background: linear-gradient(135deg, #01875f 0%, #005f4e 100%);
+            position: relative;
+            padding-left: 55px;
+        }
+        .btn-play::before {
+            content: '';
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 30px;
+            height: 30px;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M3 20.5V3.5c0-.6.7-1 1.2-.7l15 8.5c.5.3.5 1 0 1.3l-15 8.5c-.5.4-1.2 0-1.2-.6z"/></svg>') center/contain no-repeat;
+        }
         .download-btn:hover { transform: scale(1.02); }
         .qr-section {
             margin: 20px 0;
@@ -297,6 +312,9 @@
 
         <!-- Android 下载 -->
         <p class="platform-title">Android 下载</p>
+        <a href="https://play.google.com/store/apps/details?id=com.guowu.fasting&pcampaignid=web_share" class="download-btn btn-play" target="_blank">
+            Google Play
+        </a>
         <a href="guowubushi-20260427-182312.apk" class="download-btn btn-android">
             ⬇️ 下载 APK
         </a>
