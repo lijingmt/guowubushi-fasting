@@ -1,9 +1,10 @@
 /**
- * PartyKit Server for Fasting App Leaderboard
- * Handles real-time leaderboard synchronization
+ * PartyKit Server for Fasting App
+ * Real-time leaderboard + online meditation counter
  */
 
-// Leaderboard data structure
+import type { Party, PartyServer } from "partykit/server";
+
 interface LeaderboardEntry {
   userId: string;
   nickname: string;
@@ -14,120 +15,146 @@ interface LeaderboardEntry {
   rank?: number;
 }
 
-// Party room state
-interface RoomState {
-  leaderboard: Record<string, LeaderboardEntry>;
-  top1000: LeaderboardEntry[];
+interface OnlineUser {
+  id: string;
+  nickname: string;
+  activity: "meditation" | "fasting" | "checkin";
+  startedAt: number;
 }
 
-export default {
-  async onConnect(ws: WebSocket) {
-    console.log('[PartyKit] Client connected');
-  },
+export default class FastingServer implements PartyServer {
+  // In-memory state
+  leaderboard: Record<string, LeaderboardEntry> = {};
+  onlineUsers: Record<string, OnlineUser> = {};
 
-  async onMessage(ws: WebSocket, message: string | Buffer) {
+  constructor(readonly party: Party) {}
+
+  async onConnect(ws: WebSocket) {
+    console.log("[PartyKit] Client connected");
+
+    // Send current state to newly connected client
+    const top1000 = this.getTop1000();
+    const onlineList = Object.values(this.onlineUsers);
+
+    ws.send(
+      JSON.stringify({
+        type: "init",
+        leaderboard: top1000,
+        onlineCount: onlineList.length,
+        onlineUsers: onlineList,
+      })
+    );
+  }
+
+  async onMessage(ws: WebSocket, message: string) {
     try {
-      const data = JSON.parse(message.toString());
-      const room = (ws as any).room;
+      const data = JSON.parse(message);
 
       switch (data.type) {
-        case 'publish':
-          // Publish user stats to leaderboard
-          await handlePublish(room, data.payload);
+        case "publish":
+          this.handlePublish(data.payload);
           break;
 
-        case 'getLeaderboard':
-          // Get top 100 leaderboard
-          await sendLeaderboard(room, ws);
+        case "getLeaderboard":
+          this.sendLeaderboard(ws);
           break;
 
-        case 'removeUser':
-          // Remove user from leaderboard
-          await handleRemoveUser(room, data.userId);
+        case "removeUser":
+          this.handleRemoveUser(data.userId);
+          break;
+
+        case "online":
+          this.handleOnline(ws, data.payload);
+          break;
+
+        case "offline":
+          this.handleOffline(data.userId);
           break;
       }
     } catch (err) {
-      console.error('[PartyKit] Message error:', err);
+      console.error("[PartyKit] Message error:", err);
     }
-  },
+  }
 
   async onRequest(req: Request) {
-    // Handle HTTP requests for health check
-    if (req.method === 'GET') {
-      return new Response('PartyKit Leaderboard Server - OK', {
-        status: 200,
-        headers: { 'Content-Type': 'text/plain' }
-      });
+    if (req.method === "GET") {
+      const onlineList = Object.values(this.onlineUsers);
+      return new Response(
+        JSON.stringify({
+          status: "ok",
+          onlineCount: onlineList.length,
+          leaderboardSize: Object.keys(this.leaderboard).length,
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
-    return new Response('Method not allowed', { status: 405 });
+    return new Response("Method not allowed", { status: 405 });
   }
-};
 
-/**
- * Handle publishing user stats to leaderboard
- */
-async function handlePublish(room: any, payload: LeaderboardEntry) {
-  const state = room.storage ?? { leaderboard: {}, top1000: [] };
+  // --- Leaderboard ---
 
-  // Update or add user entry
-  state.leaderboard[payload.userId] = payload;
+  handlePublish(payload: LeaderboardEntry) {
+    this.leaderboard[payload.userId] = payload;
+    this.broadcastLeaderboard();
+  }
 
-  // Update top 1000
-  updateTop1000(state);
+  handleRemoveUser(userId: string) {
+    delete this.leaderboard[userId];
+    this.broadcastLeaderboard();
+  }
 
-  // Broadcast updated leaderboard to all connected clients
-  room.broadcast(JSON.stringify({
-    type: 'leaderboardUpdate',
-    payload: state.top1000
-  }));
+  sendLeaderboard(ws: WebSocket) {
+    ws.send(
+      JSON.stringify({
+        type: "leaderboardUpdate",
+        payload: this.getTop1000(),
+      })
+    );
+  }
 
-  // Save state
-  room.storage = state;
-}
+  getTop1000(): LeaderboardEntry[] {
+    return Object.values(this.leaderboard)
+      .sort(
+        (a, b) =>
+          b.streak - a.streak || b.completedDays - a.completedDays
+      )
+      .slice(0, 1000)
+      .map((user, index) => ({ ...user, rank: index + 1 }));
+  }
 
-/**
- * Update top 1000 leaderboard
- */
-function updateTop1000(state: RoomState) {
-  const allUsers = Object.values(state.leaderboard);
+  broadcastLeaderboard() {
+    const top1000 = this.getTop1000();
+    this.party.broadcast(
+      JSON.stringify({
+        type: "leaderboardUpdate",
+        payload: top1000,
+      })
+    );
+  }
 
-  // Sort by streak (desc), then completed days (desc)
-  const sorted = allUsers.sort((a, b) =>
-    b.streak - a.streak || b.completedDays - a.completedDays
-  );
+  // --- Online users ---
 
-  // Take top 1000 and add ranks
-  state.top1000 = sorted.slice(0, 1000).map((user, index) => ({
-    ...user,
-    rank: index + 1
-  }));
-}
+  handleOnline(ws: WebSocket, payload: OnlineUser) {
+    this.onlineUsers[payload.id] = payload;
+    this.broadcastOnline();
+  }
 
-/**
- * Send leaderboard to requesting client
- */
-async function sendLeaderboard(room: any, ws: WebSocket) {
-  const state = room.storage ?? { leaderboard: {}, top1000: [] };
+  handleOffline(userId: string) {
+    delete this.onlineUsers[userId];
+    this.broadcastOnline();
+  }
 
-  ws.send(JSON.stringify({
-    type: 'leaderboardUpdate',
-    payload: state.top1000
-  }));
-}
-
-/**
- * Handle user removal
- */
-async function handleRemoveUser(room: any, userId: string) {
-  const state = room.storage ?? { leaderboard: {}, top1000: [] };
-
-  delete state.leaderboard[userId];
-  updateTop1000(state);
-
-  room.broadcast(JSON.stringify({
-    type: 'leaderboardUpdate',
-    payload: state.top1000
-  }));
-
-  room.storage = state;
+  broadcastOnline() {
+    const onlineList = Object.values(this.onlineUsers);
+    this.party.broadcast(
+      JSON.stringify({
+        type: "onlineUpdate",
+        onlineCount: onlineList.length,
+        onlineUsers: onlineList,
+      })
+    );
+  }
 }
