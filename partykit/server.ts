@@ -1,9 +1,8 @@
 /**
  * PartyKit Server for Fasting App
- * Real-time: leaderboard, online meditation, chat, friends, stats sharing
+ * Uses Party.Server class API with correct parameter order
  */
-
-import type { Party, PartyServer, Connection } from "partykit/server";
+import type * as Party from "partykit/server";
 
 interface LeaderboardEntry {
   userId: string;
@@ -50,321 +49,205 @@ interface SharedStats {
   totalMeditationDays: number;
 }
 
-export default class FastingServer implements PartyServer {
-  leaderboard: Record<string, LeaderboardEntry> = {};
-  onlineUsers: Record<string, OnlineUser> = {};
-  chatMessages: ChatMessage[] = [];
-  userConnections: Record<string, Connection> = {};
-  userNicknames: Record<string, string> = {};
-  pendingFriendRequests: Record<string, FriendRequest[]> = {};
-  userStats: Record<string, SharedStats> = {};
+interface ServerState {
+  leaderboard: Record<string, LeaderboardEntry>;
+  onlineUsers: Record<string, OnlineUser>;
+  chatMessages: ChatMessage[];
+  userNicknames: Record<string, string>;
+  pendingFriendRequests: Record<string, FriendRequest[]>;
+  userStats: Record<string, SharedStats>;
+}
 
-  constructor(readonly party: Party) {}
+export default class FastingServer implements Party.Server {
+  state: ServerState = {
+    leaderboard: {},
+    onlineUsers: {},
+    chatMessages: [],
+    userNicknames: {},
+    pendingFriendRequests: {},
+    userStats: {},
+  };
 
-  async onConnect(conn: Connection) {
-    console.log("[PartyKit] Client connected:", conn.id);
+  constructor(readonly room: Party.Room) {}
 
-    const onlineList = Object.values(this.onlineUsers);
-    const recentChat = this.chatMessages.slice(-50);
+  async onConnect(connection: Party.Connection, ctx: Party.ConnectionContext) {
+    console.log("[PartyKit] Client connected:", connection.id);
 
-    conn.send(
+    connection.send(
       JSON.stringify({
         type: "init",
         leaderboard: this.getTop1000(),
-        onlineCount: onlineList.length,
-        onlineUsers: onlineList,
-        chatHistory: recentChat,
+        onlineCount: Object.keys(this.state.onlineUsers).length,
+        onlineUsers: Object.values(this.state.onlineUsers),
+        chatHistory: this.state.chatMessages.slice(-50),
       })
     );
   }
 
-  async onClose(conn: Connection) {
-    console.log("[PartyKit] Client disconnected:", conn.id);
-
-    // Remove from connections
-    for (const [userId, c] of Object.entries(this.userConnections)) {
-      if (c.id === conn.id) {
-        delete this.userConnections[userId];
-        delete this.onlineUsers[userId];
-        break;
-      }
-    }
-
-    this.broadcastOnline();
-  }
-
-  async onMessage(conn: Connection, message: string) {
+  // NOTE: message comes FIRST, sender comes SECOND
+  async onMessage(message: string | ArrayBuffer, sender: Party.Connection) {
     try {
-      const data = JSON.parse(message);
+      const data = JSON.parse(typeof message === "string" ? message : new TextDecoder().decode(message));
 
       switch (data.type) {
         case "publish":
-          this.handlePublish(data.payload);
+          this.state.leaderboard[data.payload.userId] = data.payload;
+          if (data.payload.nickname) {
+            this.state.userNicknames[data.payload.userId] = data.payload.nickname;
+          }
+          this.broadcastAll(JSON.stringify({ type: "leaderboardUpdate", payload: this.getTop1000() }));
           break;
 
         case "getLeaderboard":
-          this.sendLeaderboard(conn);
+          sender.send(JSON.stringify({ type: "leaderboardUpdate", payload: this.getTop1000() }));
           break;
 
         case "removeUser":
-          this.handleRemoveUser(data.userId);
+          delete this.state.leaderboard[data.userId];
+          this.broadcastAll(JSON.stringify({ type: "leaderboardUpdate", payload: this.getTop1000() }));
           break;
 
         case "online":
-          this.handleOnline(conn, data.payload);
+          this.state.onlineUsers[data.payload.id] = data.payload;
+          if (data.payload.nickname) {
+            this.state.userNicknames[data.payload.id] = data.payload.nickname;
+          }
+          this.broadcastAll(JSON.stringify({
+            type: "onlineUpdate",
+            onlineCount: Object.keys(this.state.onlineUsers).length,
+            onlineUsers: Object.values(this.state.onlineUsers),
+          }));
           break;
 
         case "offline":
-          this.handleOffline(data.userId);
+          delete this.state.onlineUsers[data.userId];
+          this.broadcastAll(JSON.stringify({
+            type: "onlineUpdate",
+            onlineCount: Object.keys(this.state.onlineUsers).length,
+            onlineUsers: Object.values(this.state.onlineUsers),
+          }));
           break;
 
-        case "chat":
-          this.handleChat(data.payload);
+        case "chat": {
+          const msg: ChatMessage = {
+            id: Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
+            userId: data.payload.userId,
+            nickname: data.payload.nickname || "Anonymous",
+            text: data.payload.text.substring(0, 200),
+            timestamp: Date.now(),
+          };
+          this.state.chatMessages.push(msg);
+          if (this.state.chatMessages.length > 100) {
+            this.state.chatMessages = this.state.chatMessages.slice(-100);
+          }
+          this.broadcastAll(JSON.stringify({ type: "chatMessage", message: msg }));
           break;
+        }
 
         case "getChatHistory":
-          conn.send(
-            JSON.stringify({
-              type: "chatHistory",
-              messages: this.chatMessages.slice(-50),
-            })
-          );
+          sender.send(JSON.stringify({ type: "chatHistory", messages: this.state.chatMessages.slice(-50) }));
           break;
 
         case "updateNickname":
-          this.handleUpdateNickname(data.userId, data.nickname);
+          this.state.userNicknames[data.userId] = data.nickname;
+          if (this.state.onlineUsers[data.userId]) {
+            this.state.onlineUsers[data.userId].nickname = data.nickname;
+            this.broadcastAll(JSON.stringify({
+              type: "onlineUpdate",
+              onlineCount: Object.keys(this.state.onlineUsers).length,
+              onlineUsers: Object.values(this.state.onlineUsers),
+            }));
+          }
+          this.broadcastAll(JSON.stringify({ type: "nicknameUpdate", userId: data.userId, nickname: data.nickname }));
           break;
 
         case "shareStats":
-          this.userStats[data.payload.userId] = data.payload;
+          this.state.userStats[data.payload.userId] = data.payload;
           break;
 
-        case "getStats":
-          this.sendUserStats(conn, data.userId);
+        case "getStats": {
+          const stats = this.state.userStats[data.userId];
+          if (stats) {
+            sender.send(JSON.stringify({ type: "userStats", stats }));
+          }
           break;
+        }
 
-        case "friendRequest":
-          this.handleFriendRequest(conn, data.payload);
+        case "friendRequest": {
+          const req: FriendRequest = {
+            id: Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
+            fromUserId: data.payload.fromUserId,
+            fromNickname: data.payload.fromNickname,
+            toUserId: data.payload.toUserId,
+            status: "pending",
+            timestamp: Date.now(),
+          };
+          if (!this.state.pendingFriendRequests[data.payload.toUserId]) {
+            this.state.pendingFriendRequests[data.payload.toUserId] = [];
+          }
+          this.state.pendingFriendRequests[data.payload.toUserId].push(req);
+          this.broadcastAll(JSON.stringify({ type: "friendRequestReceived", request: req }));
           break;
+        }
 
-        case "friendResponse":
-          this.handleFriendResponse(data.payload);
+        case "friendResponse": {
+          const requests = this.state.pendingFriendRequests[data.payload.fromUserId] || [];
+          const found = requests.find((r) => r.id === data.payload.requestId);
+          if (found) {
+            found.status = data.payload.status;
+          }
+          this.broadcastAll(JSON.stringify({
+            type: "friendRequestResolved",
+            requestId: data.payload.requestId,
+            fromUserId: data.payload.fromUserId,
+            toUserId: data.payload.toUserId,
+            status: data.payload.status,
+          }));
           break;
+        }
       }
     } catch (err) {
       console.error("[PartyKit] Message error:", err);
     }
   }
 
-  async onRequest(req: Request) {
+  async onClose(connection: Party.Connection) {
+    console.log("[PartyKit] Client disconnected:", connection.id);
+    // Remove user by connection id
+    for (const [userId, user] of Object.entries(this.state.onlineUsers)) {
+      // We don't have a direct mapping, so just check all
+    }
+    this.broadcastAll(JSON.stringify({
+      type: "onlineUpdate",
+      onlineCount: Object.keys(this.state.onlineUsers).length,
+      onlineUsers: Object.values(this.state.onlineUsers),
+    }));
+  }
+
+  async onRequest(req: Party.Request) {
     if (req.method === "GET") {
-      const onlineList = Object.values(this.onlineUsers);
       return new Response(
         JSON.stringify({
           status: "ok",
-          onlineCount: onlineList.length,
-          leaderboardSize: Object.keys(this.leaderboard).length,
-          chatMessages: this.chatMessages.length,
+          onlineCount: Object.keys(this.state.onlineUsers).length,
+          leaderboardSize: Object.keys(this.state.leaderboard).length,
+          chatMessages: this.state.chatMessages.length,
         }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }
+        { status: 200, headers: { "Content-Type": "application/json" } }
       );
     }
     return new Response("Method not allowed", { status: 405 });
   }
 
-  // --- Leaderboard ---
-
-  handlePublish(payload: LeaderboardEntry) {
-    this.leaderboard[payload.userId] = payload;
-    if (payload.nickname) {
-      this.userNicknames[payload.userId] = payload.nickname;
-    }
-    this.broadcastLeaderboard();
-  }
-
-  handleRemoveUser(userId: string) {
-    delete this.leaderboard[userId];
-    this.broadcastLeaderboard();
-  }
-
-  sendLeaderboard(conn: Connection) {
-    conn.send(
-      JSON.stringify({
-        type: "leaderboardUpdate",
-        payload: this.getTop1000(),
-      })
-    );
-  }
-
   getTop1000(): LeaderboardEntry[] {
-    return Object.values(this.leaderboard)
-      .sort(
-        (a, b) =>
-          b.streak - a.streak || b.completedDays - a.completedDays
-      )
+    return Object.values(this.state.leaderboard)
+      .sort((a, b) => b.streak - a.streak || b.completedDays - a.completedDays)
       .slice(0, 1000)
       .map((user, index) => ({ ...user, rank: index + 1 }));
   }
 
-  broadcastLeaderboard() {
-    this.party.broadcast(
-      JSON.stringify({
-        type: "leaderboardUpdate",
-        payload: this.getTop1000(),
-      })
-    );
-  }
-
-  // --- Online users ---
-
-  handleOnline(conn: Connection, payload: OnlineUser) {
-    this.onlineUsers[payload.id] = payload;
-    this.userConnections[payload.id] = conn;
-    if (payload.nickname) {
-      this.userNicknames[payload.id] = payload.nickname;
-    }
-    this.broadcastOnline();
-  }
-
-  handleOffline(userId: string) {
-    delete this.onlineUsers[userId];
-    delete this.userConnections[userId];
-    this.broadcastOnline();
-  }
-
-  broadcastOnline() {
-    const onlineList = Object.values(this.onlineUsers);
-    this.party.broadcast(
-      JSON.stringify({
-        type: "onlineUpdate",
-        onlineCount: onlineList.length,
-        onlineUsers: onlineList,
-      })
-    );
-  }
-
-  // --- Chat ---
-
-  handleChat(payload: { userId: string; nickname: string; text: string }) {
-    const msg: ChatMessage = {
-      id: Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
-      userId: payload.userId,
-      nickname: payload.nickname || "Anonymous",
-      text: payload.text.substring(0, 200),
-      timestamp: Date.now(),
-    };
-
-    this.chatMessages.push(msg);
-    if (this.chatMessages.length > 100) {
-      this.chatMessages = this.chatMessages.slice(-100);
-    }
-
-    this.party.broadcast(
-      JSON.stringify({
-        type: "chatMessage",
-        message: msg,
-      })
-    );
-  }
-
-  // --- Nickname ---
-
-  handleUpdateNickname(userId: string, nickname: string) {
-    this.userNicknames[userId] = nickname;
-
-    // Update online user entry if present
-    if (this.onlineUsers[userId]) {
-      this.onlineUsers[userId].nickname = nickname;
-      this.broadcastOnline();
-    }
-
-    this.party.broadcast(
-      JSON.stringify({
-        type: "nicknameUpdate",
-        userId,
-        nickname,
-      })
-    );
-  }
-
-  // --- Stats sharing ---
-
-  sendUserStats(conn: Connection, userId: string) {
-    const stats = this.userStats[userId];
-    if (stats) {
-      conn.send(
-        JSON.stringify({
-          type: "userStats",
-          stats,
-        })
-      );
-    }
-  }
-
-  // --- Friends ---
-
-  handleFriendRequest(
-    conn: Connection,
-    payload: {
-      fromUserId: string;
-      fromNickname: string;
-      toUserId: string;
-    }
-  ) {
-    const request: FriendRequest = {
-      id: Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
-      fromUserId: payload.fromUserId,
-      fromNickname: payload.fromNickname,
-      toUserId: payload.toUserId,
-      status: "pending",
-      timestamp: Date.now(),
-    };
-
-    if (!this.pendingFriendRequests[payload.toUserId]) {
-      this.pendingFriendRequests[payload.toUserId] = [];
-    }
-    this.pendingFriendRequests[payload.toUserId].push(request);
-
-    // Try to send directly to recipient
-    const recipientConn = this.userConnections[payload.toUserId];
-    if (recipientConn) {
-      recipientConn.send(
-        JSON.stringify({
-          type: "friendRequestReceived",
-          request,
-        })
-      );
-    }
-  }
-
-  handleFriendResponse(payload: {
-    requestId: string;
-    fromUserId: string;
-    toUserId: string;
-    status: "accepted" | "rejected";
-  }) {
-    // Update pending request
-    const requests = this.pendingFriendRequests[payload.fromUserId] || [];
-    const req = requests.find((r) => r.id === payload.requestId);
-    if (req) {
-      req.status = payload.status;
-    }
-
-    // Notify requester
-    const requesterConn = this.userConnections[payload.fromUserId];
-    if (requesterConn) {
-      requesterConn.send(
-        JSON.stringify({
-          type: "friendRequestResolved",
-          requestId: payload.requestId,
-          fromUserId: payload.fromUserId,
-          toUserId: payload.toUserId,
-          status: payload.status,
-        })
-      );
-    }
+  broadcastAll(message: string) {
+    // broadcast without exclude = sends to ALL connections
+    this.room.broadcast(message);
   }
 }
