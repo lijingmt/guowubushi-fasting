@@ -16,6 +16,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useApp } from '../context/AppContext';
+import { useSocial } from '../context/SocialContext';
 import { Card } from '../components/Card';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -54,6 +55,7 @@ export const SettingsScreen: React.FC = () => {
     isDarkMode,
     language,
   } = useApp();
+  const social = useSocial();
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [tempTime, setTempTime] = useState(settings.reminderTime);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
@@ -274,6 +276,50 @@ export const SettingsScreen: React.FC = () => {
           label={language === 'zh' ? '🍽️ 饮食记录' : language === 'es' ? '🍽️ Comidas' : '🍽️ Meals'}
           onPress={() => navigation.navigate('Meals')}
         />
+      </Card>
+
+      {/* Social / Community */}
+      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+        {language === 'zh' ? '同修社区' : language === 'es' ? 'Comunidad' : 'Community'}
+      </Text>
+      <Card>
+        <View style={styles.settingItem}>
+          <View>
+            <Text style={[styles.settingLabel, { color: colors.text }]}>
+              {language === 'zh' ? '法号/昵称' : 'Nickname'}
+            </Text>
+            <Text style={[styles.settingDesc, { color: colors.textLight }]}>
+              {social.nickname || (language === 'zh' ? '未设置' : 'Not set')}
+            </Text>
+          </View>
+        </View>
+        <Divider />
+        <SettingItem
+          label={language === 'zh' ? '👥 同修好友' : '👥 Friends'}
+          value={social.friends.length > 0 ? `${social.friends.length}` : undefined}
+          onPress={() => navigation.navigate('Friends')}
+        />
+        <Divider />
+        <View style={styles.settingItem}>
+          <View>
+            <Text style={[styles.settingLabel, { color: colors.text }]}>
+              {language === 'zh' ? '我的同修码' : 'Friend Code'}
+            </Text>
+            <Text style={[styles.settingDesc, { color: colors.textLight, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }]}>
+              {social.userId}
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={async () => {
+              await Clipboard.setStringAsync(social.userId);
+              Alert.alert(language === 'zh' ? '已复制' : 'Copied!');
+            }}
+          >
+            <Text style={[styles.settingValue, { color: colors.primary }]}>
+              {language === 'zh' ? '复制' : 'Copy'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </Card>
 
       {/* 通用设置 */}

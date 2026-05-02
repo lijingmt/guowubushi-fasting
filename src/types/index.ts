@@ -142,6 +142,49 @@ export interface HealthSyncStatus {
   lastSyncTime?: number; // 最后同步时间
 }
 
+// ============ 社交类型 ============
+
+export interface ChatMessage {
+  id: string;
+  userId: string;
+  nickname: string;
+  text: string;
+  timestamp: number;
+}
+
+export interface OnlineUser {
+  id: string;
+  nickname: string;
+  activity: 'meditation' | 'fasting' | 'checkin';
+  startedAt: number;
+}
+
+export interface FriendRequest {
+  id: string;
+  fromUserId: string;
+  fromNickname: string;
+  toUserId: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  timestamp: number;
+}
+
+export interface Friend {
+  userId: string;
+  nickname: string;
+  addedAt: number;
+}
+
+export interface SharedStats {
+  userId: string;
+  nickname: string;
+  streak: number;
+  totalMeditationMinutes: number;
+  totalMerit: number;
+  meditationSessionCount: number;
+  longestMeditationSession: number;
+  totalMeditationDays: number;
+}
+
 // 导航类型
 export type RootStackParamList = {
   Home: undefined;
@@ -152,6 +195,8 @@ export type RootStackParamList = {
   MealDetail: { mealId?: string };
   History: undefined;
   Achievements: undefined;
+  Friends: undefined;
+  FriendDetail: { userId: string; nickname: string };
 };
 
 export type TabParamList = {

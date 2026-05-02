@@ -9,6 +9,7 @@ import {
   PracticeRecord,
   FastingSession,
   ActiveFastingState,
+  Friend,
 } from '../types';
 import { DEFAULT_SETTINGS } from '../constants/achievements';
 
@@ -25,6 +26,9 @@ const KEYS = {
   ACTIVE_FASTING_STATE: '@guowu_active_fasting_state', // 当前活跃的禁食状态
   FASTING_DISCLAIMER_AGREED: '@guowu_fasting_disclaimer_agreed', // 禁食免责声明同意状态
   LAST_FASTING_DURATION: '@guowu_last_fasting_duration', // 上次选择的禁食时长
+  USER_ID: '@guowu_user_id', // 持久化用户ID
+  NICKNAME: '@guowu_nickname', // 用户昵称/法号
+  FRIENDS_LIST: '@guowu_friends', // 好友列表
 };
 
 // 设置相关
@@ -611,5 +615,85 @@ export const saveLastFastingDuration = async (hours: number): Promise<void> => {
     await AsyncStorage.setItem(KEYS.LAST_FASTING_DURATION, hours.toString());
   } catch (error) {
     console.error('Error saving last fasting duration:', error);
+  }
+};
+
+// ============ 社交相关 ============
+
+// 获取或创建用户ID（首次生成UUID，之后保持不变）
+export const getOrCreateUserId = async (): Promise<string> => {
+  try {
+    let id = await AsyncStorage.getItem(KEYS.USER_ID);
+    if (!id) {
+      id = Date.now().toString(36) + Math.random().toString(36).substring(2, 10);
+      await AsyncStorage.setItem(KEYS.USER_ID, id);
+    }
+    return id;
+  } catch (error) {
+    console.error('Error getting user ID:', error);
+    return Date.now().toString(36) + Math.random().toString(36).substring(2, 10);
+  }
+};
+
+export const getUserId = async (): Promise<string | null> => {
+  try {
+    return await AsyncStorage.getItem(KEYS.USER_ID);
+  } catch (error) {
+    console.error('Error getting user ID:', error);
+    return null;
+  }
+};
+
+// 昵称相关
+export const getNickname = async (): Promise<string> => {
+  try {
+    return (await AsyncStorage.getItem(KEYS.NICKNAME)) || '';
+  } catch (error) {
+    console.error('Error getting nickname:', error);
+    return '';
+  }
+};
+
+export const saveNickname = async (nickname: string): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(KEYS.NICKNAME, nickname);
+  } catch (error) {
+    console.error('Error saving nickname:', error);
+  }
+};
+
+// 好友列表相关
+export const getFriendsList = async (): Promise<Friend[]> => {
+  try {
+    const data = await AsyncStorage.getItem(KEYS.FRIENDS_LIST);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Error getting friends list:', error);
+    return [];
+  }
+};
+
+export const saveFriend = async (friend: Friend): Promise<void> => {
+  try {
+    const friends = await getFriendsList();
+    const existingIndex = friends.findIndex((f) => f.userId === friend.userId);
+    if (existingIndex >= 0) {
+      friends[existingIndex] = friend;
+    } else {
+      friends.push(friend);
+    }
+    await AsyncStorage.setItem(KEYS.FRIENDS_LIST, JSON.stringify(friends));
+  } catch (error) {
+    console.error('Error saving friend:', error);
+  }
+};
+
+export const removeFriend = async (userId: string): Promise<void> => {
+  try {
+    const friends = await getFriendsList();
+    const filtered = friends.filter((f) => f.userId !== userId);
+    await AsyncStorage.setItem(KEYS.FRIENDS_LIST, JSON.stringify(filtered));
+  } catch (error) {
+    console.error('Error removing friend:', error);
   }
 };

@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View, ActivityIndicator } from 'react-native';
 import { AppProvider, useApp } from './src/context/AppContext';
+import { SocialProvider } from './src/context/SocialContext';
 import { AppNavigator } from './src/navigation/Tabs';
 import { WelcomeScreen, checkTermsAgreed } from './src/components/WelcomeScreen';
 import { SplashScreen } from './src/components/SplashScreen';
@@ -67,7 +68,9 @@ export default function App() {
     <SafeAreaProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <AppProvider>
-          <AppContent />
+          <SocialProvider>
+            <AppContent />
+          </SocialProvider>
           <StatusBar style="auto" />
         </AppProvider>
       </GestureHandlerRootView>

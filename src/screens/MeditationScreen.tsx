@@ -12,11 +12,15 @@ import {
 } from 'react-native';
 import { Audio } from 'expo-av';
 import { useApp } from '../context/AppContext';
+import { useSocial } from '../context/SocialContext';
 import { fs, rs, vs, layout } from '../theme/responsive';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MeditationShareCard } from '../components/MeditationShareCard';
 import { MeditationAnimation } from '../components/MeditationAnimation';
+import { OnlineMeditatorsList } from '../components/OnlineMeditatorsList';
+import { ChatPanel } from '../components/ChatPanel';
+import { NicknameEditField } from '../components/NicknameEditField';
 
 const MEDITATION_DURATION_KEY = '@guowu_meditation_duration';
 const MEDITATION_SOUND_KEY = '@guowu_meditation_sound';
@@ -35,10 +39,12 @@ const BACKGROUND_SOUNDS: Record<BackgroundSound, { zh: string; en: string; es: s
 
 export const MeditationScreen = () => {
   const { t, addPractice, stats, colors, language } = useApp();
+  const social = useSocial();
   const [selectedDuration, setSelectedDuration] = useState(15);
   const [backgroundSound, setBackgroundSound] = useState<BackgroundSound>('none');
   const [showSoundPicker, setShowSoundPicker] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showSocial, setShowSocial] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [hasActiveSession, setHasActiveSession] = useState(false);
@@ -127,12 +133,17 @@ export const MeditationScreen = () => {
 
     loadSettings();
 
+    // Connect to social
+    social.connect();
+
     // 监听应用状态变化
     const subscription = AppState.addEventListener('change', handleAppStateChange);
 
     return () => {
       cleanup();
       subscription.remove();
+      social.goOffline();
+      social.disconnect();
     };
   }, []);
 
@@ -207,6 +218,9 @@ export const MeditationScreen = () => {
     // 开始播放背景音乐
     playBackgroundSound(backgroundSound);
 
+    // Go online to social
+    social.goOnline('meditation');
+
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -225,6 +239,8 @@ export const MeditationScreen = () => {
 
     setIsTimerRunning(false);
     setHasActiveSession(false);
+
+    social.goOffline();
 
     // 停止背景音乐
     await stopBackgroundSound();
@@ -246,6 +262,8 @@ export const MeditationScreen = () => {
 
     // 停止背景音乐
     await stopBackgroundSound();
+
+    social.goOffline();
 
     const elapsedMinutes = Math.round((selectedDuration * 60 - timeLeft) / 60);
     if (elapsedMinutes > 0) {
@@ -434,6 +452,29 @@ export const MeditationScreen = () => {
         <Text style={[styles.todayStatsValue, { color: colors.primary }]}>
           {stats.totalMeditationMinutes || 0} {getMinutesLabel()}
         </Text>
+      </View>
+
+      {/* Social panel */}
+      <View style={[styles.socialSection, { marginHorizontal: layout.contentPadding, marginTop: vs(12) }]}>
+        <TouchableOpacity
+          style={[styles.socialToggle, { backgroundColor: colors.card }]}
+          onPress={() => setShowSocial(!showSocial)}
+        >
+          <Text style={[styles.socialToggleText, { color: colors.text }]}>
+            👥 {social.onlineCount} {language === 'zh' ? '人打坐中' : language === 'es' ? 'meditando' : 'meditating'}
+          </Text>
+          <Text style={[styles.socialToggleArrow, { color: colors.textSecondary }]}>
+            {showSocial ? '▼' : '▶'}
+          </Text>
+        </TouchableOpacity>
+
+        {showSocial && (
+          <View style={styles.socialContent}>
+            <NicknameEditField />
+            <OnlineMeditatorsList />
+            <ChatPanel />
+          </View>
+        )}
       </View>
 
       {/* 分享按钮 */}
@@ -667,6 +708,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: vs(8),
     paddingHorizontal: layout.contentPadding,
+  },
+  // Social styles
+  socialSection: {},
+  socialToggle: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderRadius: rs(12),
+    padding: rs(14),
+  },
+  socialToggleText: {
+    fontSize: fs(15),
+    fontWeight: '600',
+  },
+  socialToggleArrow: {
+    fontSize: fs(12),
+  },
+  socialContent: {
+    marginTop: vs(8),
   },
   // Modal styles
   modalOverlay: {

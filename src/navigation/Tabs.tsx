@@ -12,6 +12,8 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 import { HistoryScreen } from '../screens/HistoryScreen';
 import { FastingScreen } from '../screens/FastingScreen';
 import { MeditationScreen } from '../screens/MeditationScreen';
+import { FriendsScreen } from '../screens/FriendsScreen';
+import { FriendDetailScreen } from '../screens/FriendDetailScreen';
 import { responsiveSize, fs, vs, rs, layout, responsive } from '../theme/responsive';
 
 const Tab = createBottomTabNavigator();
@@ -128,6 +130,15 @@ export const AppNavigator = () => {
           name="Meals"
           component={MealsScreen}
           options={{ title: t.meals }}
+        />
+        <Stack.Screen
+          name="Friends"
+          component={FriendsScreen}
+          options={{ title: t.friendsTitle || 'Friends' }}
+        />
+        <Stack.Screen
+          name="FriendDetail"
+          component={FriendDetailScreen as any}
         />
       </Stack.Navigator>
     </NavigationContainer>
