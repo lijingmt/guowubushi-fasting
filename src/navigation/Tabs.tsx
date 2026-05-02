@@ -79,6 +79,16 @@ const TabNavigator = () => {
         }}
       />
       <Tab.Screen
+        name="LeaderboardTab"
+        component={LeaderboardScreen}
+        options={{
+          tabBarLabel: language === 'zh' ? '排行' : language === 'es' ? 'Ranking' : 'Ranking',
+          tabBarIcon: ({ color }) => (
+            <TabIcon name="🏆" color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
         name="Settings"
         component={SettingsScreen}
         options={{
