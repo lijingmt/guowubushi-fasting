@@ -185,6 +185,36 @@ export interface SharedStats {
   totalMeditationDays: number;
 }
 
+// 排行榜类型
+export interface LeaderboardEntry {
+  userId: string;
+  nickname: string;
+  rank?: number;
+  lastUpdate: number;
+  currentStreak: number;
+  // 过午不食时段统计
+  fastingDaysThisWeek: number;
+  fastingDaysThisMonth: number;
+  fastingDaysThisYear: number;
+  // 打坐时段统计
+  meditationMinutesThisWeek: number;
+  meditationMinutesThisMonth: number;
+  meditationMinutesThisYear: number;
+  meditationDaysThisMonth: number;
+  meditationDaysThisYear: number;
+  sessionCountThisWeek: number;
+}
+
+export interface PrivateMessage {
+  id: string;
+  fromUserId: string;
+  fromNickname: string;
+  toUserId: string;
+  toNickname: string;
+  text: string;
+  timestamp: number;
+}
+
 // 导航类型
 export type RootStackParamList = {
   Home: undefined;
@@ -197,6 +227,8 @@ export type RootStackParamList = {
   Achievements: undefined;
   Friends: undefined;
   FriendDetail: { userId: string; nickname: string };
+  Leaderboard: undefined;
+  ChatDetail: { userId: string; nickname: string };
 };
 
 export type TabParamList = {

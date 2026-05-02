@@ -5,6 +5,8 @@ import type {
   FriendRequest,
   Friend,
   SharedStats,
+  LeaderboardEntry,
+  PrivateMessage,
 } from '../types';
 import { usePartyKit } from '../hooks/usePartyKit';
 import {
@@ -15,40 +17,57 @@ import {
   saveFriend as storageSaveFriend,
   removeFriend as storageRemoveFriend,
 } from '../services/storage';
+import { calculatePeriodStats } from '../utils/leaderboardStats';
+
+interface LeaderboardData {
+  fasting: {
+    weekly: LeaderboardEntry[];
+    monthly: LeaderboardEntry[];
+    yearly: LeaderboardEntry[];
+  };
+  meditation: {
+    weekly: LeaderboardEntry[];
+    monthly: LeaderboardEntry[];
+    yearly: LeaderboardEntry[];
+  };
+}
 
 interface SocialContextType {
-  // Connection
   isConnected: boolean;
   userId: string;
   nickname: string;
 
-  // Online
   onlineUsers: OnlineUser[];
   onlineCount: number;
 
-  // Chat
   chatMessages: ChatMessage[];
   sendChat: (text: string) => void;
 
-  // Nickname
   updateNickname: (name: string) => void;
 
-  // Friends
   friends: Friend[];
   friendRequests: FriendRequest[];
   sendFriendRequest: (toUserId: string) => void;
   respondToFriendRequest: (requestId: string, fromUserId: string, accept: boolean) => void;
   removeFriend: (userId: string) => void;
 
-  // Stats
   shareMyStats: (stats: SharedStats) => void;
   getFriendStats: (userId: string) => void;
 
-  // Connection lifecycle
   connect: () => void;
   disconnect: () => void;
   goOnline: (activity: OnlineUser['activity']) => void;
   goOffline: () => void;
+
+  leaderboardData: LeaderboardData;
+  totalParticipants: number;
+  publishLeaderboardStats: (entry: LeaderboardEntry) => void;
+  requestLeaderboard: (category: 'fasting' | 'meditation', period: 'weekly' | 'monthly' | 'yearly') => void;
+
+  privateMessages: PrivateMessage[];
+  sendPrivateMessage: (toUserId: string, toNickname: string, text: string) => void;
+  getPrivateMessages: (withUserId: string) => void;
+  getConversationMessages: (withUserId: string) => PrivateMessage[];
 }
 
 const SocialContext = createContext<SocialContextType | null>(null);
@@ -66,7 +85,6 @@ export function SocialProvider({ children }: { children: ReactNode }) {
   const [nickname, setNickname] = useState('');
   const [friends, setFriends] = useState<Friend[]>([]);
 
-  // Load persisted data on mount
   useEffect(() => {
     (async () => {
       const id = await getOrCreateUserId();
@@ -80,7 +98,6 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     })();
   }, []);
 
-  // Connect/disconnect
   const connect = useCallback(() => {
     if (userId) {
       partykit.connect(userId, nickname);
@@ -99,12 +116,10 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     partykit.sendOffline(userId);
   }, [userId, partykit]);
 
-  // Chat
   const sendChat = useCallback((text: string) => {
     partykit.sendChat(userId, nickname, text);
   }, [userId, nickname, partykit]);
 
-  // Nickname
   const updateNickname = useCallback(async (name: string) => {
     setNickname(name);
     await storageSaveNickname(name);
@@ -113,7 +128,6 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     }
   }, [userId, partykit]);
 
-  // Friends
   const handleSendFriendRequest = useCallback((toUserId: string) => {
     partykit.sendFriendRequest(userId, nickname, toUserId);
   }, [userId, nickname, partykit]);
@@ -143,7 +157,6 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     await storageRemoveFriend(friendUserId);
   }, [friends]);
 
-  // Stats
   const shareMyStats = useCallback((stats: SharedStats) => {
     partykit.shareStats(stats);
   }, [partykit]);
@@ -151,6 +164,34 @@ export function SocialProvider({ children }: { children: ReactNode }) {
   const getFriendStats = useCallback((friendUserId: string) => {
     partykit.getStats(friendUserId);
   }, [partykit]);
+
+  const publishLeaderboardStats = useCallback((entry: LeaderboardEntry) => {
+    partykit.publishLeaderboardStats(entry);
+  }, [partykit]);
+
+  const requestLeaderboard = useCallback((category: 'fasting' | 'meditation', period: 'weekly' | 'monthly' | 'yearly') => {
+    partykit.requestLeaderboard(category, period);
+  }, [partykit]);
+
+  const sendPrivateMessage = useCallback((toUserId: string, toNickname: string, text: string) => {
+    partykit.sendPrivateMessage(userId, nickname, toUserId, toNickname, text);
+  }, [userId, nickname, partykit]);
+
+  const getPrivateMessages = useCallback((withUserId: string) => {
+    partykit.getPrivateMessages(userId, withUserId);
+  }, [userId, partykit]);
+
+  const getConversationMessages = useCallback((withUserId: string) => {
+    return partykit.privateMessages.filter(
+      (m) =>
+        (m.fromUserId === userId && m.toUserId === withUserId) ||
+        (m.fromUserId === withUserId && m.toUserId === userId)
+    ).sort((a, b) => a.timestamp - b.timestamp);
+  }, [userId, partykit.privateMessages]);
+
+  const isFriend = useCallback((otherUserId: string) => {
+    return friends.some((f) => f.userId === otherUserId);
+  }, [friends]);
 
   const value: SocialContextType = {
     isConnected: partykit.isConnected,
@@ -172,6 +213,14 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     disconnect,
     goOnline,
     goOffline,
+    leaderboardData: partykit.leaderboardData,
+    totalParticipants: partykit.totalParticipants,
+    publishLeaderboardStats,
+    requestLeaderboard,
+    privateMessages: partykit.privateMessages,
+    sendPrivateMessage,
+    getPrivateMessages,
+    getConversationMessages,
   };
 
   return (

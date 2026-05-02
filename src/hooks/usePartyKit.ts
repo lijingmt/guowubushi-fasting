@@ -5,9 +5,29 @@ import type {
   ChatMessage,
   FriendRequest,
   SharedStats,
+  LeaderboardEntry,
+  PrivateMessage,
 } from '../types';
 
 const PARTYKIT_URL = 'wss://partykit.guowubushi.net/party/meditation-room';
+
+interface LeaderboardData {
+  fasting: {
+    weekly: LeaderboardEntry[];
+    monthly: LeaderboardEntry[];
+    yearly: LeaderboardEntry[];
+  };
+  meditation: {
+    weekly: LeaderboardEntry[];
+    monthly: LeaderboardEntry[];
+    yearly: LeaderboardEntry[];
+  };
+}
+
+const emptyLeaderboard: LeaderboardData = {
+  fasting: { weekly: [], monthly: [], yearly: [] },
+  meditation: { weekly: [], monthly: [], yearly: [] },
+};
 
 interface UsePartyKitReturn {
   isConnected: boolean;
@@ -15,6 +35,9 @@ interface UsePartyKitReturn {
   onlineCount: number;
   chatMessages: ChatMessage[];
   friendRequests: FriendRequest[];
+  leaderboardData: LeaderboardData;
+  privateMessages: PrivateMessage[];
+  totalParticipants: number;
   connect: (userId: string, nickname: string) => void;
   disconnect: () => void;
   sendOnline: (userId: string, nickname: string, activity: OnlineUser['activity']) => void;
@@ -25,6 +48,10 @@ interface UsePartyKitReturn {
   getStats: (userId: string) => void;
   sendFriendRequest: (fromUserId: string, fromNickname: string, toUserId: string) => void;
   respondToFriendRequest: (requestId: string, fromUserId: string, toUserId: string, accept: boolean) => void;
+  publishLeaderboardStats: (entry: LeaderboardEntry) => void;
+  requestLeaderboard: (category: 'fasting' | 'meditation', period: 'weekly' | 'monthly' | 'yearly') => void;
+  sendPrivateMessage: (fromUserId: string, fromNickname: string, toUserId: string, toNickname: string, text: string) => void;
+  getPrivateMessages: (fromUserId: string, toUserId: string) => void;
 }
 
 export function usePartyKit(): UsePartyKitReturn {
@@ -39,6 +66,9 @@ export function usePartyKit(): UsePartyKitReturn {
   const [onlineCount, setOnlineCount] = useState(0);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
+  const [leaderboardData, setLeaderboardData] = useState<LeaderboardData>(emptyLeaderboard);
+  const [privateMessages, setPrivateMessages] = useState<PrivateMessage[]>([]);
+  const [totalParticipants, setTotalParticipants] = useState(0);
 
   const clearReconnect = useCallback(() => {
     if (reconnectTimerRef.current) {
@@ -64,7 +94,6 @@ export function usePartyKit(): UsePartyKitReturn {
         setIsConnected(true);
         reconnectDelayRef.current = 1000;
 
-        // Send pending online message if any
         if (pendingOnlineRef.current) {
           const p = pendingOnlineRef.current;
           ws.send(JSON.stringify({
@@ -73,6 +102,14 @@ export function usePartyKit(): UsePartyKitReturn {
           }));
           pendingOnlineRef.current = null;
         }
+
+        // Request default leaderboards
+        ws.send(JSON.stringify({ type: 'getLeaderboard', category: 'fasting', period: 'weekly' }));
+        ws.send(JSON.stringify({ type: 'getLeaderboard', category: 'fasting', period: 'monthly' }));
+        ws.send(JSON.stringify({ type: 'getLeaderboard', category: 'fasting', period: 'yearly' }));
+        ws.send(JSON.stringify({ type: 'getLeaderboard', category: 'meditation', period: 'weekly' }));
+        ws.send(JSON.stringify({ type: 'getLeaderboard', category: 'meditation', period: 'monthly' }));
+        ws.send(JSON.stringify({ type: 'getLeaderboard', category: 'meditation', period: 'yearly' }));
       };
 
       ws.onmessage = (event) => {
@@ -85,6 +122,12 @@ export function usePartyKit(): UsePartyKitReturn {
               setOnlineCount(data.onlineCount || 0);
               if (data.chatHistory) {
                 setChatMessages(data.chatHistory);
+              }
+              if (data.leaderboard) {
+                setLeaderboardData((prev) => ({
+                  ...prev,
+                  fasting: { ...prev.fasting, weekly: data.leaderboard },
+                }));
               }
               break;
 
@@ -120,7 +163,39 @@ export function usePartyKit(): UsePartyKitReturn {
               break;
 
             case 'userStats':
-              // Handled by caller via callback if needed
+              break;
+
+            case 'leaderboardUpdate':
+              if (data.category && data.period) {
+                setLeaderboardData((prev) => ({
+                  ...prev,
+                  [data.category]: {
+                    ...prev[data.category as 'fasting' | 'meditation'],
+                    [data.period]: data.entries || [],
+                  },
+                }));
+                if (data.totalParticipants !== undefined) {
+                  setTotalParticipants(data.totalParticipants);
+                }
+              }
+              break;
+
+            case 'privateMessageReceived':
+              setPrivateMessages((prev) => {
+                const next = [...prev, data.message];
+                return next.length > 200 ? next.slice(-200) : next;
+              });
+              break;
+
+            case 'privateMessagesHistory':
+              if (data.messages) {
+                setPrivateMessages((prev) => {
+                  // Merge with existing, dedup by id
+                  const existingIds = new Set(prev.map((m) => m.id));
+                  const newMsgs = data.messages.filter((m: PrivateMessage) => !existingIds.has(m.id));
+                  return [...prev, ...newMsgs];
+                });
+              }
               break;
           }
         } catch (e) {
@@ -133,7 +208,6 @@ export function usePartyKit(): UsePartyKitReturn {
         setIsConnected(false);
         wsRef.current = null;
 
-        // Auto-reconnect with backoff
         const delay = reconnectDelayRef.current;
         reconnectTimerRef.current = setTimeout(() => {
           reconnectDelayRef.current = Math.min(delay * 2, 30000);
@@ -151,7 +225,7 @@ export function usePartyKit(): UsePartyKitReturn {
 
   const disconnect = useCallback(() => {
     clearReconnect();
-    reconnectDelayRef.current = 30000; // prevent quick reconnect after manual disconnect
+    reconnectDelayRef.current = 30000;
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
@@ -173,7 +247,6 @@ export function usePartyKit(): UsePartyKitReturn {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(data));
     } else {
-      // Save for when connection opens
       pendingOnlineRef.current = { userId, nickname, activity };
     }
   }, []);
@@ -205,12 +278,25 @@ export function usePartyKit(): UsePartyKitReturn {
   const respondToFriendRequest = useCallback((requestId: string, fromUserId: string, toUserId: string, accept: boolean) => {
     const status = accept ? 'accepted' : 'rejected';
     send({ type: 'friendResponse', payload: { requestId, fromUserId, toUserId, status } });
-
-    // Remove from local pending list
     setFriendRequests((prev) => prev.filter((r) => r.id !== requestId));
   }, [send]);
 
-  // AppState handling: disconnect on background, reconnect on foreground
+  const publishLeaderboardStats = useCallback((entry: LeaderboardEntry) => {
+    send({ type: 'publish', payload: entry });
+  }, [send]);
+
+  const requestLeaderboard = useCallback((category: 'fasting' | 'meditation', period: 'weekly' | 'monthly' | 'yearly') => {
+    send({ type: 'getLeaderboard', category, period });
+  }, [send]);
+
+  const sendPrivateMessage = useCallback((fromUserId: string, fromNickname: string, toUserId: string, toNickname: string, text: string) => {
+    send({ type: 'privateMessage', payload: { fromUserId, fromNickname, toUserId, toNickname, text } });
+  }, [send]);
+
+  const getPrivateMessages = useCallback((fromUserId: string, toUserId: string) => {
+    send({ type: 'getPrivateMessages', fromUserId, toUserId });
+  }, [send]);
+
   useEffect(() => {
     const handleAppState = (nextState: string) => {
       if (nextState === 'background') {
@@ -232,7 +318,6 @@ export function usePartyKit(): UsePartyKitReturn {
     return () => sub.remove();
   }, [connect, send]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       clearReconnect();
@@ -248,6 +333,9 @@ export function usePartyKit(): UsePartyKitReturn {
     onlineCount,
     chatMessages,
     friendRequests,
+    leaderboardData,
+    privateMessages,
+    totalParticipants,
     connect,
     disconnect,
     sendOnline,
@@ -258,5 +346,9 @@ export function usePartyKit(): UsePartyKitReturn {
     getStats,
     sendFriendRequest,
     respondToFriendRequest,
+    publishLeaderboardStats,
+    requestLeaderboard,
+    sendPrivateMessage,
+    getPrivateMessages,
   };
 }

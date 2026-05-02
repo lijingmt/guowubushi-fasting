@@ -14,6 +14,8 @@ import { FastingScreen } from '../screens/FastingScreen';
 import { MeditationScreen } from '../screens/MeditationScreen';
 import { FriendsScreen } from '../screens/FriendsScreen';
 import { FriendDetailScreen } from '../screens/FriendDetailScreen';
+import { LeaderboardScreen } from '../screens/LeaderboardScreen';
+import { ChatDetailScreen } from '../screens/ChatDetailScreen';
 import { responsiveSize, fs, vs, rs, layout, responsive } from '../theme/responsive';
 
 const Tab = createBottomTabNavigator();
@@ -139,6 +141,15 @@ export const AppNavigator = () => {
         <Stack.Screen
           name="FriendDetail"
           component={FriendDetailScreen as any}
+        />
+        <Stack.Screen
+          name="Leaderboard"
+          component={LeaderboardScreen}
+          options={{ title: '修行排行榜' }}
+        />
+        <Stack.Screen
+          name="ChatDetail"
+          component={ChatDetailScreen as any}
         />
       </Stack.Navigator>
     </NavigationContainer>

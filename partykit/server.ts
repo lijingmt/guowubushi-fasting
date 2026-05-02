@@ -7,11 +7,18 @@ import type * as Party from "partykit/server";
 interface LeaderboardEntry {
   userId: string;
   nickname: string;
-  streak: number;
-  completedDays: number;
-  totalMerit: number;
-  lastUpdate: number;
   rank?: number;
+  lastUpdate: number;
+  currentStreak: number;
+  fastingDaysThisWeek: number;
+  fastingDaysThisMonth: number;
+  fastingDaysThisYear: number;
+  meditationMinutesThisWeek: number;
+  meditationMinutesThisMonth: number;
+  meditationMinutesThisYear: number;
+  meditationDaysThisMonth: number;
+  meditationDaysThisYear: number;
+  sessionCountThisWeek: number;
 }
 
 interface OnlineUser {
@@ -49,6 +56,16 @@ interface SharedStats {
   totalMeditationDays: number;
 }
 
+interface PrivateMessage {
+  id: string;
+  fromUserId: string;
+  fromNickname: string;
+  toUserId: string;
+  toNickname: string;
+  text: string;
+  timestamp: number;
+}
+
 interface ServerState {
   leaderboard: Record<string, LeaderboardEntry>;
   onlineUsers: Record<string, OnlineUser>;
@@ -56,7 +73,12 @@ interface ServerState {
   userNicknames: Record<string, string>;
   pendingFriendRequests: Record<string, FriendRequest[]>;
   userStats: Record<string, SharedStats>;
+  friendPairs: Set<string>;
+  privateMessages: Record<string, PrivateMessage[]>;
 }
+
+type LeaderboardCategory = "fasting" | "meditation";
+type LeaderboardPeriod = "weekly" | "monthly" | "yearly";
 
 export default class FastingServer implements Party.Server {
   state: ServerState = {
@@ -66,6 +88,8 @@ export default class FastingServer implements Party.Server {
     userNicknames: {},
     pendingFriendRequests: {},
     userStats: {},
+    friendPairs: new Set(),
+    privateMessages: {},
   };
 
   constructor(readonly room: Party.Room) {}
@@ -76,7 +100,7 @@ export default class FastingServer implements Party.Server {
     connection.send(
       JSON.stringify({
         type: "init",
-        leaderboard: this.getTop1000(),
+        leaderboard: this.getLeaderboard("fasting", "weekly"),
         onlineCount: Object.keys(this.state.onlineUsers).length,
         onlineUsers: Object.values(this.state.onlineUsers),
         chatHistory: this.state.chatMessages.slice(-50),
@@ -84,7 +108,6 @@ export default class FastingServer implements Party.Server {
     );
   }
 
-  // NOTE: message comes FIRST, sender comes SECOND
   async onMessage(message: string | ArrayBuffer, sender: Party.Connection) {
     try {
       const data = JSON.parse(typeof message === "string" ? message : new TextDecoder().decode(message));
@@ -95,16 +118,24 @@ export default class FastingServer implements Party.Server {
           if (data.payload.nickname) {
             this.state.userNicknames[data.payload.userId] = data.payload.nickname;
           }
-          this.broadcastAll(JSON.stringify({ type: "leaderboardUpdate", payload: this.getTop1000() }));
           break;
 
-        case "getLeaderboard":
-          sender.send(JSON.stringify({ type: "leaderboardUpdate", payload: this.getTop1000() }));
+        case "getLeaderboard": {
+          const category: LeaderboardCategory = data.category || "fasting";
+          const period: LeaderboardPeriod = data.period || "weekly";
+          const entries = this.getLeaderboard(category, period);
+          sender.send(JSON.stringify({
+            type: "leaderboardUpdate",
+            category,
+            period,
+            entries,
+            totalParticipants: Object.keys(this.state.leaderboard).length,
+          }));
           break;
+        }
 
         case "removeUser":
           delete this.state.leaderboard[data.userId];
-          this.broadcastAll(JSON.stringify({ type: "leaderboardUpdate", payload: this.getTop1000() }));
           break;
 
         case "online":
@@ -196,12 +227,64 @@ export default class FastingServer implements Party.Server {
           if (found) {
             found.status = data.payload.status;
           }
+          if (data.payload.status === "accepted") {
+            const pairKey = [data.payload.fromUserId, data.payload.toUserId].sort().join(":");
+            this.state.friendPairs.add(pairKey);
+          }
           this.broadcastAll(JSON.stringify({
             type: "friendRequestResolved",
             requestId: data.payload.requestId,
             fromUserId: data.payload.fromUserId,
             toUserId: data.payload.toUserId,
             status: data.payload.status,
+          }));
+          break;
+        }
+
+        case "privateMessage": {
+          const fromUserId = data.payload.fromUserId;
+          const toUserId = data.payload.toUserId;
+
+          // Verify friendship
+          const pairKey = [fromUserId, toUserId].sort().join(":");
+          if (!this.state.friendPairs.has(pairKey)) {
+            sender.send(JSON.stringify({
+              type: "error",
+              message: "Must be friends to send private messages",
+            }));
+            break;
+          }
+
+          const pm: PrivateMessage = {
+            id: Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
+            fromUserId,
+            fromNickname: data.payload.fromNickname || "Anonymous",
+            toUserId,
+            toNickname: data.payload.toNickname || "Anonymous",
+            text: data.payload.text.substring(0, 200),
+            timestamp: Date.now(),
+          };
+
+          const msgKey = pairKey;
+          if (!this.state.privateMessages[msgKey]) {
+            this.state.privateMessages[msgKey] = [];
+          }
+          this.state.privateMessages[msgKey].push(pm);
+          if (this.state.privateMessages[msgKey].length > 200) {
+            this.state.privateMessages[msgKey] = this.state.privateMessages[msgKey].slice(-200);
+          }
+
+          this.broadcastAll(JSON.stringify({ type: "privateMessageReceived", message: pm }));
+          break;
+        }
+
+        case "getPrivateMessages": {
+          const msgKey = [data.fromUserId, data.toUserId].sort().join(":");
+          const messages = this.state.privateMessages[msgKey] || [];
+          sender.send(JSON.stringify({
+            type: "privateMessagesHistory",
+            messages: messages.slice(-100),
+            withUserId: data.toUserId,
           }));
           break;
         }
@@ -213,10 +296,6 @@ export default class FastingServer implements Party.Server {
 
   async onClose(connection: Party.Connection) {
     console.log("[PartyKit] Client disconnected:", connection.id);
-    // Remove user by connection id
-    for (const [userId, user] of Object.entries(this.state.onlineUsers)) {
-      // We don't have a direct mapping, so just check all
-    }
     this.broadcastAll(JSON.stringify({
       type: "onlineUpdate",
       onlineCount: Object.keys(this.state.onlineUsers).length,
@@ -239,15 +318,36 @@ export default class FastingServer implements Party.Server {
     return new Response("Method not allowed", { status: 405 });
   }
 
-  getTop1000(): LeaderboardEntry[] {
-    return Object.values(this.state.leaderboard)
-      .sort((a, b) => b.streak - a.streak || b.completedDays - a.completedDays)
-      .slice(0, 1000)
-      .map((user, index) => ({ ...user, rank: index + 1 }));
+  getLeaderboard(category: LeaderboardCategory, period: LeaderboardPeriod): LeaderboardEntry[] {
+    const entries = Object.values(this.state.leaderboard);
+
+    const sorted = entries.sort((a, b) => {
+      const { primary: aPrimary, secondary: aSecondary } = this.getSortValues(a, category, period);
+      const { primary: bPrimary, secondary: bSecondary } = this.getSortValues(b, category, period);
+      if (bPrimary !== aPrimary) return bPrimary - aPrimary;
+      return bSecondary - aSecondary;
+    });
+
+    return sorted.slice(0, 100).map((entry, index) => ({ ...entry, rank: index + 1 }));
+  }
+
+  getSortValues(entry: LeaderboardEntry, category: LeaderboardCategory, period: LeaderboardPeriod): { primary: number; secondary: number } {
+    if (category === "fasting") {
+      switch (period) {
+        case "weekly": return { primary: entry.fastingDaysThisWeek, secondary: entry.currentStreak };
+        case "monthly": return { primary: entry.fastingDaysThisMonth, secondary: entry.currentStreak };
+        case "yearly": return { primary: entry.fastingDaysThisYear, secondary: entry.currentStreak };
+      }
+    } else {
+      switch (period) {
+        case "weekly": return { primary: entry.meditationMinutesThisWeek, secondary: entry.sessionCountThisWeek };
+        case "monthly": return { primary: entry.meditationMinutesThisMonth, secondary: entry.meditationDaysThisMonth };
+        case "yearly": return { primary: entry.meditationMinutesThisYear, secondary: entry.meditationDaysThisYear };
+      }
+    }
   }
 
   broadcastAll(message: string) {
-    // broadcast without exclude = sends to ALL connections
     this.room.broadcast(message);
   }
 }

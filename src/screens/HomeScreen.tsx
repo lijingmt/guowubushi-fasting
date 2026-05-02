@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Alert, Clipboard, Modal, TextInput, Platform } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useApp } from '../context/AppContext';
 import { Card } from '../components/Card';
 import { StatCard } from '../components/StatCard';
@@ -28,6 +29,7 @@ export const HomeScreen: React.FC = () => {
 
   const [flameAnimation] = useState(false);
   const shareCardRef = useRef<View>(null);
+  const navigation = useNavigation<any>();
   const [showSharePreview, setShowSharePreview] = useState(false);
   const [showShareCardModal, setShowShareCardModal] = useState(false);
   const [showCalorieModal, setShowCalorieModal] = useState(false);
@@ -262,6 +264,21 @@ export const HomeScreen: React.FC = () => {
         <Text style={[styles.streakLabel, { color: colors.textSecondary }]}>{t.dayUnit}</Text>
         <Text style={[styles.gracePeriodHint, { color: colors.textTertiary }]}>{t.gracePeriodHint}</Text>
       </View>
+
+      {/* Leaderboard entry */}
+      <TouchableOpacity
+        style={[styles.leaderboardEntry, { backgroundColor: colors.card }]}
+        onPress={() => navigation.navigate('Leaderboard')}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.leaderboardEntryIcon}>🏆</Text>
+        <View style={styles.leaderboardEntryText}>
+          <Text style={[styles.leaderboardEntryTitle, { color: colors.text }]}>
+            {t.leaderboardTitle}
+          </Text>
+        </View>
+        <Text style={styles.leaderboardEntryArrow}>›</Text>
+      </TouchableOpacity>
 
       <View style={styles.statsRow}>
         <StatCard
@@ -813,6 +830,30 @@ const createResponsiveStyles = () => {
       }),
       marginTop: rs(4),
       textAlign: 'center',
+    },
+    leaderboardEntry: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: vs(16),
+      padding: responsiveSize.spacing.lg,
+      borderRadius: responsiveSize.borderRadius.lg,
+      borderWidth: 1,
+      borderColor: '#FFD700',
+    },
+    leaderboardEntryIcon: {
+      fontSize: fs(28),
+    },
+    leaderboardEntryText: {
+      flex: 1,
+      marginLeft: rs(12),
+    },
+    leaderboardEntryTitle: {
+      fontSize: fs(16),
+      fontWeight: '600',
+    },
+    leaderboardEntryArrow: {
+      fontSize: fs(24),
+      color: '#999',
     },
     statsRow: {
       flexDirection: 'row',
