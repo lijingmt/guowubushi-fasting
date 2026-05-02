@@ -133,8 +133,9 @@ export const MeditationScreen = () => {
 
     loadSettings();
 
-    // Connect to social
+    // Connect to social and go online
     social.connect();
+    social.goOnline('meditation');
 
     // 监听应用状态变化
     const subscription = AppState.addEventListener('change', handleAppStateChange);
@@ -218,9 +219,6 @@ export const MeditationScreen = () => {
     // 开始播放背景音乐
     playBackgroundSound(backgroundSound);
 
-    // Go online to social
-    social.goOnline('meditation');
-
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -239,8 +237,6 @@ export const MeditationScreen = () => {
 
     setIsTimerRunning(false);
     setHasActiveSession(false);
-
-    social.goOffline();
 
     // 停止背景音乐
     await stopBackgroundSound();
@@ -262,8 +258,6 @@ export const MeditationScreen = () => {
 
     // 停止背景音乐
     await stopBackgroundSound();
-
-    social.goOffline();
 
     const elapsedMinutes = Math.round((selectedDuration * 60 - timeLeft) / 60);
     if (elapsedMinutes > 0) {
