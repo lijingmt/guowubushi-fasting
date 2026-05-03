@@ -39,7 +39,19 @@ export const ChatDetailScreen = ({ route }: any) => {
 
   const handleSend = useCallback(() => {
     if (!text.trim()) return;
-    social.sendPrivateMessage(otherUserId, otherNickname, text.trim());
+    const msgText = text.trim();
+    // Optimistic update: show message immediately
+    const optimisticMsg: PrivateMessage = {
+      id: Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
+      fromUserId: social.userId,
+      fromNickname: social.nickname,
+      toUserId: otherUserId,
+      toNickname: otherNickname,
+      text: msgText,
+      timestamp: Date.now(),
+    };
+    setMessages((prev) => [...prev, optimisticMsg]);
+    social.sendPrivateMessage(otherUserId, otherNickname, msgText);
     setText('');
   }, [text, otherUserId, otherNickname, social]);
 
@@ -150,7 +162,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: responsiveSize.spacing.md,
-    paddingVertical: vs(8),
+    paddingTop: vs(24),
+    paddingBottom: vs(48),
     borderTopWidth: 1,
   },
   input: {

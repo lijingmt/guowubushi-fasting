@@ -118,6 +118,19 @@ export default class FastingServer implements Party.Server {
           if (data.payload.nickname) {
             this.state.userNicknames[data.payload.userId] = data.payload.nickname;
           }
+          // Broadcast updated leaderboards to all clients
+          for (const cat of ["fasting", "meditation"] as LeaderboardCategory[]) {
+            for (const per of ["weekly", "monthly", "yearly"] as LeaderboardPeriod[]) {
+              const entries = this.getLeaderboard(cat, per);
+              this.broadcastAll(JSON.stringify({
+                type: "leaderboardUpdate",
+                category: cat,
+                period: per,
+                entries,
+                totalParticipants: Object.keys(this.state.leaderboard).length,
+              }));
+            }
+          }
           break;
 
         case "getLeaderboard": {
@@ -245,15 +258,7 @@ export default class FastingServer implements Party.Server {
           const fromUserId = data.payload.fromUserId;
           const toUserId = data.payload.toUserId;
 
-          // Verify friendship
-          const pairKey = [fromUserId, toUserId].sort().join(":");
-          if (!this.state.friendPairs.has(pairKey)) {
-            sender.send(JSON.stringify({
-              type: "error",
-              message: "Must be friends to send private messages",
-            }));
-            break;
-          }
+          console.log("[PartyKit] PM from:", fromUserId, "to:", toUserId, "connections:", this.room.connections.size);
 
           const pm: PrivateMessage = {
             id: Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
@@ -265,27 +270,7 @@ export default class FastingServer implements Party.Server {
             timestamp: Date.now(),
           };
 
-          const msgKey = pairKey;
-          if (!this.state.privateMessages[msgKey]) {
-            this.state.privateMessages[msgKey] = [];
-          }
-          this.state.privateMessages[msgKey].push(pm);
-          if (this.state.privateMessages[msgKey].length > 200) {
-            this.state.privateMessages[msgKey] = this.state.privateMessages[msgKey].slice(-200);
-          }
-
           this.broadcastAll(JSON.stringify({ type: "privateMessageReceived", message: pm }));
-          break;
-        }
-
-        case "getPrivateMessages": {
-          const msgKey = [data.fromUserId, data.toUserId].sort().join(":");
-          const messages = this.state.privateMessages[msgKey] || [];
-          sender.send(JSON.stringify({
-            type: "privateMessagesHistory",
-            messages: messages.slice(-100),
-            withUserId: data.toUserId,
-          }));
           break;
         }
       }

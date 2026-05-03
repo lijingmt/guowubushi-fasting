@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useApp } from '../context/AppContext';
@@ -20,7 +21,7 @@ type Period = 'weekly' | 'monthly' | 'yearly';
 const TROPHIES = ['🥇', '🥈', '🥉'];
 
 export const LeaderboardScreen = () => {
-  const { t, colors, stats, checkInRecords, practiceRecords } = useApp();
+  const { t, colors, stats, checkInRecords, practiceRecords, language } = useApp();
   const social = useSocial();
   const navigation = useNavigation<any>();
   const [category, setCategory] = useState<Category>('fasting');
@@ -74,6 +75,7 @@ export const LeaderboardScreen = () => {
 
   const handleAddFriend = (entry: LeaderboardEntry) => {
     social.sendFriendRequest(entry.userId);
+    Alert.alert(t.success, t.requestSent);
   };
 
   const handleSendMessage = (entry: LeaderboardEntry) => {
@@ -149,6 +151,70 @@ export const LeaderboardScreen = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Friend requests */}
+      {social.friendRequests.length > 0 && (
+        <View style={[styles.friendRequestBar, { backgroundColor: colors.card }]}>
+          <Text style={[styles.friendRequestTitle, { color: colors.text }]}>
+            {t.pendingRequests} ({social.friendRequests.length})
+          </Text>
+          {social.friendRequests.map((req) => (
+            <View key={req.id} style={styles.friendRequestRow}>
+              <Text style={[styles.friendRequestName, { color: colors.text }]}>
+                {req.fromNickname || `${t.anonymous} #${req.fromUserId.substring(0, 4)}`}
+              </Text>
+              <View style={styles.friendRequestButtons}>
+                <TouchableOpacity
+                  style={[styles.friendRequestBtn, { backgroundColor: colors.success }]}
+                  onPress={() => social.respondToFriendRequest(req.id, req.fromUserId, true)}
+                >
+                  <Text style={styles.friendRequestBtnText}>{t.accept}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.friendRequestBtn, { backgroundColor: colors.error || '#F44336' }]}
+                  onPress={() => social.respondToFriendRequest(req.id, req.fromUserId, false)}
+                >
+                  <Text style={styles.friendRequestBtnText}>{t.reject}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Unread private messages */}
+      {social.privateMessages.filter((m) => m.toUserId === social.userId).length > 0 && (
+        <View style={[styles.friendRequestBar, { backgroundColor: colors.card, borderColor: colors.primary }]}>
+          <Text style={[styles.friendRequestTitle, { color: colors.text }]}>
+            {language === 'zh' ? '新私信' : 'New Messages'}
+          </Text>
+          {social.privateMessages
+            .filter((m) => m.toUserId === social.userId)
+            .slice(-5)
+            .map((msg) => (
+              <TouchableOpacity
+                key={msg.id}
+                style={styles.friendRequestRow}
+                onPress={() => navigation.navigate('ChatDetail', {
+                  userId: msg.fromUserId,
+                  nickname: msg.fromNickname,
+                })}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.friendRequestName, { color: colors.text, fontWeight: '600' }]}>
+                    {msg.fromNickname || `${t.anonymous}`}
+                  </Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: fs(13) }} numberOfLines={1}>
+                    {msg.text}
+                  </Text>
+                </View>
+                <Text style={{ color: colors.primary, fontSize: fs(13) }}>
+                  {language === 'zh' ? '查看 ›' : 'View ›'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+        </View>
+      )}
+
       {/* Period tabs */}
       <View style={[styles.tabRow, { backgroundColor: colors.card }]}>
         {(['weekly', 'monthly', 'yearly'] as Period[]).map((p) => (
@@ -231,10 +297,47 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  friendRequestBar: {
+    marginHorizontal: responsiveSize.spacing.md,
+    marginTop: vs(8),
+    padding: responsiveSize.spacing.md,
+    borderRadius: responsiveSize.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+  },
+  friendRequestTitle: {
+    fontSize: fs(14),
+    fontWeight: '600',
+    marginBottom: vs(8),
+  },
+  friendRequestRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: vs(6),
+  },
+  friendRequestName: {
+    fontSize: fs(14),
+    flex: 1,
+  },
+  friendRequestButtons: {
+    flexDirection: 'row',
+    gap: rs(8),
+  },
+  friendRequestBtn: {
+    paddingHorizontal: rs(12),
+    paddingVertical: vs(5),
+    borderRadius: responsiveSize.borderRadius.md,
+  },
+  friendRequestBtnText: {
+    color: '#fff',
+    fontSize: fs(12),
+    fontWeight: '600',
+  },
   tabRow: {
     flexDirection: 'row',
     paddingHorizontal: responsiveSize.spacing.md,
-    paddingTop: vs(8),
+    paddingTop: vs(32),
     paddingBottom: vs(4),
   },
   tab: {

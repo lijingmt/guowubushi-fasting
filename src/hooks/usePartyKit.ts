@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { AppState } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type {
   OnlineUser,
   ChatMessage,
@@ -70,6 +71,29 @@ export function usePartyKit(): UsePartyKitReturn {
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardData>(emptyLeaderboard);
   const [privateMessages, setPrivateMessages] = useState<PrivateMessage[]>([]);
   const [totalParticipants, setTotalParticipants] = useState(0);
+
+  // Load cached leaderboard on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const cached = await AsyncStorage.getItem('@guowu_leaderboard_cache');
+        if (cached) {
+          setLeaderboardData(JSON.parse(cached));
+        }
+        const cachedMessages = await AsyncStorage.getItem('@guowu_private_messages');
+        if (cachedMessages) {
+          setPrivateMessages(JSON.parse(cachedMessages));
+        }
+      } catch (e) { /* ignore */ }
+    })();
+  }, []);
+
+  // Save leaderboard to cache whenever it changes
+  const saveLeaderboardCache = useCallback(async (data: LeaderboardData) => {
+    try {
+      await AsyncStorage.setItem('@guowu_leaderboard_cache', JSON.stringify(data));
+    } catch (e) { /* ignore */ }
+  }, []);
 
   const clearReconnect = useCallback(() => {
     if (reconnectTimerRef.current) {
@@ -158,10 +182,13 @@ export function usePartyKit(): UsePartyKitReturn {
               break;
 
             case 'friendRequestReceived':
-              setFriendRequests((prev) => {
-                if (prev.find((r) => r.id === data.request.id)) return prev;
-                return [...prev, data.request];
-              });
+              // Only process if this request is for me
+              if (data.request.toUserId === userIdRef.current) {
+                setFriendRequests((prev) => {
+                  if (prev.find((r) => r.id === data.request.id)) return prev;
+                  return [...prev, data.request];
+                });
+              }
               break;
 
             case 'userStats':
@@ -169,13 +196,17 @@ export function usePartyKit(): UsePartyKitReturn {
 
             case 'leaderboardUpdate':
               if (data.category && data.period) {
-                setLeaderboardData((prev) => ({
-                  ...prev,
-                  [data.category]: {
-                    ...prev[data.category as 'fasting' | 'meditation'],
-                    [data.period]: data.entries || [],
-                  },
-                }));
+                setLeaderboardData((prev) => {
+                  const updated = {
+                    ...prev,
+                    [data.category]: {
+                      ...prev[data.category as 'fasting' | 'meditation'],
+                      [data.period]: data.entries || [],
+                    },
+                  };
+                  saveLeaderboardCache(updated);
+                  return updated;
+                });
                 if (data.totalParticipants !== undefined) {
                   setTotalParticipants(data.totalParticipants);
                 }
@@ -183,10 +214,16 @@ export function usePartyKit(): UsePartyKitReturn {
               break;
 
             case 'privateMessageReceived':
-              setPrivateMessages((prev) => {
-                const next = [...prev, data.message];
-                return next.length > 200 ? next.slice(-200) : next;
-              });
+              console.log('[PartyKit] PM received:', data.message?.id, 'to:', data.message?.toUserId, 'from:', data.message?.fromUserId, 'myId:', userIdRef.current);
+              if (data.message.toUserId === userIdRef.current || data.message.fromUserId === userIdRef.current) {
+                setPrivateMessages((prev) => {
+                  if (prev.find((m) => m.id === data.message.id)) return prev;
+                  const next = [...prev, data.message];
+                  return next.length > 200 ? next.slice(-200) : next;
+                });
+              } else {
+                console.log('[PartyKit] PM filtered out - not for me');
+              }
               break;
 
             case 'privateMessagesHistory':
@@ -293,6 +330,7 @@ export function usePartyKit(): UsePartyKitReturn {
   }, [send]);
 
   const sendPrivateMessage = useCallback((fromUserId: string, fromNickname: string, toUserId: string, toNickname: string, text: string) => {
+    console.log('[PartyKit] Sending PM from:', fromUserId, 'to:', toUserId, 'wsState:', wsRef.current?.readyState);
     send({ type: 'privateMessage', payload: { fromUserId, fromNickname, toUserId, toNickname, text } });
   }, [send]);
 
@@ -322,6 +360,13 @@ export function usePartyKit(): UsePartyKitReturn {
     const sub = AppState.addEventListener('change', handleAppState);
     return () => sub.remove();
   }, [connect, send]);
+
+  // Save private messages to local storage when they change
+  useEffect(() => {
+    if (privateMessages.length > 0) {
+      AsyncStorage.setItem('@guowu_private_messages', JSON.stringify(privateMessages.slice(-200))).catch(() => {});
+    }
+  }, [privateMessages]);
 
   useEffect(() => {
     return () => {

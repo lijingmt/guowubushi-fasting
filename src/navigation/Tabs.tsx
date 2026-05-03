@@ -160,6 +160,9 @@ export const AppNavigator = () => {
         <Stack.Screen
           name="ChatDetail"
           component={ChatDetailScreen as any}
+          options={({ route }: any) => ({
+            title: route.params?.nickname || (language === 'zh' ? '私信' : 'Message'),
+          })}
         />
       </Stack.Navigator>
     </NavigationContainer>

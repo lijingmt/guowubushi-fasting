@@ -98,6 +98,13 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     })();
   }, []);
 
+  // Auto-connect when userId is loaded
+  useEffect(() => {
+    if (userId) {
+      partykit.connect(userId, nickname);
+    }
+  }, [userId]);
+
   const connect = useCallback(() => {
     if (userId) {
       partykit.connect(userId, nickname);

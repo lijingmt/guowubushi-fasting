@@ -14,6 +14,7 @@ import { Audio } from 'expo-av';
 import { useApp } from '../context/AppContext';
 import { useSocial } from '../context/SocialContext';
 import { fs, rs, vs, layout } from '../theme/responsive';
+import { calculatePeriodStats } from '../utils/leaderboardStats';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MeditationShareCard } from '../components/MeditationShareCard';
@@ -38,7 +39,7 @@ const BACKGROUND_SOUNDS: Record<BackgroundSound, { zh: string; en: string; es: s
 };
 
 export const MeditationScreen = () => {
-  const { t, addPractice, stats, colors, language } = useApp();
+  const { t, addPractice, stats, checkInRecords, practiceRecords, colors, language } = useApp();
   const social = useSocial();
   const [selectedDuration, setSelectedDuration] = useState(15);
   const [backgroundSound, setBackgroundSound] = useState<BackgroundSound>('none');
@@ -137,14 +138,23 @@ export const MeditationScreen = () => {
     social.connect();
     social.goOnline('meditation');
 
+    // Auto-publish leaderboard stats
+    if (stats && checkInRecords) {
+      const entry = calculatePeriodStats(
+        social.userId, social.nickname,
+        checkInRecords, practiceRecords,
+        stats.currentStreak,
+      );
+      social.publishLeaderboardStats(entry);
+    }
+
     // 监听应用状态变化
     const subscription = AppState.addEventListener('change', handleAppStateChange);
 
     return () => {
       cleanup();
       subscription.remove();
-      social.goOffline();
-      social.disconnect();
+      // Don't disconnect - keep WebSocket alive for other tabs (leaderboard, chat)
     };
   }, []);
 
