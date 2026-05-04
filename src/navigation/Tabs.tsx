@@ -16,6 +16,7 @@ import { FriendsScreen } from '../screens/FriendsScreen';
 import { FriendDetailScreen } from '../screens/FriendDetailScreen';
 import { LeaderboardScreen } from '../screens/LeaderboardScreen';
 import { ChatDetailScreen } from '../screens/ChatDetailScreen';
+import { ConversationsScreen } from '../screens/ConversationsScreen';
 import { responsiveSize, fs, vs, rs, layout, responsive } from '../theme/responsive';
 
 const Tab = createBottomTabNavigator();
@@ -109,7 +110,7 @@ const TabIcon = ({ name, color }: { name: string; color: string }) => {
 };
 
 export const AppNavigator = () => {
-  const { t, colors } = useApp();
+  const { t, colors, language } = useApp();
 
   return (
     <NavigationContainer>
@@ -163,6 +164,11 @@ export const AppNavigator = () => {
           options={({ route }: any) => ({
             title: route.params?.nickname || (language === 'zh' ? '私信' : 'Message'),
           })}
+        />
+        <Stack.Screen
+          name="Conversations"
+          component={ConversationsScreen}
+          options={{ title: language === 'zh' ? '私信' : 'Messages' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

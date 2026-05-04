@@ -24,6 +24,7 @@ export const ChatDetailScreen = ({ route }: any) => {
 
   useEffect(() => {
     social.getPrivateMessages(otherUserId);
+    social.markMessagesAsRead(otherUserId);
   }, [otherUserId]);
 
   useEffect(() => {

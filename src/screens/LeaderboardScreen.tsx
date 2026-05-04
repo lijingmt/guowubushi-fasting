@@ -182,22 +182,24 @@ export const LeaderboardScreen = () => {
       )}
 
       {/* Unread private messages */}
-      {social.privateMessages.filter((m) => m.toUserId === social.userId).length > 0 && (
+      {social.getUnreadMessages().length > 0 && (
         <View style={[styles.friendRequestBar, { backgroundColor: colors.card, borderColor: colors.primary }]}>
           <Text style={[styles.friendRequestTitle, { color: colors.text }]}>
-            {language === 'zh' ? '新私信' : 'New Messages'}
+            {language === 'zh' ? '新私信' : 'New Messages'} ({social.getUnreadMessages().length})
           </Text>
-          {social.privateMessages
-            .filter((m) => m.toUserId === social.userId)
+          {social.getUnreadMessages()
             .slice(-5)
             .map((msg) => (
               <TouchableOpacity
                 key={msg.id}
                 style={styles.friendRequestRow}
-                onPress={() => navigation.navigate('ChatDetail', {
-                  userId: msg.fromUserId,
-                  nickname: msg.fromNickname,
-                })}
+                onPress={() => {
+                  social.markMessagesAsRead(msg.fromUserId);
+                  navigation.navigate('ChatDetail', {
+                    userId: msg.fromUserId,
+                    nickname: msg.fromNickname,
+                  });
+                }}
               >
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.friendRequestName, { color: colors.text, fontWeight: '600' }]}>
@@ -337,7 +339,7 @@ const styles = StyleSheet.create({
   tabRow: {
     flexDirection: 'row',
     paddingHorizontal: responsiveSize.spacing.md,
-    paddingTop: vs(32),
+    paddingTop: vs(64),
     paddingBottom: vs(4),
   },
   tab: {

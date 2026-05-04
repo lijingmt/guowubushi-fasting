@@ -68,6 +68,9 @@ interface SocialContextType {
   sendPrivateMessage: (toUserId: string, toNickname: string, text: string) => void;
   getPrivateMessages: (withUserId: string) => void;
   getConversationMessages: (withUserId: string) => PrivateMessage[];
+  markMessagesAsRead: (withUserId: string) => void;
+  getUnreadMessages: () => PrivateMessage[];
+  getConversations: () => { userId: string; nickname: string; lastMessage: PrivateMessage; unreadCount: number }[];
 }
 
 const SocialContext = createContext<SocialContextType | null>(null);
@@ -196,6 +199,43 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     ).sort((a, b) => a.timestamp - b.timestamp);
   }, [userId, partykit.privateMessages]);
 
+  const markMessagesAsRead = useCallback((withUserId: string) => {
+    partykit.markMessagesAsRead(withUserId);
+  }, [partykit]);
+
+  const getUnreadMessages = useCallback((): PrivateMessage[] => {
+    return partykit.getUnreadMessages();
+  }, [partykit]);
+
+  const getConversations = useCallback(() => {
+    const convMap = new Map<string, { nickname: string; lastMessage: PrivateMessage; unreadCount: number }>();
+    const unread = partykit.getUnreadMessages();
+    const unreadByUser = new Map<string, number>();
+    unread.forEach((m) => {
+      const otherId = m.fromUserId === userId ? m.toUserId : m.fromUserId;
+      unreadByUser.set(otherId, (unreadByUser.get(otherId) || 0) + 1);
+    });
+
+    partykit.privateMessages.forEach((m) => {
+      const otherId = m.fromUserId === userId ? m.toUserId : m.fromUserId;
+      const otherName = m.fromUserId === userId ? m.toNickname : m.fromNickname;
+      const existing = convMap.get(otherId);
+      if (!existing || m.timestamp > existing.lastMessage.timestamp) {
+        convMap.set(otherId, {
+          nickname: otherName,
+          lastMessage: m,
+          unreadCount: unreadByUser.get(otherId) || 0,
+        });
+      } else if (existing) {
+        existing.unreadCount = unreadByUser.get(otherId) || 0;
+      }
+    });
+
+    return Array.from(convMap.entries())
+      .map(([userId, data]) => ({ userId, ...data }))
+      .sort((a, b) => b.lastMessage.timestamp - a.lastMessage.timestamp);
+  }, [userId, partykit]);
+
   const isFriend = useCallback((otherUserId: string) => {
     return friends.some((f) => f.userId === otherUserId);
   }, [friends]);
@@ -228,6 +268,9 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     sendPrivateMessage,
     getPrivateMessages,
     getConversationMessages,
+    markMessagesAsRead,
+    getUnreadMessages,
+    getConversations,
   };
 
   return (

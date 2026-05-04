@@ -53,6 +53,8 @@ interface UsePartyKitReturn {
   requestLeaderboard: (category: 'fasting' | 'meditation', period: 'weekly' | 'monthly' | 'yearly') => void;
   sendPrivateMessage: (fromUserId: string, fromNickname: string, toUserId: string, toNickname: string, text: string) => void;
   getPrivateMessages: (fromUserId: string, toUserId: string) => void;
+  markMessagesAsRead: (withUserId: string) => void;
+  getUnreadMessages: () => PrivateMessage[];
 }
 
 export function usePartyKit(): UsePartyKitReturn {
@@ -62,6 +64,7 @@ export function usePartyKit(): UsePartyKitReturn {
   const lastOnlineRef = useRef<{ userId: string; nickname: string; activity: OnlineUser['activity'] } | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectDelayRef = useRef(1000);
+  const readMessageIdsRef = useRef<Set<string>>(new Set());
 
   const [isConnected, setIsConnected] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
@@ -338,6 +341,21 @@ export function usePartyKit(): UsePartyKitReturn {
     send({ type: 'getPrivateMessages', fromUserId, toUserId });
   }, [send]);
 
+  const markMessagesAsRead = useCallback((withUserId: string) => {
+    privateMessages.forEach((m) => {
+      if (m.fromUserId === withUserId || m.toUserId === withUserId) {
+        readMessageIdsRef.current.add(m.id);
+      }
+    });
+    setPrivateMessages((prev) => [...prev]); // trigger re-render
+  }, [privateMessages]);
+
+  const getUnreadMessages = useCallback((): PrivateMessage[] => {
+    return privateMessages.filter(
+      (m) => m.toUserId === userIdRef.current && !readMessageIdsRef.current.has(m.id)
+    );
+  }, [privateMessages]);
+
   useEffect(() => {
     const handleAppState = (nextState: string) => {
       if (nextState === 'background') {
@@ -400,5 +418,7 @@ export function usePartyKit(): UsePartyKitReturn {
     requestLeaderboard,
     sendPrivateMessage,
     getPrivateMessages,
+    markMessagesAsRead,
+    getUnreadMessages,
   };
 }

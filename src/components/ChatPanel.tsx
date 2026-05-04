@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
-  KeyboardAvoidingView,
+  Keyboard,
   Platform,
 } from 'react-native';
 import { useSocial } from '../context/SocialContext';
@@ -20,14 +20,20 @@ export const ChatPanel: React.FC = () => {
   const { colors, t } = useApp();
   const { chatMessages, sendChat, userId } = useSocial();
   const [inputText, setInputText] = useState('');
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
-    // Scroll to bottom on new messages
+    const onShow = (e: any) => setKeyboardHeight(e.endCoordinates?.height || 0);
+    const onHide = () => setKeyboardHeight(0);
+    const showSub = Keyboard.addListener('keyboardDidShow', onShow);
+    const hideSub = Keyboard.addListener('keyboardDidHide', onHide);
+    return () => { showSub.remove(); hideSub.remove(); };
+  }, []);
+
+  useEffect(() => {
     if (chatMessages.length > 0) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     }
   }, [chatMessages.length]);
 
@@ -83,7 +89,7 @@ export const ChatPanel: React.FC = () => {
         )}
       </View>
 
-      <View style={[styles.inputRow, { borderColor: colors.border }]}>
+      <View style={[styles.inputRow, { borderColor: colors.border, marginBottom: keyboardHeight > 0 ? keyboardHeight - 80 : 0 }]}>
         <TextInput
           style={[styles.input, { color: colors.text, borderColor: colors.border }]}
           value={inputText}

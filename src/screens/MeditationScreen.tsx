@@ -9,6 +9,7 @@ import {
   Modal,
   AppState,
   AppStateStatus,
+  Keyboard,
 } from 'react-native';
 import { Audio } from 'expo-av';
 import { useApp } from '../context/AppContext';
@@ -54,6 +55,7 @@ export const MeditationScreen = () => {
   const bellSoundRef = useRef<Audio.Sound | null>(null);
   const backgroundSoundRef = useRef<Audio.Sound | null>(null);
   const backgroundTimeRef = useRef<number>(0);
+  const scrollRef = useRef<ScrollView>(null);
 
   // 播放钟声（用于完成和暂停）
   const playBellSound = async () => {
@@ -123,6 +125,13 @@ export const MeditationScreen = () => {
       backgroundSoundRef.current = null;
     }
   };
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => {
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+    });
+    return () => showSub.remove();
+  }, []);
 
   useEffect(() => {
     // 配置音频
@@ -347,7 +356,7 @@ export const MeditationScreen = () => {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
+    <ScrollView ref={scrollRef} style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
       {/* 标题和统计 */}
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>{getScreenTitle()}</Text>

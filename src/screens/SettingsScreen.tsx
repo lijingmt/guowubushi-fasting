@@ -300,6 +300,16 @@ export const SettingsScreen: React.FC = () => {
           onPress={() => navigation.navigate('Friends')}
         />
         <Divider />
+        <SettingItem
+          label={language === 'zh' ? '✉️ 私信' : '✉️ Messages'}
+          value={
+            social.getUnreadMessages().length > 0
+              ? language === 'zh' ? `${social.getUnreadMessages().length} 条未读` : `${social.getUnreadMessages().length} unread`
+              : undefined
+          }
+          onPress={() => navigation.navigate('Conversations')}
+        />
+        <Divider />
         <View style={styles.settingItem}>
           <View>
             <Text style={[styles.settingLabel, { color: colors.text }]}>

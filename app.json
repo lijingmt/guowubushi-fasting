@@ -2,7 +2,7 @@
   "expo": {
     "name": "过午不食",
     "slug": "guowubushifasting",
-    "version": "1.0.23",
+    "version": "1.0.25",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
