@@ -14,11 +14,17 @@ export const translations = {
     yesterday: '昨天',
     know: '知道了',
     tabHome: '首页',
-    tabHistory: '历史',
-    tabMeals: '饮食',
-    tabStats: '统计',
-    tabSettings: '设置',
-    welcome: '欢迎回来',
+	    tabHistory: '历史',
+	    tabMeals: '饮食',
+	    tabStats: '统计',
+	    tabSettings: '设置',
+	    statistics: '统计',
+	    checkInHistory: '打卡历史',
+	    meals: '饮食',
+	    weekdayFull: '星期{{day}}',
+	    weekdayShort: '周{{day}}',
+	    monthDay: '{{month}}月{{day}}日',
+	    welcome: '欢迎回来',
     currentStreak: '当前连续',
     streak: '连胜',
     days: '天',
@@ -99,8 +105,33 @@ export const translations = {
     scriptureListening: '听经',
     practiceMerit: '功德',
     addNote: '添加备注（可选）',
-    notCompleted: '未完成',
-    completed: '已完成',
+	    notCompleted: '未完成',
+	    notCompletedLabel: '未完成',
+	    noCheckInRecords: '暂无打卡记录',
+	    startFirstDay: '开始你的第一天',
+	    overview: '概览',
+	    weight: '体重',
+	    achievements: '成就',
+	    weeklyProgress: '本周进度',
+	    currentStreakLabel: '当前连续',
+	    completionRate: '完成率',
+	    weightTrend: '体重趋势',
+	    needMoreWeightRecords: '需要更多体重记录',
+	    weightRecords: '体重记录',
+	    unlockedAchievements: '已解锁成就',
+	    breakfast: '早餐',
+	    lunch: '午餐',
+	    dinner: '晚餐',
+	    snack: '加餐',
+	    overGoal: '超出目标',
+	    remainingCalories: '剩余卡路里',
+	    noMealsToday: '今天还没有饮食记录',
+	    addMeal: '添加饮食',
+	    mealName: '食物名称',
+	    calories: '卡路里',
+	    notes: '备注',
+	    quickAdd: '快速添加',
+	    completed: '已完成',
     // Social
     socialTitle: '同修',
     onlineNow: '人在线',
@@ -2304,6 +2335,21 @@ export const translations = {
 };
 
 export type Language = keyof typeof translations;
+export type TranslationStrings = typeof translations.zh & Record<string, string>;
+
+export function getTranslations(language: Language): TranslationStrings {
+  const base = translations.zh as Record<string, string>;
+  const selected = translations[language] as Record<string, string>;
+
+  return new Proxy(base, {
+    get(_target, prop) {
+      if (typeof prop !== 'string') {
+        return undefined;
+      }
+      return selected[prop] ?? base[prop] ?? prop;
+    },
+  }) as TranslationStrings;
+}
 
 export const languageNames: Record<Language, string> = {
   zh: '中文',

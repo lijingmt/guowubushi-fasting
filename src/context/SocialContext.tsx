@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import type {
   OnlineUser,
   ChatMessage,
@@ -18,6 +18,7 @@ import {
   removeFriend as storageRemoveFriend,
 } from '../services/storage';
 import { calculatePeriodStats } from '../utils/leaderboardStats';
+import { useApp } from './AppContext';
 
 interface LeaderboardData {
   fasting: {
@@ -83,10 +84,15 @@ export function useSocial(): SocialContextType {
 
 export function SocialProvider({ children }: { children: ReactNode }) {
   const partykit = usePartyKit();
+  const publishLeaderboard = partykit.publishLeaderboardStats;
+  const requestFriends = partykit.requestFriends;
+  const remoteFriends = partykit.remoteFriends;
+  const { isLoading, stats, checkInRecords, practiceRecords } = useApp();
 
   const [userId, setUserId] = useState('');
   const [nickname, setNickname] = useState('');
   const [friends, setFriends] = useState<Friend[]>([]);
+  const lastLeaderboardPublishRef = useRef('');
 
   useEffect(() => {
     (async () => {
@@ -107,6 +113,26 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       partykit.connect(userId, nickname);
     }
   }, [userId]);
+
+  useEffect(() => {
+    if (partykit.isConnected && userId) {
+      requestFriends(userId);
+    }
+  }, [partykit.isConnected, userId, requestFriends]);
+
+  useEffect(() => {
+    if (remoteFriends.length === 0) return;
+
+    const missing = remoteFriends.filter(
+      (remote) => remote.userId && !friends.some((local) => local.userId === remote.userId)
+    );
+    if (missing.length === 0) return;
+
+    setFriends((prev) => [...prev, ...missing]);
+    missing.forEach((friend) => {
+      void storageSaveFriend(friend);
+    });
+  }, [remoteFriends, friends]);
 
   const connect = useCallback(() => {
     if (userId) {
@@ -182,6 +208,45 @@ export function SocialProvider({ children }: { children: ReactNode }) {
   const requestLeaderboard = useCallback((category: 'fasting' | 'meditation', period: 'weekly' | 'monthly' | 'yearly') => {
     partykit.requestLeaderboard(category, period);
   }, [partykit]);
+
+  useEffect(() => {
+    if (isLoading || !partykit.isConnected || !userId) return;
+
+    const entry = calculatePeriodStats(
+      userId,
+      nickname,
+      checkInRecords,
+      practiceRecords,
+      stats.currentStreak,
+    );
+    const publishKey = JSON.stringify({
+      userId: entry.userId,
+      nickname: entry.nickname,
+      currentStreak: entry.currentStreak,
+      fastingDaysThisWeek: entry.fastingDaysThisWeek,
+      fastingDaysThisMonth: entry.fastingDaysThisMonth,
+      fastingDaysThisYear: entry.fastingDaysThisYear,
+      meditationMinutesThisWeek: entry.meditationMinutesThisWeek,
+      meditationMinutesThisMonth: entry.meditationMinutesThisMonth,
+      meditationMinutesThisYear: entry.meditationMinutesThisYear,
+      meditationDaysThisMonth: entry.meditationDaysThisMonth,
+      meditationDaysThisYear: entry.meditationDaysThisYear,
+      sessionCountThisWeek: entry.sessionCountThisWeek,
+    });
+    if (publishKey === lastLeaderboardPublishRef.current) return;
+
+    lastLeaderboardPublishRef.current = publishKey;
+    publishLeaderboard(entry);
+  }, [
+    isLoading,
+    partykit.isConnected,
+    userId,
+    nickname,
+    checkInRecords,
+    practiceRecords,
+    stats.currentStreak,
+    publishLeaderboard,
+  ]);
 
   const sendPrivateMessage = useCallback((toUserId: string, toNickname: string, text: string) => {
     partykit.sendPrivateMessage(userId, nickname, toUserId, toNickname, text);

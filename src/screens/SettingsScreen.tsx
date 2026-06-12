@@ -11,6 +11,7 @@ import {
   TextInput,
   Linking,
   Share,
+  Platform,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Notifications from 'expo-notifications';

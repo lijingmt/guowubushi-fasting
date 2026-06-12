@@ -5,12 +5,18 @@ import type {
   OnlineUser,
   ChatMessage,
   FriendRequest,
+  Friend,
   SharedStats,
   LeaderboardEntry,
   PrivateMessage,
 } from '../types';
 
 const PARTYKIT_URL = 'wss://partykit.guowubushi.net/party/meditation-room';
+const debugLog = (...args: unknown[]) => {
+  if (__DEV__) {
+    console.log(...args);
+  }
+};
 
 interface LeaderboardData {
   fasting: {
@@ -38,6 +44,7 @@ interface UsePartyKitReturn {
   friendRequests: FriendRequest[];
   leaderboardData: LeaderboardData;
   privateMessages: PrivateMessage[];
+  remoteFriends: Friend[];
   totalParticipants: number;
   connect: (userId: string, nickname: string) => void;
   disconnect: () => void;
@@ -49,6 +56,7 @@ interface UsePartyKitReturn {
   getStats: (userId: string) => void;
   sendFriendRequest: (fromUserId: string, fromNickname: string, toUserId: string) => void;
   respondToFriendRequest: (requestId: string, fromUserId: string, toUserId: string, accept: boolean) => void;
+  requestFriends: (userId: string) => void;
   publishLeaderboardStats: (entry: LeaderboardEntry) => void;
   requestLeaderboard: (category: 'fasting' | 'meditation', period: 'weekly' | 'monthly' | 'yearly') => void;
   sendPrivateMessage: (fromUserId: string, fromNickname: string, toUserId: string, toNickname: string, text: string) => void;
@@ -73,6 +81,7 @@ export function usePartyKit(): UsePartyKitReturn {
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardData>(emptyLeaderboard);
   const [privateMessages, setPrivateMessages] = useState<PrivateMessage[]>([]);
+  const [remoteFriends, setRemoteFriends] = useState<Friend[]>([]);
   const [totalParticipants, setTotalParticipants] = useState(0);
 
   // Load cached leaderboard on mount
@@ -118,7 +127,7 @@ export function usePartyKit(): UsePartyKitReturn {
       wsRef.current = ws;
 
       ws.onopen = () => {
-        console.log('[PartyKit] Connected');
+        debugLog('[PartyKit] Connected');
         setIsConnected(true);
         reconnectDelayRef.current = 1000;
 
@@ -139,6 +148,8 @@ export function usePartyKit(): UsePartyKitReturn {
         ws.send(JSON.stringify({ type: 'getLeaderboard', category: 'meditation', period: 'weekly' }));
         ws.send(JSON.stringify({ type: 'getLeaderboard', category: 'meditation', period: 'monthly' }));
         ws.send(JSON.stringify({ type: 'getLeaderboard', category: 'meditation', period: 'yearly' }));
+        ws.send(JSON.stringify({ type: 'getFriends', userId }));
+        ws.send(JSON.stringify({ type: 'getPrivateMessages', userId }));
       };
 
       ws.onmessage = (event) => {
@@ -194,6 +205,20 @@ export function usePartyKit(): UsePartyKitReturn {
               }
               break;
 
+            case 'friendRequestResolved':
+              setFriendRequests((prev) => prev.filter((r) => r.id !== data.requestId));
+              break;
+
+            case 'friendshipUpdate':
+              if (Array.isArray(data.users) && data.users.includes(userIdRef.current)) {
+                wsRef.current?.send(JSON.stringify({ type: 'getFriends', userId: userIdRef.current }));
+              }
+              break;
+
+            case 'friendsList':
+              setRemoteFriends(data.friends || []);
+              break;
+
             case 'userStats':
               break;
 
@@ -217,7 +242,7 @@ export function usePartyKit(): UsePartyKitReturn {
               break;
 
             case 'privateMessageReceived':
-              console.log('[PartyKit] PM received:', data.message?.id, 'to:', data.message?.toUserId, 'from:', data.message?.fromUserId, 'myId:', userIdRef.current);
+              debugLog('[PartyKit] PM received:', data.message?.id, 'to:', data.message?.toUserId, 'from:', data.message?.fromUserId, 'myId:', userIdRef.current);
               if (data.message.toUserId === userIdRef.current || data.message.fromUserId === userIdRef.current) {
                 setPrivateMessages((prev) => {
                   if (prev.find((m) => m.id === data.message.id)) return prev;
@@ -225,7 +250,7 @@ export function usePartyKit(): UsePartyKitReturn {
                   return next.length > 200 ? next.slice(-200) : next;
                 });
               } else {
-                console.log('[PartyKit] PM filtered out - not for me');
+                debugLog('[PartyKit] PM filtered out - not for me');
               }
               break;
 
@@ -235,7 +260,9 @@ export function usePartyKit(): UsePartyKitReturn {
                   // Merge with existing, dedup by id
                   const existingIds = new Set(prev.map((m) => m.id));
                   const newMsgs = data.messages.filter((m: PrivateMessage) => !existingIds.has(m.id));
-                  return [...prev, ...newMsgs];
+                  return [...prev, ...newMsgs]
+                    .sort((a, b) => a.timestamp - b.timestamp)
+                    .slice(-200);
                 });
               }
               break;
@@ -246,7 +273,7 @@ export function usePartyKit(): UsePartyKitReturn {
       };
 
       ws.onclose = () => {
-        console.log('[PartyKit] Disconnected');
+        debugLog('[PartyKit] Disconnected');
         setIsConnected(false);
         wsRef.current = null;
 
@@ -294,9 +321,11 @@ export function usePartyKit(): UsePartyKitReturn {
     }
   }, []);
 
-  const sendOffline = useCallback((userId: string) => {
-    send({ type: 'offline', userId });
-  }, [send]);
+	  const sendOffline = useCallback((userId: string) => {
+	    lastOnlineRef.current = null;
+	    pendingOnlineRef.current = null;
+	    send({ type: 'offline', userId });
+	  }, [send]);
 
   const sendChat = useCallback((userId: string, nickname: string, text: string) => {
     send({ type: 'chat', payload: { userId, nickname, text } });
@@ -318,11 +347,15 @@ export function usePartyKit(): UsePartyKitReturn {
     send({ type: 'friendRequest', payload: { fromUserId, fromNickname, toUserId } });
   }, [send]);
 
-  const respondToFriendRequest = useCallback((requestId: string, fromUserId: string, toUserId: string, accept: boolean) => {
-    const status = accept ? 'accepted' : 'rejected';
-    send({ type: 'friendResponse', payload: { requestId, fromUserId, toUserId, status } });
-    setFriendRequests((prev) => prev.filter((r) => r.id !== requestId));
-  }, [send]);
+	  const respondToFriendRequest = useCallback((requestId: string, fromUserId: string, toUserId: string, accept: boolean) => {
+	    const status = accept ? 'accepted' : 'rejected';
+	    send({ type: 'friendResponse', payload: { requestId, fromUserId, toUserId, status } });
+	    setFriendRequests((prev) => prev.filter((r) => r.id !== requestId));
+	  }, [send]);
+
+	  const requestFriends = useCallback((userId: string) => {
+	    send({ type: 'getFriends', userId });
+	  }, [send]);
 
   const publishLeaderboardStats = useCallback((entry: LeaderboardEntry) => {
     send({ type: 'publish', payload: entry });
@@ -333,7 +366,7 @@ export function usePartyKit(): UsePartyKitReturn {
   }, [send]);
 
   const sendPrivateMessage = useCallback((fromUserId: string, fromNickname: string, toUserId: string, toNickname: string, text: string) => {
-    console.log('[PartyKit] Sending PM from:', fromUserId, 'to:', toUserId, 'wsState:', wsRef.current?.readyState);
+    debugLog('[PartyKit] Sending PM from:', fromUserId, 'to:', toUserId, 'wsState:', wsRef.current?.readyState);
     send({ type: 'privateMessage', payload: { fromUserId, fromNickname, toUserId, toNickname, text } });
   }, [send]);
 
@@ -401,9 +434,10 @@ export function usePartyKit(): UsePartyKitReturn {
     onlineCount,
     chatMessages,
     friendRequests,
-    leaderboardData,
-    privateMessages,
-    totalParticipants,
+	    leaderboardData,
+	    privateMessages,
+	    remoteFriends,
+	    totalParticipants,
     connect,
     disconnect,
     sendOnline,
@@ -412,8 +446,9 @@ export function usePartyKit(): UsePartyKitReturn {
     updateNickname,
     shareStats,
     getStats,
-    sendFriendRequest,
-    respondToFriendRequest,
+	    sendFriendRequest,
+	    respondToFriendRequest,
+	    requestFriends,
     publishLeaderboardStats,
     requestLeaderboard,
     sendPrivateMessage,

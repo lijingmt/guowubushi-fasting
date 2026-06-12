@@ -9,10 +9,11 @@ import {
   getLastFastingDuration,
   saveLastFastingDuration,
 } from '../services/storage';
+import type { Language } from '../i18n/translations';
 
 interface FastingTimerCardProps {
   colors: any;
-  language: 'zh' | 'en' | 'es';
+  language: Language;
 }
 
 export const FastingTimerCard: React.FC<FastingTimerCardProps> = ({ colors, language }) => {
@@ -264,7 +265,7 @@ interface FastingDisclaimerModalProps {
   onClose: () => void;
   onAgree: () => void;
   colors: any;
-  language: 'zh' | 'en' | 'es';
+  language: Language;
 }
 
 const FastingDisclaimerModal: React.FC<FastingDisclaimerModalProps> = ({
@@ -527,7 +528,7 @@ interface FastingSetupModalProps {
   onClose: () => void;
   onStart: (hours: number) => void;
   colors: any;
-  language: 'zh' | 'en' | 'es';
+  language: Language;
   initialHours?: number;
 }
 

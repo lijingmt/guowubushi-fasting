@@ -2,6 +2,10 @@
 ios/Pods
 ios/build
 ios/.symlinks
-ios/Podfile.lock
 node_modules
 .git
+.expo
+dist
+android/app/build
+android/.gradle
+screenshots

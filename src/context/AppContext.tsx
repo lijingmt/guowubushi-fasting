@@ -2,6 +2,7 @@ import React, { useState, useEffect, createContext, useContext, ReactNode } from
 import { useColorScheme, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { getLocales } from 'expo-localization';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   UserSettings,
   DailyCheckIn,
@@ -21,19 +22,14 @@ import {
   saveSettings,
   getCheckInRecords,
   saveCheckInRecord,
-  getTodayCheckIn,
-  isTodayCheckedIn,
   getMealRecords,
   saveMealRecord,
   deleteMealRecord,
-  getTodayMeals,
-  getTodayCalories,
   getWeightRecords,
   saveWeightRecord,
   getWaterRecords,
   saveWaterRecord,
   deleteTodayWaterRecords,
-  getTodayWaterIntake,
   getHealthSyncStatus,
   saveHealthSyncStatus,
   getPracticeRecords,
@@ -46,17 +42,20 @@ import {
   updateFastingSessionStatus,
   calculateFastingStats,
 } from '../services/storage';
-import { translations } from '../i18n/translations';
+import { getTranslations, type Language, type TranslationStrings } from '../i18n/translations';
 import { Colors, lightColors, darkColors } from '../theme/colors';
 
+const DAILY_REMINDER_NOTIFICATION_ID_KEY = '@guowu_daily_reminder_notification_id';
+const FASTING_NOTIFICATION_ID_KEY = '@guowu_fasting_notification_id';
+
 // 检测设备语言并返回对应的应用语言
-const detectDeviceLanguage =(): 'zh' | 'en' | 'es' | 'ja' | 'ko' | 'fr' | 'de' | 'pt' | 'ru' | 'ar' | 'it' | 'hi' | 'vi' | 'th' => {
+const detectDeviceLanguage = (): Language => {
   const deviceLocales = getLocales();
   if (deviceLocales && deviceLocales.length > 0) {
     const deviceLanguage = deviceLocales[0].languageCode?.toLowerCase() || '';
 
     // 支持的语言映射
-    const supportedLanguages: Record<string, 'zh' | 'en' | 'es' | 'ja' | 'ko' | 'fr' | 'de' | 'pt' | 'ru' | 'ar' | 'it' | 'hi' | 'vi' | 'th'> = {
+    const supportedLanguages: Record<string, Language> = {
       'zh': 'zh',  // 中文
       'en': 'en',  // 英文
       'es': 'es',  // 西班牙语
@@ -81,7 +80,7 @@ const detectDeviceLanguage =(): 'zh' | 'en' | 'es' | 'ja' | 'ko' | 'fr' | 'de' |
     // 中文设备（包括 zh-CN, zh-TW, zh-HK 等）→ 简体/繁体中文
     if (deviceLanguage.startsWith('zh')) {
       // zh-TW, zh-HK, zh-MO → 繁体中文
-      if (deviceLanguage.includes('TW') || deviceLanguage.includes('HK') || deviceLanguage.includes('MO')) {
+      if (deviceLanguage.includes('tw') || deviceLanguage.includes('hk') || deviceLanguage.includes('mo')) {
         return 'zh-Hant';
       }
       // zh-CN, zh-SG → 简体中文
@@ -112,8 +111,8 @@ interface AppContextType {
   // 设置
   settings: UserSettings;
   updateSettings: (settings: Partial<UserSettings>) => Promise<void>;
-  language: 'zh' | 'en' | 'es' | 'ja' | 'ko' | 'fr' | 'de' | 'pt' | 'ru' | 'ar' | 'it' | 'hi' | 'vi' | 'th';
-  t: typeof translations.zh;
+  language: Language;
+  t: TranslationStrings;
 
   // 打卡
   checkInRecords: DailyCheckIn[];
@@ -175,7 +174,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // 设置
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
-  const [language, setLanguage] = useState<'zh' | 'en' | 'es' | 'ja' | 'ko' | 'fr' | 'de' | 'pt' | 'ru' | 'ar' | 'it' | 'hi' | 'vi' | 'th'>('zh');
+  const [language, setLanguage] = useState<Language>('zh');
 
   // 根据主题设置确定颜色
   const colors: Colors = (() => {
@@ -252,7 +251,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     initializeData();
     setupNotifications();
-    scheduleDailyReminder();
   }, []);
 
   // 计算统计数据
@@ -262,22 +260,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // 统计数据变化时重新调度提醒（用于宽限期通知）
   useEffect(() => {
-    if (stats.streakInGracePeriod && settings.enableNotifications) {
+    if (!isLoading && stats.streakInGracePeriod && settings.enableNotifications) {
       scheduleDailyReminder();
     }
-  }, [stats.streakInGracePeriod]);
+  }, [isLoading, stats.streakInGracePeriod]);
 
   // 设置改变时重新调度提醒
   useEffect(() => {
+    if (isLoading) return;
     if (settings.enableNotifications) {
       scheduleDailyReminder();
+    } else {
+      cancelStoredNotification(DAILY_REMINDER_NOTIFICATION_ID_KEY);
     }
-  }, [settings.reminderTime, settings.enableNotifications]);
+  }, [isLoading, settings.reminderTime, settings.enableNotifications]);
 
   const initializeData = async () => {
     try {
       // 检查是否首次启动
-      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       const settingsData = await AsyncStorage.getItem('@guowu_settings');
       const isFirstLaunch = settingsData === null;
 
@@ -294,41 +294,57 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setSettings(savedSettings);
       setLanguage(savedSettings.language);
 
+      const [
+        savedCheckIns,
+        savedMeals,
+        savedWeights,
+        savedWater,
+        savedPractices,
+        savedFastingSessions,
+        savedActiveFasting,
+        savedHealthSync,
+      ] = await Promise.all([
+        getCheckInRecords(),
+        getMealRecords(),
+        getWeightRecords(),
+        getWaterRecords(),
+        getPracticeRecords(),
+        getFastingSessions(),
+        getActiveFastingState(),
+        getHealthSyncStatus(),
+      ]);
+      const today = new Date().toISOString().split('T')[0];
+
       // 加载打卡记录
-      const savedCheckIns = await getCheckInRecords();
       setCheckInRecords(savedCheckIns);
-      const todayRecord = await getTodayCheckIn();
+      const todayRecord = savedCheckIns.find((r) => r.date === today) || null;
       setTodayCheckIn(todayRecord);
       setHasCheckedToday(todayRecord?.completed || false);
 
       // 加载饮食记录
-      const savedMeals = await getMealRecords();
       setMealRecords(savedMeals);
-      const todayMealList = await getTodayMeals();
+      const todayMealList = savedMeals.filter((r) => r.date === today);
       setTodayMeals(todayMealList);
-      const calories = await getTodayCalories();
+      const calories = todayMealList.reduce((sum, meal) => sum + meal.calories, 0);
       setTodayCalories(calories);
 
       // 加载体重记录
-      const savedWeights = await getWeightRecords();
       setWeightRecords(savedWeights);
 
       // 加载饮水记录
-      const savedWater = await getWaterRecords();
       setWaterRecords(savedWater);
-      const water = await getTodayWaterIntake();
+      const water = savedWater
+        .filter((r) => r.date === today)
+        .reduce((sum, record) => sum + record.amount, 0);
       setTodayWater(water);
 
       // 加载修行记录
-      const savedPractices = await getPracticeRecords();
       setPracticeRecords(savedPractices);
 
       // 加载禁食会话记录
-      const savedFastingSessions = await getFastingSessions();
       setFastingSessions(savedFastingSessions);
 
       // 加载活跃的禁食状态
-      const savedActiveFasting = await getActiveFastingState();
       if (savedActiveFasting) {
         // 检查是否已过期
         if (savedActiveFasting.endTime > Date.now()) {
@@ -351,7 +367,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
 
       // 加载健康同步状态
-      const savedHealthSync = await getHealthSyncStatus();
       setHealthSync(savedHealthSync);
     } catch (error) {
       console.error('Error initializing data:', error);
@@ -369,22 +384,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       await Notifications.requestPermissionsAsync();
     }
 
-    // 清除所有遗留的通知，防止之前测试的通知被触发
-    try {
-      await Notifications.cancelAllScheduledNotificationsAsync();
-      console.log('Cleared all scheduled notifications on startup');
-    } catch (error) {
-      console.error('Error clearing notifications:', error);
-    }
+    // 不在启动时全量清空通知，避免每日提醒和禁食完成提醒互相覆盖。
   };
 
   const scheduleDailyReminder = async () => {
-    if (!settings.enableNotifications) return;
+    if (!settings.enableNotifications) {
+      await cancelStoredNotification(DAILY_REMINDER_NOTIFICATION_ID_KEY);
+      return;
+    }
     // Web 平台不支持通知
     if (Platform.OS === 'web') return;
 
-    // 取消所有已安排的通知
-    await Notifications.cancelAllScheduledNotificationsAsync();
+    await cancelStoredNotification(DAILY_REMINDER_NOTIFICATION_ID_KEY);
 
     const [hours, minutes] = settings.reminderTime.split(':').map(Number);
 
@@ -410,7 +421,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     // 安排每日重复提醒
-    await Notifications.scheduleNotificationAsync({
+    const identifier = await Notifications.scheduleNotificationAsync({
       content: {
         title: language === 'zh' ? '过午不食打卡' : 'Daily Check-In',
         body: getNotificationMessage(),
@@ -423,6 +434,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         minute: minutes,
       } as any,
     });
+    await AsyncStorage.setItem(DAILY_REMINDER_NOTIFICATION_ID_KEY, identifier);
+  };
+
+  const cancelStoredNotification = async (storageKey: string) => {
+    if (Platform.OS === 'web') return;
+    try {
+      const identifier = await AsyncStorage.getItem(storageKey);
+      if (identifier) {
+        await Notifications.cancelScheduledNotificationAsync(identifier);
+        await AsyncStorage.removeItem(storageKey);
+      }
+    } catch (error) {
+      console.error('Error cancelling stored notification:', error);
+    }
   };
 
   const calculateStats = async () => {
@@ -701,9 +726,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     await saveMealRecord(newMeal);
     const updatedRecords = await getMealRecords();
     setMealRecords(updatedRecords);
-    const todayMealList = await getTodayMeals();
+    const todayMealList = updatedRecords.filter((r) => r.date === today);
     setTodayMeals(todayMealList);
-    const calories = await getTodayCalories();
+    const calories = todayMealList.reduce((sum, item) => sum + item.calories, 0);
     setTodayCalories(calories);
   };
 
@@ -711,9 +736,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     await deleteMealRecord(id);
     const updatedRecords = await getMealRecords();
     setMealRecords(updatedRecords);
-    const todayMealList = await getTodayMeals();
+    const today = new Date().toISOString().split('T')[0];
+    const todayMealList = updatedRecords.filter((r) => r.date === today);
     setTodayMeals(todayMealList);
-    const calories = await getTodayCalories();
+    const calories = todayMealList.reduce((sum, item) => sum + item.calories, 0);
     setTodayCalories(calories);
   };
 
@@ -733,7 +759,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const removeWeight = async (id: string) => {
     const updatedRecords = weightRecords.filter((r) => r.id !== id);
     setWeightRecords(updatedRecords);
-    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
     await AsyncStorage.setItem(
       '@guowu_weight_records',
       JSON.stringify(updatedRecords)
@@ -755,7 +780,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     await saveWaterRecord(newRecord);
     const updatedRecords = await getWaterRecords();
     setWaterRecords(updatedRecords);
-    const water = await getTodayWaterIntake();
+    const water = updatedRecords
+      .filter((r) => r.date === today)
+      .reduce((sum, record) => sum + record.amount, 0);
     setTodayWater(water);
   };
 
@@ -791,8 +818,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     await deleteTodayWaterRecords();
     const updatedPractices = await getPracticeRecords();
     const updatedWater = await getWaterRecords();
+    const today = new Date().toISOString().split('T')[0];
     setPracticeRecords(updatedPractices);
     setWaterRecords(updatedWater);
+    setTodayWater(
+      updatedWater
+        .filter((r) => r.date === today)
+        .reduce((sum, record) => sum + record.amount, 0)
+    );
   };
 
   const refreshStats = async () => {
@@ -812,7 +845,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const sessionId = `fasting_${now}`;
     const today = new Date().toISOString().split('T')[0];
 
-    console.log('Starting fasting session:', { durationHours, startTime: now, endTime });
+    if (__DEV__) {
+      console.log('Starting fasting session:', { durationHours, startTime: now, endTime });
+    }
 
     // 创建会话记录
     const session: FastingSession = {
@@ -840,9 +875,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (settings.enableNotifications && Platform.OS !== 'web') {
       try {
         const triggerDate = new Date(endTime);
-        console.log('Scheduling notification at:', triggerDate.toISOString());
-        console.log('Current time:', new Date().toISOString());
+        if (__DEV__) {
+          console.log('Scheduling notification at:', triggerDate.toISOString());
+          console.log('Current time:', new Date().toISOString());
+        }
 
+        await cancelStoredNotification(FASTING_NOTIFICATION_ID_KEY);
         const identifier = await Notifications.scheduleNotificationAsync({
           content: {
             title: language === 'zh' ? '🎉 禁食结束！' : language === 'es' ? '¡Ayuno terminado!' : 'Fasting Complete!',
@@ -859,14 +897,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             date: triggerDate,
           },
         });
-        console.log('Fasting completion notification scheduled with ID:', identifier);
-
-        // 调试：列出所有已调度的通知
-        const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-        console.log('All scheduled notifications:', scheduled.length);
-        scheduled.forEach(n => {
-          console.log('- ID:', n.identifier, 'Trigger:', JSON.stringify(n.trigger));
-        });
+        activeState.notificationId = identifier;
+        await saveActiveFastingState(activeState);
+        await AsyncStorage.setItem(FASTING_NOTIFICATION_ID_KEY, identifier);
       } catch (error) {
         console.error('Error scheduling notification:', error);
       }
@@ -889,7 +922,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // 取消通知
     if (Platform.OS !== 'web') {
       try {
-        await Notifications.cancelAllScheduledNotificationsAsync();
+        await cancelStoredNotification(FASTING_NOTIFICATION_ID_KEY);
         // 重新调度每日提醒
         await scheduleDailyReminder();
       } catch (error) {
@@ -914,6 +947,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // 立即显示完成通知
     if (settings.enableNotifications && Platform.OS !== 'web') {
       try {
+        await cancelStoredNotification(FASTING_NOTIFICATION_ID_KEY);
         await Notifications.scheduleNotificationAsync({
           content: {
             title: language === 'zh' ? '🎉 禁食结束！' : language === 'es' ? '¡Ayuno terminado!' : 'Fasting Complete!',
@@ -926,10 +960,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           },
           trigger: null, // Show immediately
         });
-        console.log('Fasting completion notification scheduled');
-
-        // 取消其他已调度的通知
-        await Notifications.cancelAllScheduledNotificationsAsync();
         // 重新调度每日提醒
         await scheduleDailyReminder();
       } catch (error) {
@@ -939,7 +969,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       // 如果没有启用通知，仍然需要清理已调度的通知
       if (Platform.OS !== 'web') {
         try {
-          await Notifications.cancelAllScheduledNotificationsAsync();
+          await cancelStoredNotification(FASTING_NOTIFICATION_ID_KEY);
           await scheduleDailyReminder();
         } catch (error) {
           console.error('Error cancelling scheduled notification:', error);
@@ -953,7 +983,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setFastingSessions(updatedSessions);
   };
 
-  const t = translations[language];
+  const t = getTranslations(language);
 
   return (
     <AppContext.Provider

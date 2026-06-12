@@ -6,25 +6,19 @@ export const SplashScreen: React.FC<{ onFinished: () => void }> = ({ onFinished 
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    console.log('=== SplashScreen: MOUNTED ===');
-
     // Fade in animation
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 500,
       useNativeDriver: true,
-    }).start(() => {
-      console.log('=== SplashScreen: FADE IN COMPLETE ===');
-    });
+    }).start();
 
     // Auto finish after 2 seconds
     const timer = setTimeout(() => {
-      console.log('=== SplashScreen: CALLING ONFINISHED ===');
       onFinished();
     }, 2000);
 
     return () => {
-      console.log('=== SplashScreen: UNMOUNTED ===');
       clearTimeout(timer);
     };
   }, [onFinished]);

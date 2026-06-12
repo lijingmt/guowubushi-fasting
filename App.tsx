@@ -21,30 +21,23 @@ const AppContent: React.FC = () => {
   const [showWelcome, setShowWelcome] = useState<boolean | null>(null);
 
   useEffect(() => {
-    console.log('AppContent: mounted, checking welcome status');
     checkWelcomeStatus();
   }, []);
 
   const checkWelcomeStatus = async () => {
     const agreed = await checkTermsAgreed();
-    console.log('AppContent: terms agreed =', agreed);
     setShowWelcome(!agreed);
   };
 
-  console.log('AppContent: render, showSplash =', showSplash, 'isLoading =', isLoading, 'showWelcome =', showWelcome);
-
   // 显示启动画面
   if (showSplash) {
-    console.log('AppContent: rendering SplashScreen');
     return <SplashScreen onFinished={() => {
-      console.log('AppContent: splash finished');
       setShowSplash(false);
     }} />;
   }
 
   // 等待初始化完成
   if (isLoading || showWelcome === null) {
-    console.log('AppContent: rendering loading spinner');
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -54,12 +47,10 @@ const AppContent: React.FC = () => {
 
   // 显示欢迎页面
   if (showWelcome) {
-    console.log('AppContent: rendering WelcomeScreen');
     return <WelcomeScreen colors={colors} language={language} onDismiss={() => setShowWelcome(false)} />;
   }
 
   // 显示主应用
-  console.log('AppContent: rendering AppNavigator');
   return <AppNavigator />;
 };
 

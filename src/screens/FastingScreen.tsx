@@ -124,8 +124,10 @@ export const FastingScreen: React.FC = () => {
 
   const handleNativeShare = async () => {
     try {
-      console.log('Starting fasting share capture...');
-      console.log('shareCardRef current:', shareCardRef.current);
+      if (__DEV__) {
+        console.log('Starting fasting share capture...');
+        console.log('shareCardRef current:', shareCardRef.current);
+      }
 
       // Small delay to ensure card is fully rendered
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -137,7 +139,9 @@ export const FastingScreen: React.FC = () => {
         result: 'tmpfile',
       });
 
-      console.log('captureRef returned uri:', uri);
+      if (__DEV__) {
+        console.log('captureRef returned uri:', uri);
+      }
 
       if (!uri) {
         throw new Error('captureRef returned null URI');
@@ -148,7 +152,9 @@ export const FastingScreen: React.FC = () => {
         dialogTitle: language === 'zh' ? '分享禁食成就' : language === 'es' ? 'Compartir logro de ayuno' : 'Share Fasting Achievement',
       });
 
-      console.log('Share successful!');
+      if (__DEV__) {
+        console.log('Share successful!');
+      }
       setShowShareCardModal(false);
     } catch (error) {
       console.error('Share error:', error);
@@ -191,7 +197,9 @@ export const FastingScreen: React.FC = () => {
               } catch (err: unknown) {
                 // Share was cancelled or failed, fall through to download
                 if (err instanceof Error && err.name !== 'AbortError') {
-                  console.log('Share failed:', err);
+                  if (__DEV__) {
+                    console.log('Share failed:', err);
+                  }
                 }
               }
             }

@@ -23,6 +23,7 @@ import { MeditationAnimation } from '../components/MeditationAnimation';
 import { OnlineMeditatorsList } from '../components/OnlineMeditatorsList';
 import { ChatPanel } from '../components/ChatPanel';
 import { NicknameEditField } from '../components/NicknameEditField';
+import type { Language } from '../i18n/translations';
 
 const MEDITATION_DURATION_KEY = '@guowu_meditation_duration';
 const MEDITATION_SOUND_KEY = '@guowu_meditation_sound';
@@ -30,8 +31,9 @@ const MEDITATION_SOUND_KEY = '@guowu_meditation_sound';
 const DURATIONS = [1, 5, 10, 15, 30, 60, 120, 180, 300];
 
 type BackgroundSound = 'none' | 'insects' | 'ocean' | 'rain' | 'birds';
+type LocalizedSoundLabel = Record<'zh' | 'en' | 'es', string> & Partial<Record<Language, string>>;
 
-const BACKGROUND_SOUNDS: Record<BackgroundSound, { zh: string; en: string; es: string }> = {
+const BACKGROUND_SOUNDS: Record<BackgroundSound, LocalizedSoundLabel> = {
   none: { zh: '无', en: 'None', es: 'Ninguno' },
   insects: { zh: '🦗 虫鸣', en: '🦗 Insects', es: '🦗 Insectos' },
   ocean: { zh: '🌊 海潮', en: '🌊 Ocean', es: '🌊 Océano' },
@@ -56,6 +58,9 @@ export const MeditationScreen = () => {
   const backgroundSoundRef = useRef<Audio.Sound | null>(null);
   const backgroundTimeRef = useRef<number>(0);
   const scrollRef = useRef<ScrollView>(null);
+  const getSoundLabel = (sound: BackgroundSound) => (
+    BACKGROUND_SOUNDS[sound][language] || BACKGROUND_SOUNDS[sound].en
+  );
 
   // 播放钟声（用于完成和暂停）
   const playBellSound = async () => {
@@ -383,7 +388,7 @@ export const MeditationScreen = () => {
             </Text>
             <View style={styles.soundSelectorValue}>
               <Text style={[styles.soundSelectorText, { color: colors.text }]}>
-                {BACKGROUND_SOUNDS[backgroundSound][language]}
+                {getSoundLabel(backgroundSound)}
               </Text>
               <Text style={[styles.soundSelectorArrow, { color: colors.textLight }]}>›</Text>
             </View>
@@ -531,7 +536,7 @@ export const MeditationScreen = () => {
                 }}
               >
                 <Text style={[styles.soundOptionText, { color: colors.text }]}>
-                  {BACKGROUND_SOUNDS[sound][language]}
+                  {getSoundLabel(sound)}
                 </Text>
                 {backgroundSound === sound && (
                   <Text style={[styles.soundOptionCheck, { color: colors.primary }]}>✓</Text>

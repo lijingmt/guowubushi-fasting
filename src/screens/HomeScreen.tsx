@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Alert, Clipboard, Modal, TextInput, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Alert, Clipboard, Modal, TextInput, Platform, Image } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { Card } from '../components/Card';
 import { StatCard } from '../components/StatCard';
@@ -10,6 +10,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { captureRef } from 'react-native-view-shot';
 import * as FileSystem from 'expo-file-system';
 import { shareAsync } from 'expo-sharing';
+
+const APP_STORE_URL = 'https://apps.apple.com/app/id6762360504';
 
 export const HomeScreen: React.FC = () => {
   const {
@@ -98,8 +100,10 @@ export const HomeScreen: React.FC = () => {
 
   const handleNativeShare = async () => {
     try {
-      console.log('Starting share capture...');
-      console.log('shareCardRef current:', shareCardRef.current);
+      if (__DEV__) {
+        console.log('Starting share capture...');
+        console.log('shareCardRef current:', shareCardRef.current);
+      }
 
       // Small delay to ensure card is fully rendered
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -111,7 +115,9 @@ export const HomeScreen: React.FC = () => {
         result: 'tmpfile',
       });
 
-      console.log('captureRef returned uri:', uri);
+      if (__DEV__) {
+        console.log('captureRef returned uri:', uri);
+      }
 
       if (!uri) {
         throw new Error('captureRef returned null URI');
@@ -122,7 +128,9 @@ export const HomeScreen: React.FC = () => {
         dialogTitle: language === 'zh' ? '分享成就' : language === 'es' ? 'Compartir logro' : 'Share Achievement',
       });
 
-      console.log('Share successful!');
+      if (__DEV__) {
+        console.log('Share successful!');
+      }
       setShowShareCardModal(false);
     } catch (error) {
       console.error('Share error:', error);
@@ -189,7 +197,9 @@ export const HomeScreen: React.FC = () => {
               } catch (err: unknown) {
                 // Share was cancelled or failed, fall through to download
                 if (err instanceof Error && err.name !== 'AbortError') {
-                  console.log('Share failed:', err);
+                  if (__DEV__) {
+                    console.log('Share failed:', err);
+                  }
                 }
               }
             }
@@ -226,6 +236,127 @@ export const HomeScreen: React.FC = () => {
     if (stats.currentStreak >= 7) return '🔥';
     if (stats.currentStreak >= 3) return '✨';
     return '💪';
+  };
+
+  const getShareCopy = () => {
+    if (language === 'en') {
+      return {
+        title: 'No Fasting After Noon',
+        eyebrow: 'Daily practice completed',
+        headline: 'I am keeping a mindful fasting streak',
+        daysLabel: 'day streak',
+        completedLabel: 'completed days',
+        hoursLabel: 'hours saved',
+        caloriesLabel: 'kcal saved',
+        quote: 'Eat lighter, live clearer.',
+        progressLabel: 'This week',
+        footer: 'Track mindful fasting with me',
+      };
+    }
+    if (language === 'es') {
+      return {
+        title: 'Ayuno Consciente',
+        eyebrow: 'Práctica diaria completada',
+        headline: 'Mantengo mi racha de ayuno consciente',
+        daysLabel: 'días seguidos',
+        completedLabel: 'días completados',
+        hoursLabel: 'horas ahorradas',
+        caloriesLabel: 'kcal ahorradas',
+        quote: 'Come más ligero, vive más claro.',
+        progressLabel: 'Esta semana',
+        footer: 'Registra tu ayuno consciente conmigo',
+      };
+    }
+    return {
+      title: '过午不食',
+      eyebrow: '今日修行已完成',
+      headline: '我正在坚持过午不食',
+      daysLabel: '连续天数',
+      completedLabel: '完成天数',
+      hoursLabel: '节省小时',
+      caloriesLabel: '节省千卡',
+      quote: '少食知足，清醒每一天。',
+      progressLabel: '本周进度',
+      footer: '一起记录清醒、轻盈的生活',
+    };
+  };
+
+  const renderShareCard = () => {
+    const copy = getShareCopy();
+    const weeklyProgress = Math.min(stats.currentStreak > 0 ? ((stats.currentStreak - 1) % 7) + 1 : 0, 7);
+
+    return (
+      <LinearGradient
+        colors={['#1B3A33', '#2F6F4E', '#F2C14E']}
+        style={styles.shareCardBackground}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.shareTopBand} />
+        <View style={styles.shareBottomBand} />
+
+        <View style={styles.shareCardContent}>
+          <View style={styles.shareBrandRow}>
+            <Image source={require('../../assets/brand_logo.jpg')} style={styles.shareLogo} resizeMode="contain" />
+            <View style={styles.shareBrandTextBlock}>
+              <Text style={styles.shareBrandTitle}>{copy.title}</Text>
+              <Text style={styles.shareBrandSubtitle}>Guowu Fasting</Text>
+            </View>
+          </View>
+
+          <View style={styles.shareBadge}>
+            <Text style={styles.shareBadgeText}>{copy.eyebrow}</Text>
+          </View>
+
+          <Text style={styles.shareHeadline}>{copy.headline}</Text>
+
+          <View style={styles.shareHeroMetric}>
+            <Text style={styles.shareHeroNumber}>{stats.currentStreak}</Text>
+            <Text style={styles.shareHeroLabel}>{copy.daysLabel}</Text>
+          </View>
+
+          <View style={styles.shareMetricGrid}>
+            <View style={styles.shareMetricCard}>
+              <Text style={styles.shareMetricValue}>{stats.completedDays}</Text>
+              <Text style={styles.shareMetricLabel}>{copy.completedLabel}</Text>
+            </View>
+            <View style={styles.shareMetricCard}>
+              <Text style={styles.shareMetricValue}>{stats.totalHoursSaved}h</Text>
+              <Text style={styles.shareMetricLabel}>{copy.hoursLabel}</Text>
+            </View>
+            <View style={styles.shareMetricCard}>
+              <Text style={styles.shareMetricValue}>{stats.totalCaloriesSaved}</Text>
+              <Text style={styles.shareMetricLabel}>{copy.caloriesLabel}</Text>
+            </View>
+          </View>
+
+          <View style={styles.shareProgressBlock}>
+            <View style={styles.shareProgressHeader}>
+              <Text style={styles.shareProgressLabel}>{copy.progressLabel}</Text>
+              <Text style={styles.shareProgressCount}>{weeklyProgress}/7</Text>
+            </View>
+            <View style={styles.shareProgressTrack}>
+              {Array.from({ length: 7 }).map((_, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.shareProgressDot,
+                    index < weeklyProgress && styles.shareProgressDotActive,
+                  ]}
+                />
+              ))}
+            </View>
+          </View>
+
+          <Text style={styles.shareQuote}>{copy.quote}</Text>
+
+          <View style={styles.shareFooter}>
+            <Text style={styles.shareFooterText}>{copy.footer}</Text>
+            <Text style={styles.shareFooterLink}>{APP_STORE_URL.replace('https://', '')}</Text>
+          </View>
+        </View>
+      </LinearGradient>
+    );
   };
 
   // 响应式样式
@@ -472,59 +603,7 @@ export const HomeScreen: React.FC = () => {
 
             {/* Share Card Preview */}
             <View id="share-card-preview" style={styles.sharePreviewCard}>
-              <LinearGradient
-                colors={['#FF6B6B', '#FF8E53', '#FFA726']}
-                style={styles.shareCardBackground}
-              >
-                {/* Decorative circles */}
-                <View style={[styles.shareCircle, styles.shareCircle1]} />
-                <View style={[styles.shareCircle, styles.shareCircle2]} />
-                <View style={[styles.shareCircle, styles.shareCircle3]} />
-
-                <View style={styles.shareCardContent}>
-                  {/* Header */}
-                  <Text style={styles.shareGreeting}>
-                    {language === 'en' ? 'My Fasting Journey' : language === 'es' ? 'Mi Viaje de Ayuno' : '过午不食之路'}
-                  </Text>
-                  <Text style={styles.shareSubtitle}>
-                    {language === 'en' ? 'Building healthy habits, one day at a time' : language === 'es' ? 'Construyendo hábitos saludables, día a día' : '培养健康习惯，一天天坚持'}
-                  </Text>
-
-                  {/* Main Stats */}
-                  <View style={styles.shareMainStats}>
-                    <View style={styles.shareMainStatItem}>
-                      <Text style={styles.shareMainStatValue}>{stats.currentStreak}</Text>
-                      <Text style={styles.shareMainStatLabel}>
-                        {language === 'en' ? 'Day Streak' : language === 'es' ? 'Días Racha' : '连续天数'}
-                      </Text>
-                    </View>
-                    <View style={styles.shareStatDivider} />
-                    <View style={styles.shareMainStatItem}>
-                      <Text style={styles.shareMainStatValue}>{stats.completedDays}h</Text>
-                      <Text style={styles.shareMainStatLabel}>
-                        {language === 'en' ? 'Cooking Saved' : language === 'es' ? 'Cocina Ahorrada' : '节省做饭'}
-                      </Text>
-                    </View>
-                    <View style={styles.shareStatDivider} />
-                    <View style={styles.shareMainStatItem}>
-                      <Text style={styles.shareMainStatValue}>{stats.completedDays}h</Text>
-                      <Text style={styles.shareMainStatLabel}>
-                        {language === 'en' ? 'Eating Saved' : language === 'es' ? 'Comida Ahorrada' : '节省用餐'}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Footer */}
-                  <View style={styles.shareFooter}>
-                    <View style={styles.shareFooterLine} />
-                    <Text style={styles.shareFooterText}>
-                      {language === 'zh' ? '下载app：' : language === 'es' ? 'Descarga la app:' : 'Download the app:'}
-                    </Text>
-                    <Text style={styles.shareFooterLink}>apps.apple.com/app/id6762360504</Text>
-                    <Text style={styles.shareFooterBrand}>"过午不食" Fasting App</Text>
-                  </View>
-                </View>
-              </LinearGradient>
+              {renderShareCard()}
             </View>
 
             {/* Action buttons */}
@@ -571,54 +650,7 @@ export const HomeScreen: React.FC = () => {
             <View
               style={styles.shareCardModalCard}
             >
-              {/* Decorative circles */}
-              <View style={[styles.shareCircle, styles.shareCircle1]} />
-              <View style={[styles.shareCircle, styles.shareCircle2]} />
-              <View style={[styles.shareCircle, styles.shareCircle3]} />
-
-              <View style={styles.shareCardContent}>
-                {/* Header */}
-                <Text style={styles.shareGreeting}>
-                  {language === 'en' ? 'My Fasting Journey' : language === 'es' ? 'Mi Viaje de Ayuno' : '过午不食之路'}
-                </Text>
-                <Text style={styles.shareSubtitle}>
-                  {language === 'en' ? 'Building healthy habits, one day at a time' : language === 'es' ? 'Construyendo hábitos saludables, día a día' : '培养健康习惯，一天天坚持'}
-                </Text>
-
-                {/* Main Stats */}
-                <View style={styles.shareMainStats}>
-                  <View style={styles.shareMainStatItem}>
-                    <Text style={styles.shareMainStatValue}>{stats.currentStreak}</Text>
-                    <Text style={styles.shareMainStatLabel}>
-                      {language === 'en' ? 'Day Streak' : language === 'es' ? 'Días Racha' : '连续天数'}
-                    </Text>
-                  </View>
-                  <View style={styles.shareStatDivider} />
-                  <View style={styles.shareMainStatItem}>
-                    <Text style={styles.shareMainStatValue}>{stats.completedDays}h</Text>
-                    <Text style={styles.shareMainStatLabel}>
-                      {language === 'en' ? 'Cooking Saved' : language === 'es' ? 'Cocina Ahorrada' : '节省做饭'}
-                    </Text>
-                  </View>
-                  <View style={styles.shareStatDivider} />
-                  <View style={styles.shareMainStatItem}>
-                    <Text style={styles.shareMainStatValue}>{stats.completedDays}h</Text>
-                    <Text style={styles.shareMainStatLabel}>
-                      {language === 'en' ? 'Eating Saved' : language === 'es' ? 'Comida Ahorrada' : '节省用餐'}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Footer */}
-                <View style={styles.shareFooter}>
-                  <View style={styles.shareFooterLine} />
-                  <Text style={styles.shareFooterText}>
-                    {language === 'zh' ? '下载app：' : language === 'es' ? 'Descarga la app:' : 'Download the app:'}
-                  </Text>
-                  <Text style={styles.shareFooterLink}>apps.apple.com/app/id6762360504</Text>
-                  <Text style={styles.shareFooterBrand}>"过午不食" Fasting App</Text>
-                </View>
-              </View>
+              {renderShareCard()}
             </View>
 
             {/* Action buttons */}
@@ -652,59 +684,7 @@ export const HomeScreen: React.FC = () => {
       collapsable={false}
       style={styles.hiddenShareCard}
     >
-      <LinearGradient
-        colors={['#FF6B6B', '#FF8E53', '#FFA726']}
-        style={{ width: '100%', height: '100%' }}
-      >
-        {/* Decorative circles */}
-        <View style={[styles.shareCircle, styles.shareCircle1]} />
-        <View style={[styles.shareCircle, styles.shareCircle2]} />
-        <View style={[styles.shareCircle, styles.shareCircle3]} />
-
-        <View style={styles.shareCardContent}>
-        {/* Header */}
-        <Text style={styles.shareGreeting}>
-          {language === 'en' ? 'My Fasting Journey' : language === 'es' ? 'Mi Viaje de Ayuno' : '过午不食之路'}
-        </Text>
-        <Text style={styles.shareSubtitle}>
-          {language === 'en' ? 'Building healthy habits, one day at a time' : language === 'es' ? 'Construyendo hábitos saludables, día a día' : '培养健康习惯，一天天坚持'}
-        </Text>
-
-        {/* Main Stats */}
-        <View style={styles.shareMainStats}>
-          <View style={styles.shareMainStatItem}>
-            <Text style={styles.shareMainStatValue}>{stats.currentStreak}</Text>
-            <Text style={styles.shareMainStatLabel}>
-              {language === 'en' ? 'Day Streak' : language === 'es' ? 'Días Racha' : '连续天数'}
-            </Text>
-          </View>
-          <View style={styles.shareStatDivider} />
-          <View style={styles.shareMainStatItem}>
-            <Text style={styles.shareMainStatValue}>{stats.completedDays}h</Text>
-            <Text style={styles.shareMainStatLabel}>
-              {language === 'en' ? 'Cooking Saved' : language === 'es' ? 'Cocina Ahorrada' : '节省做饭'}
-            </Text>
-          </View>
-          <View style={styles.shareStatDivider} />
-          <View style={styles.shareMainStatItem}>
-            <Text style={styles.shareMainStatValue}>{stats.completedDays}h</Text>
-            <Text style={styles.shareMainStatLabel}>
-              {language === 'en' ? 'Eating Saved' : language === 'es' ? 'Comida Ahorrada' : '节省用餐'}
-            </Text>
-          </View>
-        </View>
-
-        {/* Footer */}
-        <View style={styles.shareFooter}>
-          <View style={styles.shareFooterLine} />
-          <Text style={styles.shareFooterText}>
-            {language === 'zh' ? '下载app：' : language === 'es' ? 'Descarga la app:' : 'Download the app:'}
-          </Text>
-          <Text style={styles.shareFooterLink}>apps.apple.com/app/id6762360504</Text>
-          <Text style={styles.shareFooterBrand}>"过午不食" Fasting App</Text>
-        </View>
-        </View>
-      </LinearGradient>
+      {renderShareCard()}
     </View>
     </View>
   );
@@ -983,106 +963,189 @@ const createResponsiveStyles = () => {
       }),
       fontWeight: '600',
     },
-    shareCardBackground: {
-      width: '100%',
-      height: '100%',
-    },
-    shareCircle: {
-      position: 'absolute',
-      borderRadius: 1000,
-      backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    },
-    shareCircle1: {
-      width: 200,
-      height: 200,
-      top: -50,
-      right: -50,
-    },
-    shareCircle2: {
-      width: 150,
-      height: 150,
-      bottom: 100,
-      left: -30,
-    },
-    shareCircle3: {
-      width: 100,
-      height: 100,
-      bottom: -30,
-      right: 50,
-    },
-    shareCardContent: {
-      flex: 1,
-      padding: 30,
-      alignItems: 'center',
-    },
-    shareGreeting: {
-      fontSize: 32,
-      fontWeight: 'bold',
-      color: '#fff',
-      marginTop: 40,
-      marginBottom: 8,
-      textAlign: 'center',
-    },
-    shareSubtitle: {
-      fontSize: 14,
-      color: 'rgba(255, 255, 255, 0.9)',
-      marginBottom: 30,
-      textAlign: 'center',
-    },
-    shareMainStats: {
-      flexDirection: 'row',
-      backgroundColor: 'rgba(255, 255, 255, 0.2)',
-      borderRadius: 20,
-      padding: 20,
-      width: '100%',
-      justifyContent: 'space-around',
-    },
-    shareMainStatItem: {
-      alignItems: 'center',
-    },
-    shareMainStatValue: {
-      fontSize: 28,
-      fontWeight: 'bold',
-      color: '#fff',
-    },
-    shareMainStatLabel: {
-      fontSize: 11,
-      color: 'rgba(255, 255, 255, 0.9)',
-      marginTop: 4,
-      textAlign: 'center',
-    },
-    shareStatDivider: {
-      width: 1,
-      backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    },
-    shareFooter: {
-      position: 'absolute',
-      bottom: 30,
-      left: 30,
-      right: 30,
-      alignItems: 'center',
-    },
-    shareFooterLine: {
-      height: 1,
-      backgroundColor: 'rgba(255, 255, 255, 0.3)',
-      width: '100%',
-      marginBottom: 12,
-    },
-    shareFooterText: {
-      fontSize: 11,
-      color: 'rgba(255, 255, 255, 0.8)',
-      marginBottom: 4,
-    },
-    shareFooterLink: {
-      fontSize: 12,
-      color: '#fff',
-      fontWeight: 'bold',
-      marginBottom: 4,
-    },
-    shareFooterBrand: {
-      fontSize: 10,
-      color: 'rgba(255, 255, 255, 0.7)',
-    },
+	    shareCardBackground: {
+	      width: '100%',
+	      height: '100%',
+	      overflow: 'hidden',
+	    },
+	    shareTopBand: {
+	      position: 'absolute',
+	      top: -42,
+	      left: -34,
+	      width: 230,
+	      height: 120,
+	      borderRadius: 28,
+	      backgroundColor: 'rgba(255, 255, 255, 0.13)',
+	      transform: [{ rotate: '-17deg' }],
+	    },
+	    shareBottomBand: {
+	      position: 'absolute',
+	      right: -48,
+	      bottom: 52,
+	      width: 240,
+	      height: 92,
+	      borderRadius: 24,
+	      backgroundColor: 'rgba(16, 44, 37, 0.22)',
+	      transform: [{ rotate: '-14deg' }],
+	    },
+	    shareCardContent: {
+	      flex: 1,
+	      padding: 24,
+	    },
+	    shareBrandRow: {
+	      flexDirection: 'row',
+	      alignItems: 'center',
+	      gap: 10,
+	    },
+	    shareLogo: {
+	      width: 54,
+	      height: 28,
+	      borderRadius: 6,
+	      backgroundColor: 'rgba(255, 255, 255, 0.16)',
+	    },
+	    shareBrandTextBlock: {
+	      flex: 1,
+	    },
+	    shareBrandTitle: {
+	      fontSize: 18,
+	      fontWeight: 'bold',
+	      color: '#fff',
+	    },
+	    shareBrandSubtitle: {
+	      fontSize: 10,
+	      color: 'rgba(255, 255, 255, 0.72)',
+	      marginTop: 1,
+	    },
+	    shareBadge: {
+	      alignSelf: 'flex-start',
+	      marginTop: 24,
+	      paddingHorizontal: 12,
+	      paddingVertical: 6,
+	      borderRadius: 999,
+	      backgroundColor: 'rgba(255, 255, 255, 0.18)',
+	      borderWidth: 1,
+	      borderColor: 'rgba(255, 255, 255, 0.2)',
+	    },
+	    shareBadgeText: {
+	      color: '#FFF7D6',
+	      fontSize: 11,
+	      fontWeight: '700',
+	    },
+	    shareHeadline: {
+	      color: '#fff',
+	      fontSize: 22,
+	      lineHeight: 28,
+	      fontWeight: '800',
+	      marginTop: 14,
+	      maxWidth: 250,
+	    },
+	    shareHeroMetric: {
+	      marginTop: 14,
+	      flexDirection: 'row',
+	      alignItems: 'flex-end',
+	    },
+	    shareHeroNumber: {
+	      color: '#FFF4B8',
+	      fontSize: 86,
+	      lineHeight: 90,
+	      fontWeight: '900',
+	    },
+	    shareHeroLabel: {
+	      color: 'rgba(255, 255, 255, 0.86)',
+	      fontSize: 14,
+	      fontWeight: '700',
+	      marginLeft: 8,
+	      marginBottom: 14,
+	    },
+	    shareMetricGrid: {
+	      flexDirection: 'row',
+	      gap: 8,
+	      marginTop: 12,
+	    },
+	    shareMetricCard: {
+	      flex: 1,
+	      minHeight: 62,
+	      borderRadius: 12,
+	      paddingHorizontal: 8,
+	      paddingVertical: 9,
+	      backgroundColor: 'rgba(255, 255, 255, 0.16)',
+	      borderWidth: 1,
+	      borderColor: 'rgba(255, 255, 255, 0.16)',
+	      justifyContent: 'center',
+	    },
+	    shareMetricValue: {
+	      color: '#fff',
+	      fontSize: 18,
+	      fontWeight: '900',
+	      textAlign: 'center',
+	    },
+	    shareMetricLabel: {
+	      color: 'rgba(255, 255, 255, 0.78)',
+	      fontSize: 9,
+	      lineHeight: 12,
+	      marginTop: 4,
+	      textAlign: 'center',
+	    },
+	    shareProgressBlock: {
+	      marginTop: 16,
+	      borderRadius: 14,
+	      padding: 12,
+	      backgroundColor: 'rgba(16, 44, 37, 0.24)',
+	    },
+	    shareProgressHeader: {
+	      flexDirection: 'row',
+	      justifyContent: 'space-between',
+	      alignItems: 'center',
+	      marginBottom: 8,
+	    },
+	    shareProgressLabel: {
+	      color: 'rgba(255, 255, 255, 0.84)',
+	      fontSize: 11,
+	      fontWeight: '700',
+	    },
+	    shareProgressCount: {
+	      color: '#FFF4B8',
+	      fontSize: 11,
+	      fontWeight: '800',
+	    },
+	    shareProgressTrack: {
+	      flexDirection: 'row',
+	      gap: 5,
+	    },
+	    shareProgressDot: {
+	      flex: 1,
+	      height: 8,
+	      borderRadius: 99,
+	      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+	    },
+	    shareProgressDotActive: {
+	      backgroundColor: '#FFF4B8',
+	    },
+	    shareQuote: {
+	      marginTop: 13,
+	      color: '#FFF7D6',
+	      fontSize: 14,
+	      lineHeight: 20,
+	      fontWeight: '700',
+	      textAlign: 'center',
+	    },
+	    shareFooter: {
+	      position: 'absolute',
+	      bottom: 18,
+	      left: 24,
+	      right: 24,
+	      alignItems: 'center',
+	    },
+	    shareFooterText: {
+	      fontSize: 10,
+	      color: 'rgba(255, 255, 255, 0.76)',
+	      marginBottom: 3,
+	    },
+	    shareFooterLink: {
+	      fontSize: 10,
+	      color: '#fff',
+	      fontWeight: '800',
+	    },
     // Share Preview Modal styles
     sharePreviewOverlay: {
       flex: 1,
@@ -1161,14 +1224,14 @@ const createResponsiveStyles = () => {
       fontWeight: 'bold',
       marginBottom: 20,
     },
-    shareCardModalCard: {
-      width: 320,
-      height: 480,
-      borderRadius: 20,
-      padding: 24,
-      marginBottom: 20,
-      backgroundColor: '#FF6B6B',
-    },
+	    shareCardModalCard: {
+	      width: 320,
+	      height: 480,
+	      borderRadius: 20,
+	      marginBottom: 20,
+	      backgroundColor: '#1B3A33',
+	      overflow: 'hidden',
+	    },
     shareCardModalActions: {
       flexDirection: 'row',
       gap: 12,
@@ -1192,15 +1255,15 @@ const createResponsiveStyles = () => {
       fontWeight: '600',
     },
     // Hidden share card for capture - rendered off-screen for proper screenshot
-    hiddenShareCard: {
-      position: 'absolute',
-      width: 320,
-      height: 480,
-      bottom: -500, // Render off-screen to avoid visible interference
-      right: 10,
-      backgroundColor: '#FF6B6B',
-      borderRadius: 20,
-      overflow: 'hidden',
-    },
+	    hiddenShareCard: {
+	      position: 'absolute',
+	      width: 320,
+	      height: 480,
+	      bottom: -500, // Render off-screen to avoid visible interference
+	      right: 10,
+	      backgroundColor: '#1B3A33',
+	      borderRadius: 20,
+	      overflow: 'hidden',
+	    },
   });
 };

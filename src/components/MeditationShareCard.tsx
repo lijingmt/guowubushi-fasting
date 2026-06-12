@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Share } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { captureRef } from 'react-native-view-shot';
 import { Paths, File } from 'expo-file-system';
@@ -81,7 +81,9 @@ export const MeditationShareCard: React.FC<MeditationShareCardProps> = ({
 
   const shareAchievement = async () => {
     try {
-      console.log('Starting share capture...');
+      if (__DEV__) {
+        console.log('Starting share capture...');
+      }
 
       // Capture the view
       const uri = await captureRef(viewRef, {
@@ -89,7 +91,9 @@ export const MeditationShareCard: React.FC<MeditationShareCardProps> = ({
         quality: 1,
       });
 
-      console.log('Captured URI:', uri);
+      if (__DEV__) {
+        console.log('Captured URI:', uri);
+      }
 
       // For some platforms, the URI might already be in the right location
       let shareUri = uri;
@@ -102,7 +106,9 @@ export const MeditationShareCard: React.FC<MeditationShareCardProps> = ({
         shareUri = destFile.uri;
       }
 
-      console.log('Sharing URI:', shareUri);
+      if (__DEV__) {
+        console.log('Sharing URI:', shareUri);
+      }
 
       await shareAsync(shareUri, {
         mimeType: 'image/png',
@@ -111,7 +117,7 @@ export const MeditationShareCard: React.FC<MeditationShareCardProps> = ({
     } catch (error) {
       console.error('Error sharing meditation:', error);
       // Show fallback - just share text
-      shareAsync('', {
+      await Share.share({
         message: language === 'zh'
           ? `我在"过午不食"App中累计打坐${totalMinutes}分钟，最长时间${longestSession}分钟！下载体验：https://apps.apple.com/app/id6762360504`
           : language === 'es'

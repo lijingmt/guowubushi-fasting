@@ -10,6 +10,7 @@ import {
 import { responsiveSize, fs, rs, vs } from '../theme/responsive';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
+import type { Language } from '../i18n/translations';
 
 const { height } = Dimensions.get('window');
 
@@ -18,7 +19,7 @@ const TERMS_AGREED_KEY = '@guowu_terms_agreed';
 interface WelcomeScreenProps {
   onDismiss: () => void;
   colors: any;
-  language: 'zh' | 'en' | 'es';
+  language: Language;
 }
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onDismiss, colors, language }) => {
@@ -183,7 +184,7 @@ interface TermsModalProps {
   visible: boolean;
   onClose: () => void;
   colors: any;
-  language: 'zh' | 'en' | 'es';
+  language: Language;
   content: any;
 }
 

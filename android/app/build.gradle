@@ -80,6 +80,16 @@ def enableMinifyInReleaseBuilds = true
  * this variant is about 6MiB larger per architecture than default.
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
+def releaseStoreFile = findProperty('GUOWU_RELEASE_STORE_FILE') ?: System.getenv('GUOWU_RELEASE_STORE_FILE')
+def releaseStorePassword = findProperty('GUOWU_RELEASE_STORE_PASSWORD') ?: System.getenv('GUOWU_RELEASE_STORE_PASSWORD')
+def releaseKeyAlias = findProperty('GUOWU_RELEASE_KEY_ALIAS') ?: System.getenv('GUOWU_RELEASE_KEY_ALIAS')
+def releaseKeyPassword = findProperty('GUOWU_RELEASE_KEY_PASSWORD') ?: System.getenv('GUOWU_RELEASE_KEY_PASSWORD')
+def hasReleaseSigning = releaseStoreFile && releaseStorePassword && releaseKeyAlias && releaseKeyPassword
+def requestedReleaseBuild = gradle.startParameter.taskNames.any { it.toLowerCase().contains('release') }
+
+if (requestedReleaseBuild && !hasReleaseSigning) {
+    throw new GradleException('Missing Android release signing properties. Set GUOWU_RELEASE_STORE_FILE, GUOWU_RELEASE_STORE_PASSWORD, GUOWU_RELEASE_KEY_ALIAS, and GUOWU_RELEASE_KEY_PASSWORD in ignored gradle.properties or environment variables.')
+}
 
 android {
     ndkVersion rootProject.ext.ndkVersion
@@ -92,8 +102,8 @@ android {
         applicationId 'com.guowu.fasting'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 9
-        versionName "1.0.25"
+        versionCode 12
+        versionName "1.0.28"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
@@ -105,10 +115,12 @@ android {
             keyPassword 'android'
         }
         release {
-            storeFile file('release.keystore')
-            storePassword 'guowu2024!'
-            keyAlias 'release'
-            keyPassword 'guowu2024!'
+            if (hasReleaseSigning) {
+                storeFile file(releaseStoreFile)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
         }
     }
     buildTypes {

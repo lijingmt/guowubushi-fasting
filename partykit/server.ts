@@ -66,6 +66,11 @@ interface PrivateMessage {
   timestamp: number;
 }
 
+interface FriendPair {
+  users: [string, string];
+  addedAt: number;
+}
+
 interface ServerState {
   leaderboard: Record<string, LeaderboardEntry>;
   onlineUsers: Record<string, OnlineUser>;
@@ -73,12 +78,19 @@ interface ServerState {
   userNicknames: Record<string, string>;
   pendingFriendRequests: Record<string, FriendRequest[]>;
   userStats: Record<string, SharedStats>;
-  friendPairs: Set<string>;
+  friendPairs: Record<string, FriendPair>;
   privateMessages: Record<string, PrivateMessage[]>;
+  connectionUsers: Record<string, string>;
 }
 
 type LeaderboardCategory = "fasting" | "meditation";
 type LeaderboardPeriod = "weekly" | "monthly" | "yearly";
+const LEADERBOARD_KEY_PREFIX = "leaderboard:";
+const FRIEND_PAIR_KEY_PREFIX = "friendPair:";
+const FRIEND_REQUEST_KEY_PREFIX = "friendRequest:";
+const PRIVATE_MESSAGE_KEY_PREFIX = "privateMessages:";
+const MAX_PRIVATE_MESSAGES_PER_THREAD = 200;
+const ONLINE_STALE_MS = 5 * 60 * 1000;
 
 export default class FastingServer implements Party.Server {
   state: ServerState = {
@@ -88,11 +100,55 @@ export default class FastingServer implements Party.Server {
     userNicknames: {},
     pendingFriendRequests: {},
     userStats: {},
-    friendPairs: new Set(),
+    friendPairs: {},
     privateMessages: {},
+    connectionUsers: {},
   };
 
   constructor(readonly room: Party.Room) {}
+
+  async onStart() {
+    const items = await this.room.storage.list();
+    for (const [key, value] of items) {
+      if (key.startsWith(LEADERBOARD_KEY_PREFIX)) {
+        const entry = value as LeaderboardEntry;
+        if (!entry || !entry.userId) continue;
+
+        this.state.leaderboard[entry.userId] = entry;
+        if (entry.nickname) {
+          this.state.userNicknames[entry.userId] = entry.nickname;
+        }
+        continue;
+      }
+
+      if (key.startsWith(FRIEND_PAIR_KEY_PREFIX)) {
+        const pair = value as FriendPair;
+        if (!pair || !Array.isArray(pair.users) || pair.users.length !== 2) continue;
+        this.state.friendPairs[this.getPairKey(pair.users[0], pair.users[1])] = pair;
+        continue;
+      }
+
+      if (key.startsWith(FRIEND_REQUEST_KEY_PREFIX)) {
+        const request = value as FriendRequest;
+        if (!request || !request.id || !request.toUserId) continue;
+        if (!this.state.pendingFriendRequests[request.toUserId]) {
+          this.state.pendingFriendRequests[request.toUserId] = [];
+        }
+        this.state.pendingFriendRequests[request.toUserId].push(request);
+        if (request.fromNickname) {
+          this.state.userNicknames[request.fromUserId] = request.fromNickname;
+        }
+        continue;
+      }
+
+      if (key.startsWith(PRIVATE_MESSAGE_KEY_PREFIX)) {
+        const messages = value as PrivateMessage[];
+        if (!Array.isArray(messages)) continue;
+        const pairKey = key.substring(PRIVATE_MESSAGE_KEY_PREFIX.length);
+        this.state.privateMessages[pairKey] = messages.slice(-MAX_PRIVATE_MESSAGES_PER_THREAD);
+      }
+    }
+  }
 
   async onConnect(connection: Party.Connection, ctx: Party.ConnectionContext) {
     console.log("[PartyKit] Client connected:", connection.id);
@@ -113,25 +169,20 @@ export default class FastingServer implements Party.Server {
       const data = JSON.parse(typeof message === "string" ? message : new TextDecoder().decode(message));
 
       switch (data.type) {
-        case "publish":
-          this.state.leaderboard[data.payload.userId] = data.payload;
-          if (data.payload.nickname) {
-            this.state.userNicknames[data.payload.userId] = data.payload.nickname;
+        case "publish": {
+          const entry = this.normalizeLeaderboardEntry(data.payload);
+          if (!entry) break;
+
+          this.state.leaderboard[entry.userId] = entry;
+          if (entry.nickname) {
+            this.state.userNicknames[entry.userId] = entry.nickname;
           }
+          await this.room.storage.put(`${LEADERBOARD_KEY_PREFIX}${entry.userId}`, entry);
+
           // Broadcast updated leaderboards to all clients
-          for (const cat of ["fasting", "meditation"] as LeaderboardCategory[]) {
-            for (const per of ["weekly", "monthly", "yearly"] as LeaderboardPeriod[]) {
-              const entries = this.getLeaderboard(cat, per);
-              this.broadcastAll(JSON.stringify({
-                type: "leaderboardUpdate",
-                category: cat,
-                period: per,
-                entries,
-                totalParticipants: Object.keys(this.state.leaderboard).length,
-              }));
-            }
-          }
+          this.broadcastLeaderboards();
           break;
+        }
 
         case "getLeaderboard": {
           const category: LeaderboardCategory = data.category || "fasting";
@@ -149,13 +200,17 @@ export default class FastingServer implements Party.Server {
 
         case "removeUser":
           delete this.state.leaderboard[data.userId];
+          await this.room.storage.delete(`${LEADERBOARD_KEY_PREFIX}${data.userId}`);
           break;
 
         case "online":
+          this.cleanupStaleOnlineUsers();
           this.state.onlineUsers[data.payload.id] = data.payload;
+          this.state.connectionUsers[sender.id] = data.payload.id;
           if (data.payload.nickname) {
             this.state.userNicknames[data.payload.id] = data.payload.nickname;
           }
+          this.sendPendingFriendRequests(sender, data.payload.id);
           this.broadcastAll(JSON.stringify({
             type: "onlineUpdate",
             onlineCount: Object.keys(this.state.onlineUsers).length,
@@ -165,6 +220,7 @@ export default class FastingServer implements Party.Server {
 
         case "offline":
           delete this.state.onlineUsers[data.userId];
+          delete this.state.connectionUsers[sender.id];
           this.broadcastAll(JSON.stringify({
             type: "onlineUpdate",
             onlineCount: Object.keys(this.state.onlineUsers).length,
@@ -230,19 +286,33 @@ export default class FastingServer implements Party.Server {
             this.state.pendingFriendRequests[data.payload.toUserId] = [];
           }
           this.state.pendingFriendRequests[data.payload.toUserId].push(req);
+          if (req.fromNickname) {
+            this.state.userNicknames[req.fromUserId] = req.fromNickname;
+          }
+          await this.room.storage.put(`${FRIEND_REQUEST_KEY_PREFIX}${req.toUserId}:${req.id}`, req);
           this.broadcastAll(JSON.stringify({ type: "friendRequestReceived", request: req }));
           break;
         }
 
         case "friendResponse": {
-          const requests = this.state.pendingFriendRequests[data.payload.fromUserId] || [];
+          const requests = this.state.pendingFriendRequests[data.payload.toUserId] || [];
           const found = requests.find((r) => r.id === data.payload.requestId);
           if (found) {
             found.status = data.payload.status;
+            await this.room.storage.put(`${FRIEND_REQUEST_KEY_PREFIX}${found.toUserId}:${found.id}`, found);
           }
           if (data.payload.status === "accepted") {
-            const pairKey = [data.payload.fromUserId, data.payload.toUserId].sort().join(":");
-            this.state.friendPairs.add(pairKey);
+            const pairKey = this.getPairKey(data.payload.fromUserId, data.payload.toUserId);
+            const pair: FriendPair = {
+              users: [data.payload.fromUserId, data.payload.toUserId].sort() as [string, string],
+              addedAt: Date.now(),
+            };
+            this.state.friendPairs[pairKey] = pair;
+            await this.room.storage.put(`${FRIEND_PAIR_KEY_PREFIX}${pairKey}`, pair);
+            this.broadcastAll(JSON.stringify({
+              type: "friendshipUpdate",
+              users: pair.users,
+            }));
           }
           this.broadcastAll(JSON.stringify({
             type: "friendRequestResolved",
@@ -250,6 +320,16 @@ export default class FastingServer implements Party.Server {
             fromUserId: data.payload.fromUserId,
             toUserId: data.payload.toUserId,
             status: data.payload.status,
+          }));
+          break;
+        }
+
+        case "getFriends": {
+          const userId = typeof data.userId === "string" ? data.userId : this.state.connectionUsers[sender.id];
+          if (!userId) break;
+          sender.send(JSON.stringify({
+            type: "friendsList",
+            friends: this.getFriendsForUser(userId),
           }));
           break;
         }
@@ -270,7 +350,22 @@ export default class FastingServer implements Party.Server {
             timestamp: Date.now(),
           };
 
+          const pairKey = this.getPairKey(fromUserId, toUserId);
+          const messages = this.state.privateMessages[pairKey] || [];
+          const nextMessages = [...messages, pm].slice(-MAX_PRIVATE_MESSAGES_PER_THREAD);
+          this.state.privateMessages[pairKey] = nextMessages;
+          await this.room.storage.put(`${PRIVATE_MESSAGE_KEY_PREFIX}${pairKey}`, nextMessages);
+
           this.broadcastAll(JSON.stringify({ type: "privateMessageReceived", message: pm }));
+          break;
+        }
+
+        case "getPrivateMessages": {
+          const messages = this.getPrivateMessagesForRequest(data, sender);
+          sender.send(JSON.stringify({
+            type: "privateMessagesHistory",
+            messages,
+          }));
           break;
         }
       }
@@ -281,6 +376,11 @@ export default class FastingServer implements Party.Server {
 
   async onClose(connection: Party.Connection) {
     console.log("[PartyKit] Client disconnected:", connection.id);
+    const userId = this.state.connectionUsers[connection.id];
+    delete this.state.connectionUsers[connection.id];
+    if (userId && !this.hasActiveConnectionForUser(userId)) {
+      delete this.state.onlineUsers[userId];
+    }
     this.broadcastAll(JSON.stringify({
       type: "onlineUpdate",
       onlineCount: Object.keys(this.state.onlineUsers).length,
@@ -290,11 +390,13 @@ export default class FastingServer implements Party.Server {
 
   async onRequest(req: Party.Request) {
     if (req.method === "GET") {
+      this.cleanupStaleOnlineUsers();
       return new Response(
         JSON.stringify({
           status: "ok",
           onlineCount: Object.keys(this.state.onlineUsers).length,
           leaderboardSize: Object.keys(this.state.leaderboard).length,
+          roomId: this.room.id,
           chatMessages: this.state.chatMessages.length,
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
@@ -332,7 +434,111 @@ export default class FastingServer implements Party.Server {
     }
   }
 
+  normalizeLeaderboardEntry(payload: unknown): LeaderboardEntry | null {
+    if (!payload || typeof payload !== "object") return null;
+    const raw = payload as Partial<LeaderboardEntry>;
+    if (!raw.userId || typeof raw.userId !== "string") return null;
+
+    return {
+      userId: raw.userId.substring(0, 100),
+      nickname: typeof raw.nickname === "string" ? raw.nickname.substring(0, 40) : "",
+      lastUpdate: this.toNumber(raw.lastUpdate, Date.now()),
+      currentStreak: this.toNumber(raw.currentStreak),
+      fastingDaysThisWeek: this.toNumber(raw.fastingDaysThisWeek),
+      fastingDaysThisMonth: this.toNumber(raw.fastingDaysThisMonth),
+      fastingDaysThisYear: this.toNumber(raw.fastingDaysThisYear),
+      meditationMinutesThisWeek: this.toNumber(raw.meditationMinutesThisWeek),
+      meditationMinutesThisMonth: this.toNumber(raw.meditationMinutesThisMonth),
+      meditationMinutesThisYear: this.toNumber(raw.meditationMinutesThisYear),
+      meditationDaysThisMonth: this.toNumber(raw.meditationDaysThisMonth),
+      meditationDaysThisYear: this.toNumber(raw.meditationDaysThisYear),
+      sessionCountThisWeek: this.toNumber(raw.sessionCountThisWeek),
+    };
+  }
+
+  toNumber(value: unknown, fallback = 0): number {
+    return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.floor(value)) : fallback;
+  }
+
+  broadcastLeaderboards() {
+    for (const cat of ["fasting", "meditation"] as LeaderboardCategory[]) {
+      for (const per of ["weekly", "monthly", "yearly"] as LeaderboardPeriod[]) {
+        const entries = this.getLeaderboard(cat, per);
+        this.broadcastAll(JSON.stringify({
+          type: "leaderboardUpdate",
+          category: cat,
+          period: per,
+          entries,
+          totalParticipants: Object.keys(this.state.leaderboard).length,
+        }));
+      }
+    }
+  }
+
   broadcastAll(message: string) {
     this.room.broadcast(message);
+  }
+
+  getPairKey(userA: string, userB: string): string {
+    return [userA, userB].sort().join(":");
+  }
+
+  hasActiveConnectionForUser(userId: string): boolean {
+    return Object.values(this.state.connectionUsers).includes(userId);
+  }
+
+  cleanupStaleOnlineUsers() {
+    const now = Date.now();
+    let changed = false;
+    for (const [userId, user] of Object.entries(this.state.onlineUsers)) {
+      if (now - user.startedAt > ONLINE_STALE_MS && !this.hasActiveConnectionForUser(userId)) {
+        delete this.state.onlineUsers[userId];
+        changed = true;
+      }
+    }
+    if (changed) {
+      this.broadcastAll(JSON.stringify({
+        type: "onlineUpdate",
+        onlineCount: Object.keys(this.state.onlineUsers).length,
+        onlineUsers: Object.values(this.state.onlineUsers),
+      }));
+    }
+  }
+
+  sendPendingFriendRequests(connection: Party.Connection, userId: string) {
+    const requests = (this.state.pendingFriendRequests[userId] || []).filter((r) => r.status === "pending");
+    for (const request of requests) {
+      connection.send(JSON.stringify({ type: "friendRequestReceived", request }));
+    }
+  }
+
+  getFriendsForUser(userId: string) {
+    return Object.values(this.state.friendPairs)
+      .filter((pair) => pair.users.includes(userId))
+      .map((pair) => {
+        const friendId = pair.users[0] === userId ? pair.users[1] : pair.users[0];
+        return {
+          userId: friendId,
+          nickname: this.state.userNicknames[friendId] || "",
+          addedAt: pair.addedAt,
+        };
+      });
+  }
+
+  getPrivateMessagesForRequest(data: any, sender: Party.Connection): PrivateMessage[] {
+    const userId = typeof data.userId === "string" ? data.userId : this.state.connectionUsers[sender.id];
+    const fromUserId = typeof data.fromUserId === "string" ? data.fromUserId : userId;
+    const toUserId = typeof data.toUserId === "string" ? data.toUserId : "";
+
+    if (fromUserId && toUserId) {
+      return (this.state.privateMessages[this.getPairKey(fromUserId, toUserId)] || []).slice(-MAX_PRIVATE_MESSAGES_PER_THREAD);
+    }
+
+    if (!userId) return [];
+    return Object.entries(this.state.privateMessages)
+      .filter(([pairKey]) => pairKey.split(":").includes(userId))
+      .flatMap(([, messages]) => messages)
+      .sort((a, b) => a.timestamp - b.timestamp)
+      .slice(-MAX_PRIVATE_MESSAGES_PER_THREAD);
   }
 }
