@@ -11,6 +11,7 @@ import {
   ActiveFastingState,
   Friend,
   RetentionState,
+  SacredSiteCheckIn,
 } from '../types';
 import { DEFAULT_SETTINGS } from '../constants/achievements';
 import { normalizeRetentionState } from '../utils/retention';
@@ -32,6 +33,7 @@ const KEYS = {
   NICKNAME: '@guowu_nickname', // 用户昵称/法号
   FRIENDS_LIST: '@guowu_friends', // 好友列表
   RETENTION_STATE: '@guowu_retention_state', // 留存激励状态
+  SACRED_SITE_CHECKINS: '@guowu_sacred_site_checkins', // 寺观地图打卡记录
 };
 
 // 设置相关
@@ -383,6 +385,7 @@ export const clearAllData = async (): Promise<void> => {
       KEYS.FASTING_SESSIONS,
       KEYS.ACTIVE_FASTING_STATE,
       KEYS.RETENTION_STATE,
+      KEYS.SACRED_SITE_CHECKINS,
     ];
     for (const key of keys) {
       await AsyncStorage.removeItem(key);
@@ -639,6 +642,37 @@ export const saveRetentionState = async (state: RetentionState): Promise<void> =
     await AsyncStorage.setItem(KEYS.RETENTION_STATE, JSON.stringify(normalizeRetentionState(state)));
   } catch (error) {
     console.error('Error saving retention state:', error);
+  }
+};
+
+// ============ 寺观地图打卡相关 ============
+
+export const getSacredSiteCheckIns = async (): Promise<SacredSiteCheckIn[]> => {
+  try {
+    const data = await AsyncStorage.getItem(KEYS.SACRED_SITE_CHECKINS);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Error getting sacred site check-ins:', error);
+    return [];
+  }
+};
+
+export const saveSacredSiteCheckIn = async (record: SacredSiteCheckIn): Promise<SacredSiteCheckIn[]> => {
+  try {
+    const records = await getSacredSiteCheckIns();
+    const existingIndex = records.findIndex((item) => item.siteId === record.siteId && item.date === record.date);
+    const nextRecords = [...records];
+    if (existingIndex >= 0) {
+      nextRecords[existingIndex] = record;
+    } else {
+      nextRecords.unshift(record);
+    }
+    nextRecords.sort((a, b) => b.timestamp - a.timestamp);
+    await AsyncStorage.setItem(KEYS.SACRED_SITE_CHECKINS, JSON.stringify(nextRecords));
+    return nextRecords;
+  } catch (error) {
+    console.error('Error saving sacred site check-in:', error);
+    return getSacredSiteCheckIns();
   }
 };
 

@@ -1,11 +1,11 @@
 import React from 'react';
-import { View, StyleSheet, ViewStyle } from 'react-native';
+import { View, StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { responsiveSize, layout } from '../theme/responsive';
 
 interface CardProps {
   children: React.ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   variant?: 'default' | 'compact' | 'spacious';
 }
 

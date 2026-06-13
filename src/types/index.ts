@@ -229,6 +229,53 @@ export interface WeeklySummary {
   bestDay?: string;
 }
 
+// ============ 寺观地图与朝礼打卡类型 ============
+
+export type SacredTradition = 'buddhist' | 'taoist' | 'mixed';
+export type SacredRegion = 'china' | 'global';
+export type SacredSiteImportance = 'ancestral' | 'major' | 'regional';
+
+export interface SacredSiteContact {
+  phone?: string;
+  email?: string;
+  website?: string;
+}
+
+export interface SacredSite {
+  id: string;
+  name: string;
+  localName?: string;
+  tradition: SacredTradition;
+  region: SacredRegion;
+  country: string;
+  province?: string;
+  city: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  importance: SacredSiteImportance;
+  founded?: string;
+  abbot?: string;
+  steward?: string;
+  contact?: SacredSiteContact;
+  description: string;
+  pilgrimageFocus: string;
+  etiquette: string;
+  sourceName: string;
+  sourceUrl: string;
+}
+
+export type SacredRite = 'visit' | 'bow' | 'lamp' | 'meditation' | 'chant';
+
+export interface SacredSiteCheckIn {
+  id: string;
+  siteId: string;
+  date: string; // YYYY-MM-DD
+  timestamp: number;
+  rite: SacredRite;
+  note?: string;
+}
+
 // 单次禁食会话记录
 export interface FastingSession {
   id: string; // 唯一标识符

@@ -18,6 +18,7 @@ import { LeaderboardScreen } from '../screens/LeaderboardScreen';
 import { ChatDetailScreen } from '../screens/ChatDetailScreen';
 import { ConversationsScreen } from '../screens/ConversationsScreen';
 import { RetentionScreen } from '../screens/RetentionScreen';
+import { TempleMapScreen } from '../screens/TempleMapScreen';
 import { responsiveSize, fs, vs, rs, layout, responsive } from '../theme/responsive';
 
 const Tab = createBottomTabNavigator();
@@ -42,7 +43,7 @@ const TabNavigator = () => {
         tabBarActiveTintColor: colors.tabBarActive,
         tabBarInactiveTintColor: colors.tabBarInactive,
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: '500',
         },
         tabBarIconStyle: {
@@ -77,6 +78,16 @@ const TabNavigator = () => {
           tabBarLabel: language === 'zh' ? '打坐' : language === 'es' ? 'Meditación' : 'Meditation',
           tabBarIcon: ({ color }) => (
             <TabIcon name="🧘" color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="TempleMap"
+        component={TempleMapScreen}
+        options={{
+          tabBarLabel: language === 'zh' ? '地图' : language === 'es' ? 'Mapa' : 'Map',
+          tabBarIcon: ({ color }) => (
+            <TabIcon name="🗺️" color={color} />
           ),
         }}
       />
@@ -175,6 +186,11 @@ export const AppNavigator = () => {
           name="Retention"
           component={RetentionScreen as any}
           options={{ title: language === 'zh' ? '今日修行' : 'Daily Practice' }}
+        />
+        <Stack.Screen
+          name="TempleMapDetail"
+          component={TempleMapScreen as any}
+          options={{ title: language === 'zh' ? '地图' : 'Map' }}
         />
       </Stack.Navigator>
     </NavigationContainer>
