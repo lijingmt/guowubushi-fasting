@@ -17,6 +17,7 @@ import { FriendDetailScreen } from '../screens/FriendDetailScreen';
 import { LeaderboardScreen } from '../screens/LeaderboardScreen';
 import { ChatDetailScreen } from '../screens/ChatDetailScreen';
 import { ConversationsScreen } from '../screens/ConversationsScreen';
+import { RetentionScreen } from '../screens/RetentionScreen';
 import { responsiveSize, fs, vs, rs, layout, responsive } from '../theme/responsive';
 
 const Tab = createBottomTabNavigator();
@@ -169,6 +170,11 @@ export const AppNavigator = () => {
           name="Conversations"
           component={ConversationsScreen}
           options={{ title: language === 'zh' ? '私信' : 'Messages' }}
+        />
+        <Stack.Screen
+          name="Retention"
+          component={RetentionScreen as any}
+          options={{ title: language === 'zh' ? '今日修行' : 'Daily Practice' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

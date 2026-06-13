@@ -19,7 +19,7 @@ interface Props {
 export const FriendDetailScreen: React.FC<Props> = ({ route }) => {
   const { userId: friendId, nickname } = route.params;
   const { colors, t, language } = useApp();
-  const { getFriendStats, removeFriend } = useSocial();
+  const { getFriendStats, removeFriend, sendFriendEncouragement } = useSocial();
   const insets = useSafeAreaInsets();
 
   const [stats, setStats] = useState<SharedStats | null>(null);
@@ -44,6 +44,14 @@ export const FriendDetailScreen: React.FC<Props> = ({ route }) => {
           },
         },
       ]
+    );
+  };
+
+  const handleEncourage = async () => {
+    await sendFriendEncouragement(friendId, nickname, 'cheer');
+    Alert.alert(
+      language === 'zh' ? '已鼓励' : 'Sent',
+      language === 'zh' ? '今日社交任务已记录。' : 'Daily social task recorded.'
     );
   };
 
@@ -83,6 +91,15 @@ export const FriendDetailScreen: React.FC<Props> = ({ route }) => {
           </Text>
         </Card>
       )}
+
+      <TouchableOpacity
+        style={[styles.encourageBtn, { backgroundColor: colors.primary }]}
+        onPress={handleEncourage}
+      >
+        <Text style={styles.encourageBtnText}>
+          {language === 'zh' ? '鼓励好友坚持今日修行' : 'Encourage today'}
+        </Text>
+      </TouchableOpacity>
 
       <TouchableOpacity
         style={[styles.removeBtn, { borderColor: colors.error || '#f44336' }]}
@@ -149,5 +166,16 @@ const styles = StyleSheet.create({
   removeBtnText: {
     fontSize: fs(16),
     fontWeight: '600',
+  },
+  encourageBtn: {
+    marginTop: vs(24),
+    borderRadius: rs(12),
+    paddingVertical: vs(14),
+    alignItems: 'center',
+  },
+  encourageBtnText: {
+    color: '#fff',
+    fontSize: fs(16),
+    fontWeight: '700',
   },
 });

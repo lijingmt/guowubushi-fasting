@@ -10,6 +10,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { captureRef } from 'react-native-view-shot';
 import * as FileSystem from 'expo-file-system';
 import { shareAsync } from 'expo-sharing';
+import { useNavigation } from '@react-navigation/native';
 
 const APP_STORE_URL = 'https://apps.apple.com/app/id6762360504';
 
@@ -26,8 +27,13 @@ export const HomeScreen: React.FC = () => {
     todayCheckIn,
     colors,
     language,
+    dailyRating,
+    dailyTasks,
+    growthProfile,
+    recordShareAction,
   } = useApp();
 
+  const navigation = useNavigation<any>();
   const [flameAnimation] = useState(false);
   const shareCardRef = useRef<View>(null);
   const [showSharePreview, setShowSharePreview] = useState(false);
@@ -84,6 +90,8 @@ export const HomeScreen: React.FC = () => {
 
   // Get current water goal
   const getWaterGoal = () => (settings as any).dailyWaterGoal || 2000;
+  const pendingDailyTasks = dailyTasks.filter((task) => !task.completed);
+  const nextDailyTask = pendingDailyTasks[0];
 
   const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -127,6 +135,7 @@ export const HomeScreen: React.FC = () => {
         mimeType: 'image/png',
         dialogTitle: language === 'zh' ? '分享成就' : language === 'es' ? 'Compartir logro' : 'Share Achievement',
       });
+      await recordShareAction('daily');
 
       if (__DEV__) {
         console.log('Share successful!');
@@ -159,6 +168,7 @@ export const HomeScreen: React.FC = () => {
       };
       const shareMessage = `🔥 ${getMessage()}`;
       await Share.share({ message: shareMessage });
+      await recordShareAction('daily');
     }
   };
 
@@ -191,6 +201,7 @@ export const HomeScreen: React.FC = () => {
               try {
                 if (navigator.canShare(shareData)) {
                   await navigator.share(shareData);
+                  await recordShareAction('daily');
                   setShowSharePreview(false);
                   return;
                 }
@@ -211,6 +222,7 @@ export const HomeScreen: React.FC = () => {
             link.href = url;
             link.click();
             URL.revokeObjectURL(url);
+            await recordShareAction('daily');
             setShowSharePreview(false);
           }
         }, 'image/png');
@@ -374,6 +386,56 @@ export const HomeScreen: React.FC = () => {
       </View>
 
       <CheckInCard />
+
+      <TouchableOpacity
+        style={[styles.retentionCard, { backgroundColor: colors.card }]}
+        onPress={() => navigation.navigate('Retention')}
+        activeOpacity={0.86}
+      >
+        <View style={styles.retentionTopRow}>
+          <View style={styles.retentionTitleBlock}>
+            <Text style={[styles.retentionEyebrow, { color: colors.primary }]}>
+              {language === 'zh' ? '今日修行' : 'Daily Practice'}
+            </Text>
+            <Text style={[styles.retentionTitle, { color: colors.text }]}>
+              {language === 'zh'
+                ? `Lv.${growthProfile.level} ${growthProfile.title}`
+                : `Lv.${growthProfile.level} Practice`}
+            </Text>
+          </View>
+          <View style={styles.retentionStars}>
+            {Array.from({ length: 5 }).map((_, index) => (
+              <Text
+                key={index}
+                style={[
+                  styles.retentionStar,
+                  { color: index < dailyRating.stars ? '#F5B942' : colors.textTertiary },
+                ]}
+              >
+                ★
+              </Text>
+            ))}
+          </View>
+        </View>
+        <View style={[styles.retentionProgressTrack, { backgroundColor: colors.divider }]}>
+          <View
+            style={[
+              styles.retentionProgressFill,
+              { backgroundColor: colors.primary, width: `${Math.round(dailyRating.progress * 100)}%` },
+            ]}
+          />
+        </View>
+        <View style={styles.retentionFooter}>
+          <Text style={[styles.retentionHint, { color: colors.textSecondary }]}>
+            {nextDailyTask
+              ? (language === 'zh' ? `下一步：${nextDailyTask.title}` : `Next: ${nextDailyTask.title}`)
+              : (language === 'zh' ? '今日目标已全部完成' : 'All daily tasks complete')}
+          </Text>
+          <Text style={[styles.retentionAction, { color: colors.primary }]}>
+            {language === 'zh' ? '查看' : 'Open'}
+          </Text>
+        </View>
+      </TouchableOpacity>
 
       {/* Share button */}
       {hasCheckedToday && todayCheckIn?.completed && (
@@ -720,6 +782,70 @@ const createResponsiveStyles = () => {
     subtitle: {
       fontSize: responsiveSize.fontSize.lg,
       marginTop: vs(4),
+    },
+    retentionCard: {
+      borderRadius: responsiveSize.borderRadius.lg,
+      padding: rs(16),
+      marginTop: vs(16),
+      marginBottom: vs(4),
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: vs(2) },
+      shadowOpacity: 0.12,
+      shadowRadius: rs(5),
+      elevation: 3,
+    },
+    retentionTopRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: rs(12),
+    },
+    retentionTitleBlock: {
+      flex: 1,
+      minWidth: 0,
+    },
+    retentionEyebrow: {
+      fontSize: fs(12),
+      fontWeight: '800',
+      marginBottom: vs(3),
+    },
+    retentionTitle: {
+      fontSize: fs(18),
+      fontWeight: '900',
+    },
+    retentionStars: {
+      flexDirection: 'row',
+      flexShrink: 0,
+    },
+    retentionStar: {
+      fontSize: fs(17),
+      marginLeft: rs(1),
+    },
+    retentionProgressTrack: {
+      height: vs(8),
+      borderRadius: rs(999),
+      overflow: 'hidden',
+      marginTop: vs(12),
+    },
+    retentionProgressFill: {
+      height: '100%',
+      borderRadius: rs(999),
+    },
+    retentionFooter: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: rs(12),
+      marginTop: vs(10),
+    },
+    retentionHint: {
+      flex: 1,
+      fontSize: fs(12),
+      lineHeight: fs(17),
+    },
+    retentionAction: {
+      fontSize: fs(13),
+      fontWeight: '900',
     },
     shareButton: {
       paddingVertical: vs(14),

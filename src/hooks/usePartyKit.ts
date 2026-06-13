@@ -9,6 +9,7 @@ import type {
   SharedStats,
   LeaderboardEntry,
   PrivateMessage,
+  FriendEncouragement,
 } from '../types';
 
 const PARTYKIT_URL = 'wss://partykit.guowubushi.net/party/meditation-room';
@@ -44,6 +45,7 @@ interface UsePartyKitReturn {
   friendRequests: FriendRequest[];
   leaderboardData: LeaderboardData;
   privateMessages: PrivateMessage[];
+  friendEncouragements: FriendEncouragement[];
   remoteFriends: Friend[];
   totalParticipants: number;
   connect: (userId: string, nickname: string) => void;
@@ -61,6 +63,14 @@ interface UsePartyKitReturn {
   requestLeaderboard: (category: 'fasting' | 'meditation', period: 'weekly' | 'monthly' | 'yearly') => void;
   sendPrivateMessage: (fromUserId: string, fromNickname: string, toUserId: string, toNickname: string, text: string) => void;
   getPrivateMessages: (fromUserId: string, toUserId: string) => void;
+  sendFriendEncouragement: (
+    fromUserId: string,
+    fromNickname: string,
+    toUserId: string,
+    toNickname: string,
+    kind: FriendEncouragement['kind'],
+    text?: string
+  ) => void;
   markMessagesAsRead: (withUserId: string) => void;
   getUnreadMessages: () => PrivateMessage[];
 }
@@ -81,6 +91,7 @@ export function usePartyKit(): UsePartyKitReturn {
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardData>(emptyLeaderboard);
   const [privateMessages, setPrivateMessages] = useState<PrivateMessage[]>([]);
+  const [friendEncouragements, setFriendEncouragements] = useState<FriendEncouragement[]>([]);
   const [remoteFriends, setRemoteFriends] = useState<Friend[]>([]);
   const [totalParticipants, setTotalParticipants] = useState(0);
 
@@ -95,6 +106,10 @@ export function usePartyKit(): UsePartyKitReturn {
         const cachedMessages = await AsyncStorage.getItem('@guowu_private_messages');
         if (cachedMessages) {
           setPrivateMessages(JSON.parse(cachedMessages));
+        }
+        const cachedEncouragements = await AsyncStorage.getItem('@guowu_friend_encouragements');
+        if (cachedEncouragements) {
+          setFriendEncouragements(JSON.parse(cachedEncouragements));
         }
       } catch (e) { /* ignore */ }
     })();
@@ -150,6 +165,7 @@ export function usePartyKit(): UsePartyKitReturn {
         ws.send(JSON.stringify({ type: 'getLeaderboard', category: 'meditation', period: 'yearly' }));
         ws.send(JSON.stringify({ type: 'getFriends', userId }));
         ws.send(JSON.stringify({ type: 'getPrivateMessages', userId }));
+        ws.send(JSON.stringify({ type: 'getFriendEncouragements', userId }));
       };
 
       ws.onmessage = (event) => {
@@ -266,6 +282,31 @@ export function usePartyKit(): UsePartyKitReturn {
                 });
               }
               break;
+
+            case 'friendEncouragementReceived':
+              if (
+                data.encouragement &&
+                (data.encouragement.toUserId === userIdRef.current || data.encouragement.fromUserId === userIdRef.current)
+              ) {
+                setFriendEncouragements((prev) => {
+                  if (prev.find((item) => item.id === data.encouragement.id)) return prev;
+                  return [data.encouragement, ...prev].slice(0, 100);
+                });
+              }
+              break;
+
+            case 'friendEncouragementHistory':
+              if (Array.isArray(data.encouragements)) {
+                setFriendEncouragements((prev) => {
+                  const existingIds = new Set(prev.map((item) => item.id));
+                  const next = [
+                    ...data.encouragements.filter((item: FriendEncouragement) => !existingIds.has(item.id)),
+                    ...prev,
+                  ];
+                  return next.sort((a, b) => b.timestamp - a.timestamp).slice(0, 100);
+                });
+              }
+              break;
           }
         } catch (e) {
           // ignore parse errors
@@ -374,6 +415,17 @@ export function usePartyKit(): UsePartyKitReturn {
     send({ type: 'getPrivateMessages', fromUserId, toUserId });
   }, [send]);
 
+  const sendFriendEncouragement = useCallback((
+    fromUserId: string,
+    fromNickname: string,
+    toUserId: string,
+    toNickname: string,
+    kind: FriendEncouragement['kind'],
+    text?: string
+  ) => {
+    send({ type: 'friendEncouragement', payload: { fromUserId, fromNickname, toUserId, toNickname, kind, text } });
+  }, [send]);
+
   const markMessagesAsRead = useCallback((withUserId: string) => {
     privateMessages.forEach((m) => {
       if (m.fromUserId === withUserId || m.toUserId === withUserId) {
@@ -420,6 +472,12 @@ export function usePartyKit(): UsePartyKitReturn {
   }, [privateMessages]);
 
   useEffect(() => {
+    if (friendEncouragements.length > 0) {
+      AsyncStorage.setItem('@guowu_friend_encouragements', JSON.stringify(friendEncouragements.slice(0, 100))).catch(() => {});
+    }
+  }, [friendEncouragements]);
+
+  useEffect(() => {
     return () => {
       clearReconnect();
       if (wsRef.current) {
@@ -436,6 +494,7 @@ export function usePartyKit(): UsePartyKitReturn {
     friendRequests,
 	    leaderboardData,
 	    privateMessages,
+    friendEncouragements,
 	    remoteFriends,
 	    totalParticipants,
     connect,
@@ -453,6 +512,7 @@ export function usePartyKit(): UsePartyKitReturn {
     requestLeaderboard,
     sendPrivateMessage,
     getPrivateMessages,
+    sendFriendEncouragement,
     markMessagesAsRead,
     getUnreadMessages,
   };

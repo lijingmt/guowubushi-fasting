@@ -66,6 +66,17 @@ interface PrivateMessage {
   timestamp: number;
 }
 
+interface FriendEncouragement {
+  id: string;
+  fromUserId: string;
+  fromNickname: string;
+  toUserId: string;
+  toNickname: string;
+  kind: "like" | "cheer" | "streak";
+  text?: string;
+  timestamp: number;
+}
+
 interface FriendPair {
   users: [string, string];
   addedAt: number;
@@ -80,6 +91,7 @@ interface ServerState {
   userStats: Record<string, SharedStats>;
   friendPairs: Record<string, FriendPair>;
   privateMessages: Record<string, PrivateMessage[]>;
+  friendEncouragements: Record<string, FriendEncouragement[]>;
   connectionUsers: Record<string, string>;
 }
 
@@ -89,7 +101,9 @@ const LEADERBOARD_KEY_PREFIX = "leaderboard:";
 const FRIEND_PAIR_KEY_PREFIX = "friendPair:";
 const FRIEND_REQUEST_KEY_PREFIX = "friendRequest:";
 const PRIVATE_MESSAGE_KEY_PREFIX = "privateMessages:";
+const FRIEND_ENCOURAGEMENT_KEY_PREFIX = "friendEncouragements:";
 const MAX_PRIVATE_MESSAGES_PER_THREAD = 200;
+const MAX_FRIEND_ENCOURAGEMENTS_PER_USER = 100;
 const ONLINE_STALE_MS = 5 * 60 * 1000;
 
 export default class FastingServer implements Party.Server {
@@ -102,6 +116,7 @@ export default class FastingServer implements Party.Server {
     userStats: {},
     friendPairs: {},
     privateMessages: {},
+    friendEncouragements: {},
     connectionUsers: {},
   };
 
@@ -146,6 +161,14 @@ export default class FastingServer implements Party.Server {
         if (!Array.isArray(messages)) continue;
         const pairKey = key.substring(PRIVATE_MESSAGE_KEY_PREFIX.length);
         this.state.privateMessages[pairKey] = messages.slice(-MAX_PRIVATE_MESSAGES_PER_THREAD);
+        continue;
+      }
+
+      if (key.startsWith(FRIEND_ENCOURAGEMENT_KEY_PREFIX)) {
+        const encouragements = value as FriendEncouragement[];
+        if (!Array.isArray(encouragements)) continue;
+        const userId = key.substring(FRIEND_ENCOURAGEMENT_KEY_PREFIX.length);
+        this.state.friendEncouragements[userId] = encouragements.slice(-MAX_FRIEND_ENCOURAGEMENTS_PER_USER);
       }
     }
   }
@@ -211,6 +234,7 @@ export default class FastingServer implements Party.Server {
             this.state.userNicknames[data.payload.id] = data.payload.nickname;
           }
           this.sendPendingFriendRequests(sender, data.payload.id);
+          this.sendFriendEncouragementHistory(sender, data.payload.id);
           this.broadcastAll(JSON.stringify({
             type: "onlineUpdate",
             onlineCount: Object.keys(this.state.onlineUsers).length,
@@ -368,6 +392,39 @@ export default class FastingServer implements Party.Server {
           }));
           break;
         }
+
+        case "friendEncouragement": {
+          const fromUserId = typeof data.payload?.fromUserId === "string" ? data.payload.fromUserId : "";
+          const toUserId = typeof data.payload?.toUserId === "string" ? data.payload.toUserId : "";
+          if (!fromUserId || !toUserId || fromUserId === toUserId) break;
+
+          const kind: FriendEncouragement["kind"] = ["like", "cheer", "streak"].includes(data.payload.kind) ? data.payload.kind : "cheer";
+          const encouragement: FriendEncouragement = {
+            id: Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
+            fromUserId,
+            fromNickname: typeof data.payload.fromNickname === "string" ? data.payload.fromNickname.substring(0, 40) : "Anonymous",
+            toUserId,
+            toNickname: typeof data.payload.toNickname === "string" ? data.payload.toNickname.substring(0, 40) : "Anonymous",
+            kind,
+            text: typeof data.payload.text === "string" ? data.payload.text.substring(0, 100) : undefined,
+            timestamp: Date.now(),
+          };
+
+          const existing = this.state.friendEncouragements[toUserId] || [];
+          const next = [encouragement, ...existing].slice(0, MAX_FRIEND_ENCOURAGEMENTS_PER_USER);
+          this.state.friendEncouragements[toUserId] = next;
+          await this.room.storage.put(`${FRIEND_ENCOURAGEMENT_KEY_PREFIX}${toUserId}`, next);
+
+          this.broadcastAll(JSON.stringify({ type: "friendEncouragementReceived", encouragement }));
+          break;
+        }
+
+        case "getFriendEncouragements": {
+          const userId = typeof data.userId === "string" ? data.userId : this.state.connectionUsers[sender.id];
+          if (!userId) break;
+          this.sendFriendEncouragementHistory(sender, userId);
+          break;
+        }
       }
     } catch (err) {
       console.error("[PartyKit] Message error:", err);
@@ -510,6 +567,13 @@ export default class FastingServer implements Party.Server {
     for (const request of requests) {
       connection.send(JSON.stringify({ type: "friendRequestReceived", request }));
     }
+  }
+
+  sendFriendEncouragementHistory(connection: Party.Connection, userId: string) {
+    connection.send(JSON.stringify({
+      type: "friendEncouragementHistory",
+      encouragements: this.state.friendEncouragements[userId] || [],
+    }));
   }
 
   getFriendsForUser(userId: string) {

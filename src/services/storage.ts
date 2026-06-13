@@ -10,8 +10,10 @@ import {
   FastingSession,
   ActiveFastingState,
   Friend,
+  RetentionState,
 } from '../types';
 import { DEFAULT_SETTINGS } from '../constants/achievements';
+import { normalizeRetentionState } from '../utils/retention';
 
 const KEYS = {
   SETTINGS: '@guowu_settings',
@@ -29,6 +31,7 @@ const KEYS = {
   USER_ID: '@guowu_user_id', // 持久化用户ID
   NICKNAME: '@guowu_nickname', // 用户昵称/法号
   FRIENDS_LIST: '@guowu_friends', // 好友列表
+  RETENTION_STATE: '@guowu_retention_state', // 留存激励状态
 };
 
 // 设置相关
@@ -379,6 +382,7 @@ export const clearAllData = async (): Promise<void> => {
       KEYS.LAST_WEIGHT,
       KEYS.FASTING_SESSIONS,
       KEYS.ACTIVE_FASTING_STATE,
+      KEYS.RETENTION_STATE,
     ];
     for (const key of keys) {
       await AsyncStorage.removeItem(key);
@@ -615,6 +619,26 @@ export const saveLastFastingDuration = async (hours: number): Promise<void> => {
     await AsyncStorage.setItem(KEYS.LAST_FASTING_DURATION, hours.toString());
   } catch (error) {
     console.error('Error saving last fasting duration:', error);
+  }
+};
+
+// ============ 留存激励相关 ============
+
+export const getRetentionState = async (): Promise<RetentionState> => {
+  try {
+    const data = await AsyncStorage.getItem(KEYS.RETENTION_STATE);
+    return normalizeRetentionState(data ? JSON.parse(data) : null);
+  } catch (error) {
+    console.error('Error getting retention state:', error);
+    return normalizeRetentionState(null);
+  }
+};
+
+export const saveRetentionState = async (state: RetentionState): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(KEYS.RETENTION_STATE, JSON.stringify(normalizeRetentionState(state)));
+  } catch (error) {
+    console.error('Error saving retention state:', error);
   }
 };
 

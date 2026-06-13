@@ -11,26 +11,30 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { useSocial } from '../context/SocialContext';
 import { useApp } from '../context/AppContext';
 import { Card } from '../components/Card';
-import { FriendListItem } from '../components/FriendListItem';
 import { rs, vs, fs } from '../theme/responsive';
 
 export const FriendsScreen: React.FC = () => {
-  const { colors, t, language } = useApp();
+  const { colors, t, language, retentionState } = useApp();
   const {
     userId,
-    nickname,
     friends,
     friendRequests,
     sendFriendRequest,
     respondToFriendRequest,
     removeFriend,
+    sendFriendEncouragement,
+    onlineUsers,
   } = useSocial();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<any>();
 
   const [addCode, setAddCode] = useState('');
+  const today = new Date().toISOString().split('T')[0];
+  const encouragedToday = retentionState.friendEncouragementsSent[today] || [];
 
   const handleAddFriend = () => {
     const code = addCode.trim();
@@ -68,6 +72,14 @@ export const FriendsScreen: React.FC = () => {
           onPress: () => removeFriend(friendUserId),
         },
       ]
+    );
+  };
+
+  const handleEncourage = async (friendUserId: string, friendNickname: string) => {
+    await sendFriendEncouragement(friendUserId, friendNickname, 'cheer');
+    Alert.alert(
+      t.success,
+      language === 'zh' ? `已鼓励 ${friendNickname || '好友'}，今日社交任务已记录。` : 'Encouragement sent.'
     );
   };
 
@@ -154,14 +166,47 @@ export const FriendsScreen: React.FC = () => {
             {t.noFriends}
           </Text>
         ) : (
-          friends.map((friend) => (
-            <FriendListItem
-              key={friend.userId}
-              userId={friend.userId}
-              nickname={friend.nickname}
-              onPress={() => handleRemoveFriend(friend.userId, friend.nickname)}
-            />
-          ))
+          friends.map((friend) => {
+            const isOnline = onlineUsers.some((u) => u.id === friend.userId);
+            const encouraged = encouragedToday.includes(friend.userId);
+            return (
+              <View key={friend.userId} style={[styles.friendRow, { borderBottomColor: colors.border }]}>
+                <TouchableOpacity
+                  style={styles.friendMain}
+                  onPress={() => navigation.navigate('FriendDetail', { userId: friend.userId, nickname: friend.nickname })}
+                >
+                  <View style={[styles.avatar, { backgroundColor: isOnline ? colors.success : colors.textSecondary }]}>
+                    <Text style={styles.avatarText}>{(friend.nickname || '?')[0].toUpperCase()}</Text>
+                  </View>
+                  <View style={styles.friendInfo}>
+                    <Text style={[styles.friendName, { color: colors.text }]}>{friend.nickname || t.anonymous}</Text>
+                    <Text style={[styles.friendStatus, { color: isOnline ? colors.success : colors.textSecondary }]}>
+                      {isOnline ? t.onlineStatus : t.offlineStatus}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+                <View style={styles.friendActions}>
+                  <TouchableOpacity
+                    style={[styles.encourageBtn, { backgroundColor: encouraged ? colors.divider : colors.primary }]}
+                    onPress={() => handleEncourage(friend.userId, friend.nickname)}
+                    disabled={encouraged}
+                  >
+                    <Text style={[styles.encourageBtnText, { color: encouraged ? colors.textSecondary : '#fff' }]}>
+                      {encouraged ? (language === 'zh' ? '已鼓励' : 'Sent') : (language === 'zh' ? '鼓励' : 'Cheer')}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.removeMiniBtn, { borderColor: colors.error || '#f44336' }]}
+                    onPress={() => handleRemoveFriend(friend.userId, friend.nickname)}
+                  >
+                    <Text style={[styles.removeMiniText, { color: colors.error || '#f44336' }]}>
+                      {language === 'zh' ? '移除' : 'Remove'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })
         )}
       </Card>
 
@@ -264,5 +309,67 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     textAlign: 'center',
     paddingVertical: vs(16),
+  },
+  friendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: vs(12),
+    borderBottomWidth: 1,
+    gap: rs(8),
+  },
+  friendMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 0,
+  },
+  avatar: {
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: rs(10),
+  },
+  avatarText: {
+    color: '#fff',
+    fontSize: fs(16),
+    fontWeight: '700',
+  },
+  friendInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  friendName: {
+    fontSize: fs(15),
+    fontWeight: '700',
+  },
+  friendStatus: {
+    fontSize: fs(12),
+    marginTop: vs(2),
+  },
+  friendActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: rs(6),
+  },
+  encourageBtn: {
+    borderRadius: rs(8),
+    paddingHorizontal: rs(10),
+    paddingVertical: vs(7),
+  },
+  encourageBtnText: {
+    fontSize: fs(12),
+    fontWeight: '800',
+  },
+  removeMiniBtn: {
+    borderWidth: 1,
+    borderRadius: rs(8),
+    paddingHorizontal: rs(8),
+    paddingVertical: vs(6),
+  },
+  removeMiniText: {
+    fontSize: fs(11),
+    fontWeight: '700',
   },
 });

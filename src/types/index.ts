@@ -106,6 +106,129 @@ export interface UserStats {
   fastingEstimatedWeightLoss: number; // 预计通过禁食减少的体重（kg）
 }
 
+// ============ 留存与每日目标类型 ============
+
+export type DailyTaskId =
+  | 'checkin'
+  | 'water'
+  | 'meal'
+  | 'meditation'
+  | 'fasting'
+  | 'share'
+  | 'friendEncourage';
+
+export type DailyTaskTarget =
+  | 'Home'
+  | 'Meals'
+  | 'Meditation'
+  | 'Fasting'
+  | 'Friends'
+  | 'Share';
+
+export interface DailyTask {
+  id: DailyTaskId;
+  title: string;
+  description: string;
+  icon: string;
+  weight: number;
+  completed: boolean;
+  progress: number;
+  goal: number;
+  actionLabel: string;
+  target: DailyTaskTarget;
+  rewardText: string;
+}
+
+export interface DailyRating {
+  date: string;
+  stars: number;
+  completedWeight: number;
+  totalWeight: number;
+  completedCount: number;
+  taskCount: number;
+  progress: number;
+}
+
+export interface DailyRewardResult {
+  claimed: boolean;
+  stars: number;
+  energy: number;
+  repairCards: number;
+  message: string;
+}
+
+export interface FriendEncouragement {
+  id: string;
+  fromUserId: string;
+  fromNickname: string;
+  toUserId: string;
+  toNickname: string;
+  kind: 'like' | 'cheer' | 'streak';
+  text?: string;
+  timestamp: number;
+}
+
+export interface RetentionState {
+  totalEnergy: number;
+  repairCards: number;
+  claimedDailyRewards: Record<string, number>;
+  claimedMilestones: string[];
+  shareDates: Record<string, number>;
+  weeklyShareDates: Record<string, number>;
+  friendEncouragementsSent: Record<string, string[]>;
+  friendEncouragementsReceived: FriendEncouragement[];
+}
+
+export interface GrowthBadge {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  unlocked: boolean;
+  progress: number;
+  goal: number;
+}
+
+export interface GrowthProfile {
+  level: number;
+  title: string;
+  lifetimeEnergy: number;
+  availableEnergy: number;
+  nextLevelEnergy: number;
+  progressToNextLevel: number;
+  badges: GrowthBadge[];
+}
+
+export interface RetentionMilestone {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  reached: boolean;
+  claimed: boolean;
+  progress: number;
+  goal: number;
+  rewardEnergy: number;
+  rewardRepairCards: number;
+}
+
+export interface WeeklySummary {
+  weekKey: string;
+  startDate: string;
+  endDate: string;
+  checkInDays: number;
+  fastingDays: number;
+  meditationMinutes: number;
+  waterMl: number;
+  waterGoalDays: number;
+  mealRecordDays: number;
+  fastingSessions: number;
+  perfectDays: number;
+  averageStars: number;
+  completionRate: number;
+  bestDay?: string;
+}
+
 // 单次禁食会话记录
 export interface FastingSession {
   id: string; // 唯一标识符
@@ -229,6 +352,8 @@ export type RootStackParamList = {
   FriendDetail: { userId: string; nickname: string };
   Leaderboard: undefined;
   ChatDetail: { userId: string; nickname: string };
+  Conversations: undefined;
+  Retention: undefined;
 };
 
 export type TabParamList = {

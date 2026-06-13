@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import React, { useState, useEffect, useMemo, useRef, createContext, useContext, ReactNode } from 'react';
 import { useColorScheme, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { getLocales } from 'expo-localization';
@@ -15,6 +15,14 @@ import {
   MeditationType,
   FastingSession,
   ActiveFastingState,
+  DailyTask,
+  DailyRating,
+  RetentionState,
+  GrowthProfile,
+  WeeklySummary,
+  RetentionMilestone,
+  DailyRewardResult,
+  FriendEncouragement,
 } from '../types';
 import { DEFAULT_SETTINGS, DINNER_CALORIES } from '../constants/achievements';
 import {
@@ -41,7 +49,21 @@ import {
   saveActiveFastingState,
   updateFastingSessionStatus,
   calculateFastingStats,
+  getRetentionState,
+  saveRetentionState,
 } from '../services/storage';
+import {
+  DEFAULT_RETENTION_STATE,
+  buildDailyTasks,
+  buildGrowthProfile,
+  buildMilestoneRewards,
+  buildWeeklySummary,
+  calculateDailyRating,
+  canRepairYesterday,
+  countPerfectRewardDays,
+  getDateString,
+  normalizeRetentionState,
+} from '../utils/retention';
 import { getTranslations, type Language, type TranslationStrings } from '../i18n/translations';
 import { Colors, lightColors, darkColors } from '../theme/colors';
 
@@ -161,6 +183,20 @@ interface AppContextType {
   cancelFastingSession: () => Promise<void>;
   completeFastingSession: () => Promise<void>;
 
+  // 留存激励
+  retentionState: RetentionState;
+  dailyTasks: DailyTask[];
+  dailyRating: DailyRating;
+  growthProfile: GrowthProfile;
+  weeklySummary: WeeklySummary;
+  milestoneRewards: RetentionMilestone[];
+  claimDailyReward: () => Promise<DailyRewardResult>;
+  useStreakRepairCard: () => Promise<{ success: boolean; message: string }>;
+  claimMilestoneReward: (milestoneId: string) => Promise<{ success: boolean; message: string }>;
+  recordShareAction: (kind?: 'daily' | 'weekly') => Promise<void>;
+  recordFriendEncouragement: (toUserId: string) => Promise<void>;
+  recordReceivedFriendEncouragement: (encouragement: FriendEncouragement) => Promise<void>;
+
   // 加载状态
   isLoading: boolean;
 }
@@ -245,7 +281,88 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     googleFitEnabled: false,
   });
 
+  // 留存激励
+  const [retentionState, setRetentionState] = useState<RetentionState>(DEFAULT_RETENTION_STATE);
+  const retentionStateRef = useRef<RetentionState>(DEFAULT_RETENTION_STATE);
+
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    retentionStateRef.current = retentionState;
+  }, [retentionState]);
+
+  const todayDate = getDateString();
+
+  const dailyTasks = useMemo(
+    () =>
+      buildDailyTasks({
+        date: todayDate,
+        language,
+        settings,
+        checkInRecords,
+        mealRecords,
+        waterRecords,
+        practiceRecords,
+        fastingSessions,
+        activeFasting,
+        retentionState,
+      }),
+    [
+      todayDate,
+      language,
+      settings,
+      checkInRecords,
+      mealRecords,
+      waterRecords,
+      practiceRecords,
+      fastingSessions,
+      activeFasting,
+      retentionState,
+    ]
+  );
+
+  const dailyRating = useMemo(
+    () => calculateDailyRating(dailyTasks, todayDate),
+    [dailyTasks, todayDate]
+  );
+
+  const weeklySummary = useMemo(
+    () =>
+      buildWeeklySummary({
+        language,
+        settings,
+        checkInRecords,
+        mealRecords,
+        waterRecords,
+        practiceRecords,
+        fastingSessions,
+        activeFasting,
+        retentionState,
+        endDate: todayDate,
+      }),
+    [
+      todayDate,
+      language,
+      settings,
+      checkInRecords,
+      mealRecords,
+      waterRecords,
+      practiceRecords,
+      fastingSessions,
+      activeFasting,
+      retentionState,
+    ]
+  );
+
+  const growthProfile = useMemo(
+    () => buildGrowthProfile(stats, retentionState, weeklySummary, language),
+    [stats, retentionState, weeklySummary, language]
+  );
+
+  const milestoneRewards = useMemo(
+    () => buildMilestoneRewards(stats, weeklySummary, retentionState, language),
+    [stats, weeklySummary, retentionState, language]
+  );
 
   // 初始化数据
   useEffect(() => {
@@ -258,12 +375,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     calculateStats();
   }, [checkInRecords, weightRecords, practiceRecords, fastingSessions]);
 
-  // 统计数据变化时重新调度提醒（用于宽限期通知）
+  // 统计和每日目标变化时重新调度提醒，通知内容会随今日进度变聪明。
   useEffect(() => {
-    if (!isLoading && stats.streakInGracePeriod && settings.enableNotifications) {
+    if (!isLoading && settings.enableNotifications) {
       scheduleDailyReminder();
     }
-  }, [isLoading, stats.streakInGracePeriod]);
+  }, [isLoading, stats.streakInGracePeriod, dailyRating.stars, dailyRating.completedCount, dailyRating.completedWeight]);
 
   // 设置改变时重新调度提醒
   useEffect(() => {
@@ -303,6 +420,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         savedFastingSessions,
         savedActiveFasting,
         savedHealthSync,
+        savedRetentionState,
       ] = await Promise.all([
         getCheckInRecords(),
         getMealRecords(),
@@ -312,6 +430,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         getFastingSessions(),
         getActiveFastingState(),
         getHealthSyncStatus(),
+        getRetentionState(),
       ]);
       const today = new Date().toISOString().split('T')[0];
 
@@ -368,6 +487,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       // 加载健康同步状态
       setHealthSync(savedHealthSync);
+
+      // 加载留存激励状态
+      retentionStateRef.current = savedRetentionState;
+      setRetentionState(savedRetentionState);
     } catch (error) {
       console.error('Error initializing data:', error);
     } finally {
@@ -399,7 +522,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const [hours, minutes] = settings.reminderTime.split(':').map(Number);
 
-    // 根据宽限期状态决定通知内容
+    // 根据宽限期和今日任务状态决定通知内容
     const isInGracePeriod = stats.streakInGracePeriod;
     const getNotificationMessage = () => {
       if (isInGracePeriod) {
@@ -411,9 +534,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
         return 'Did you complete your fasting today? Flame is frozen! Check in now to break the ice!';
       }
+      const pendingTasks = dailyTasks.filter((task) => !task.completed);
+      const nextTask = pendingTasks[0];
+      if (dailyRating.stars >= 5) {
+        if (language === 'zh') return `今天已满星，连续${stats.currentStreak}天。睡前看一眼周总结，保持节奏。`;
+        if (language === 'es') return `Hoy ya tienes 5 estrellas. Revisa tu resumen semanal y mantén el ritmo.`;
+        return `Today is already 5-star. Review your weekly summary and keep the rhythm.`;
+      }
+      if (dailyRating.stars > 0 && nextTask) {
+        if (language === 'zh') return `今日${dailyRating.stars}星，还差「${nextTask.title}」就更稳了。`;
+        if (language === 'es') return `Hoy tienes ${dailyRating.stars} estrellas. Completa: ${nextTask.title}.`;
+        return `You have ${dailyRating.stars} stars today. Next: ${nextTask.title}.`;
+      }
+      if (stats.currentStreak >= 6) {
+        if (language === 'zh') return `连续${stats.currentStreak}天了，今天补上主线打卡，不要让节奏断掉。`;
+        if (language === 'es') return `Llevas ${stats.currentStreak} días. Completa el check-in principal.`;
+        return `${stats.currentStreak}-day streak. Complete the main check-in today.`;
+      }
       // 正常消息
       if (language === 'zh') {
-        return '今天过午不食完成了吗？快来打卡吧！';
+        return '今天过午不食完成了吗？先完成主线打卡，再补一个小目标。';
       } else if (language === 'es') {
         return '¿Completaste el ayuno de hoy? ¡Regístrate ahora!';
       }
@@ -983,6 +1123,175 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setFastingSessions(updatedSessions);
   };
 
+  const updateRetentionState = async (
+    updater: (current: RetentionState) => RetentionState
+  ): Promise<RetentionState> => {
+    const next = normalizeRetentionState(updater(normalizeRetentionState(retentionStateRef.current)));
+    retentionStateRef.current = next;
+    setRetentionState(next);
+    await saveRetentionState(next);
+    return next;
+  };
+
+  const claimDailyReward = async (): Promise<DailyRewardResult> => {
+    const today = getDateString();
+    const previousStars = retentionState.claimedDailyRewards[today] || 0;
+
+    if (dailyRating.stars <= 0) {
+      return {
+        claimed: false,
+        stars: 0,
+        energy: 0,
+        repairCards: 0,
+        message: language === 'zh' ? '先完成一个今日目标，再领取修行力。' : 'Complete one daily task first.',
+      };
+    }
+
+    if (previousStars >= dailyRating.stars) {
+      return {
+        claimed: false,
+        stars: dailyRating.stars,
+        energy: 0,
+        repairCards: 0,
+        message: language === 'zh' ? '今日星级奖励已经领取。' : 'Today reward is already claimed.',
+      };
+    }
+
+    const starDelta = dailyRating.stars - previousStars;
+    const energy = starDelta * 12 + (previousStars === 0 ? dailyRating.completedCount * 2 : 0);
+    const perfectDaysBefore = countPerfectRewardDays(retentionState);
+    const repairCards = dailyRating.stars >= 5 && previousStars < 5 && (perfectDaysBefore + 1) % 7 === 0 ? 1 : 0;
+
+    await updateRetentionState((current) => ({
+      ...current,
+      totalEnergy: current.totalEnergy + energy,
+      repairCards: current.repairCards + repairCards,
+      claimedDailyRewards: {
+        ...current.claimedDailyRewards,
+        [today]: dailyRating.stars,
+      },
+    }));
+
+    return {
+      claimed: true,
+      stars: dailyRating.stars,
+      energy,
+      repairCards,
+      message: language === 'zh'
+        ? `领取成功：+${energy}修行力${repairCards > 0 ? `，+${repairCards}张补签卡` : ''}`
+        : `Claimed: +${energy} energy${repairCards > 0 ? `, +${repairCards} repair card` : ''}`,
+    };
+  };
+
+  const useStreakRepairCard = async (): Promise<{ success: boolean; message: string }> => {
+    const repair = canRepairYesterday(checkInRecords);
+    if (retentionState.repairCards <= 0) {
+      return {
+        success: false,
+        message: language === 'zh' ? '补签卡不足，先完成里程碑或满星周目标。' : 'No repair cards available.',
+      };
+    }
+    if (!repair.canRepair) {
+      return {
+        success: false,
+        message: language === 'zh' ? '昨天已经完成打卡，不需要补签。' : 'Yesterday is already checked in.',
+      };
+    }
+
+    const repairedRecord: DailyCheckIn = {
+      id: `checkin_repair_${Date.now()}`,
+      date: repair.date,
+      completed: true,
+      brokeAfterNoon: false,
+      checkInTime: Date.now(),
+      notes: language === 'zh' ? '补签卡恢复连续' : 'Streak repaired with repair card',
+    };
+
+    await saveCheckInRecord(repairedRecord);
+    const updatedRecords = await getCheckInRecords();
+    setCheckInRecords(updatedRecords);
+    await updateRetentionState((current) => ({
+      ...current,
+      repairCards: Math.max(0, current.repairCards - 1),
+    }));
+
+    return {
+      success: true,
+      message: language === 'zh' ? `已补签 ${repair.date}，连续记录已恢复。` : `Repaired ${repair.date}.`,
+    };
+  };
+
+  const claimMilestoneReward = async (milestoneId: string): Promise<{ success: boolean; message: string }> => {
+    const milestone = milestoneRewards.find((item) => item.id === milestoneId);
+    if (!milestone) {
+      return { success: false, message: language === 'zh' ? '未找到该里程碑。' : 'Milestone not found.' };
+    }
+    if (!milestone.reached) {
+      return { success: false, message: language === 'zh' ? '里程碑还未达成。' : 'Milestone is not reached yet.' };
+    }
+    if (milestone.claimed) {
+      return { success: false, message: language === 'zh' ? '该里程碑奖励已领取。' : 'Milestone already claimed.' };
+    }
+
+    await updateRetentionState((current) => ({
+      ...current,
+      totalEnergy: current.totalEnergy + milestone.rewardEnergy,
+      repairCards: current.repairCards + milestone.rewardRepairCards,
+      claimedMilestones: [...current.claimedMilestones, milestone.id],
+    }));
+
+    return {
+      success: true,
+      message: language === 'zh'
+        ? `领取成功：+${milestone.rewardEnergy}修行力${milestone.rewardRepairCards > 0 ? `，+${milestone.rewardRepairCards}张补签卡` : ''}`
+        : `Claimed: +${milestone.rewardEnergy} energy${milestone.rewardRepairCards > 0 ? `, +${milestone.rewardRepairCards} repair card` : ''}`,
+    };
+  };
+
+  const recordShareAction = async (kind: 'daily' | 'weekly' = 'daily'): Promise<void> => {
+    const today = getDateString();
+    await updateRetentionState((current) => ({
+      ...current,
+      shareDates: {
+        ...current.shareDates,
+        [today]: (current.shareDates[today] || 0) + 1,
+      },
+      weeklyShareDates: kind === 'weekly'
+        ? {
+          ...current.weeklyShareDates,
+          [weeklySummary.weekKey]: (current.weeklyShareDates[weeklySummary.weekKey] || 0) + 1,
+        }
+        : current.weeklyShareDates,
+    }));
+  };
+
+  const recordFriendEncouragement = async (toUserId: string): Promise<void> => {
+    const today = getDateString();
+    await updateRetentionState((current) => {
+      const users = current.friendEncouragementsSent[today] || [];
+      const nextUsers = users.includes(toUserId) ? users : [...users, toUserId];
+      return {
+        ...current,
+        friendEncouragementsSent: {
+          ...current.friendEncouragementsSent,
+          [today]: nextUsers,
+        },
+      };
+    });
+  };
+
+  const recordReceivedFriendEncouragement = async (encouragement: FriendEncouragement): Promise<void> => {
+    if (retentionStateRef.current.friendEncouragementsReceived.some((item) => item.id === encouragement.id)) {
+      return;
+    }
+    await updateRetentionState((current) => {
+      return {
+        ...current,
+        friendEncouragementsReceived: [encouragement, ...current.friendEncouragementsReceived].slice(0, 50),
+      };
+    });
+  };
+
   const t = getTranslations(language);
 
   return (
@@ -1022,6 +1331,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         startFastingSession,
         cancelFastingSession,
         completeFastingSession,
+        retentionState,
+        dailyTasks,
+        dailyRating,
+        growthProfile,
+        weeklySummary,
+        milestoneRewards,
+        claimDailyReward,
+        useStreakRepairCard,
+        claimMilestoneReward,
+        recordShareAction,
+        recordFriendEncouragement,
+        recordReceivedFriendEncouragement,
         isLoading,
       }}
     >

@@ -7,6 +7,7 @@ import type {
   SharedStats,
   LeaderboardEntry,
   PrivateMessage,
+  FriendEncouragement,
 } from '../types';
 import { usePartyKit } from '../hooks/usePartyKit';
 import {
@@ -48,9 +49,11 @@ interface SocialContextType {
 
   friends: Friend[];
   friendRequests: FriendRequest[];
+  friendEncouragements: FriendEncouragement[];
   sendFriendRequest: (toUserId: string) => void;
   respondToFriendRequest: (requestId: string, fromUserId: string, accept: boolean) => void;
   removeFriend: (userId: string) => void;
+  sendFriendEncouragement: (toUserId: string, toNickname: string, kind?: FriendEncouragement['kind']) => Promise<void>;
 
   shareMyStats: (stats: SharedStats) => void;
   getFriendStats: (userId: string) => void;
@@ -87,7 +90,14 @@ export function SocialProvider({ children }: { children: ReactNode }) {
   const publishLeaderboard = partykit.publishLeaderboardStats;
   const requestFriends = partykit.requestFriends;
   const remoteFriends = partykit.remoteFriends;
-  const { isLoading, stats, checkInRecords, practiceRecords } = useApp();
+  const {
+    isLoading,
+    stats,
+    checkInRecords,
+    practiceRecords,
+    recordFriendEncouragement,
+    recordReceivedFriendEncouragement,
+  } = useApp();
 
   const [userId, setUserId] = useState('');
   const [nickname, setNickname] = useState('');
@@ -193,6 +203,22 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     await storageRemoveFriend(friendUserId);
   }, [friends]);
 
+  const handleSendFriendEncouragement = useCallback(async (
+    toUserId: string,
+    toNickname: string,
+    kind: FriendEncouragement['kind'] = 'cheer',
+  ) => {
+    partykit.sendFriendEncouragement(
+      userId,
+      nickname,
+      toUserId,
+      toNickname,
+      kind,
+      kind === 'streak' ? 'Keep the streak going' : 'Practice together today'
+    );
+    await recordFriendEncouragement(toUserId);
+  }, [userId, nickname, partykit, recordFriendEncouragement]);
+
   const shareMyStats = useCallback((stats: SharedStats) => {
     partykit.shareStats(stats);
   }, [partykit]);
@@ -247,6 +273,15 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     stats.currentStreak,
     publishLeaderboard,
   ]);
+
+  useEffect(() => {
+    if (!userId || partykit.friendEncouragements.length === 0) return;
+    partykit.friendEncouragements
+      .filter((item) => item.toUserId === userId)
+      .forEach((item) => {
+        void recordReceivedFriendEncouragement(item);
+      });
+  }, [userId, partykit.friendEncouragements, recordReceivedFriendEncouragement]);
 
   const sendPrivateMessage = useCallback((toUserId: string, toNickname: string, text: string) => {
     partykit.sendPrivateMessage(userId, nickname, toUserId, toNickname, text);
@@ -313,12 +348,14 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     onlineCount: partykit.onlineCount,
     chatMessages: partykit.chatMessages,
     friendRequests: partykit.friendRequests,
+    friendEncouragements: partykit.friendEncouragements,
     friends,
     sendChat,
     updateNickname,
     sendFriendRequest: handleSendFriendRequest,
     respondToFriendRequest: handleRespondToFriendRequest,
     removeFriend: handleRemoveFriend,
+    sendFriendEncouragement: handleSendFriendEncouragement,
     shareMyStats,
     getFriendStats,
     connect,
