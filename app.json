@@ -2,7 +2,7 @@
   "expo": {
     "name": "过午不食",
     "slug": "guowubushifasting",
-    "version": "1.0.30",
+    "version": "1.0.31",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -18,7 +18,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.guowu.fasting",
-      "buildNumber": "13",
+      "buildNumber": "14",
       "icon": "./assets/icon.png",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -44,7 +44,7 @@
     },
     "android": {
       "package": "com.guowu.fasting",
-      "versionCode": 14,
+      "versionCode": 15,
       "icon": "./assets/icon.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
