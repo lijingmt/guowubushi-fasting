@@ -69,6 +69,23 @@ import { Colors, lightColors, darkColors } from '../theme/colors';
 
 const DAILY_REMINDER_NOTIFICATION_ID_KEY = '@guowu_daily_reminder_notification_id';
 const FASTING_NOTIFICATION_ID_KEY = '@guowu_fasting_notification_id';
+const DAILY_REMINDER_NOTIFICATION_KIND = 'dailyReminder';
+const LEGACY_DAILY_REMINDER_TITLES = ['过午不食打卡', 'Daily Check-In'];
+
+const isDailyReminderRequest = (request: Notifications.NotificationRequest) => {
+  const requestData = (request.content.data || {}) as Record<string, unknown>;
+  if (requestData.kind === DAILY_REMINDER_NOTIFICATION_KIND) {
+    return true;
+  }
+
+  const title = typeof request.content.title === 'string' ? request.content.title : '';
+  const trigger = (request.trigger || {}) as Record<string, unknown>;
+  const triggerType = typeof trigger.type === 'string' ? trigger.type.toLowerCase() : '';
+  const looksLikeDailyTrigger = triggerType.includes('daily')
+    || (typeof trigger.hour === 'number' && typeof trigger.minute === 'number' && !('date' in trigger));
+
+  return looksLikeDailyTrigger && LEGACY_DAILY_REMINDER_TITLES.includes(title);
+};
 
 // 检测设备语言并返回对应的应用语言
 const detectDeviceLanguage = (): Language => {
@@ -211,6 +228,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // 设置
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
   const [language, setLanguage] = useState<Language>('zh');
+  const dailyReminderScheduleTokenRef = useRef(0);
 
   // 根据主题设置确定颜色
   const colors: Colors = (() => {
@@ -375,22 +393,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     calculateStats();
   }, [checkInRecords, weightRecords, practiceRecords, fastingSessions]);
 
-  // 统计和每日目标变化时重新调度提醒，通知内容会随今日进度变聪明。
-  useEffect(() => {
-    if (!isLoading && settings.enableNotifications) {
-      scheduleDailyReminder();
-    }
-  }, [isLoading, stats.streakInGracePeriod, dailyRating.stars, dailyRating.completedCount, dailyRating.completedWeight]);
-
-  // 设置改变时重新调度提醒
+  // 只在加载完成、提醒开关、提醒时间或语言改变时调度一次每日提醒。
   useEffect(() => {
     if (isLoading) return;
     if (settings.enableNotifications) {
       scheduleDailyReminder();
     } else {
-      cancelStoredNotification(DAILY_REMINDER_NOTIFICATION_ID_KEY);
+      cancelDailyReminderNotifications();
     }
-  }, [isLoading, settings.reminderTime, settings.enableNotifications]);
+  }, [isLoading, settings.reminderTime, settings.enableNotifications, language]);
 
   const initializeData = async () => {
     try {
@@ -511,14 +522,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const scheduleDailyReminder = async () => {
+    const scheduleToken = dailyReminderScheduleTokenRef.current + 1;
+    dailyReminderScheduleTokenRef.current = scheduleToken;
+
     if (!settings.enableNotifications) {
-      await cancelStoredNotification(DAILY_REMINDER_NOTIFICATION_ID_KEY);
+      await cancelDailyReminderNotifications();
       return;
     }
     // Web 平台不支持通知
     if (Platform.OS === 'web') return;
 
-    await cancelStoredNotification(DAILY_REMINDER_NOTIFICATION_ID_KEY);
+    await cancelDailyReminderNotifications();
+    if (dailyReminderScheduleTokenRef.current !== scheduleToken) {
+      return;
+    }
 
     const [hours, minutes] = settings.reminderTime.split(':').map(Number);
 
@@ -565,6 +582,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       content: {
         title: language === 'zh' ? '过午不食打卡' : 'Daily Check-In',
         body: getNotificationMessage(),
+        data: { kind: DAILY_REMINDER_NOTIFICATION_KIND },
         sound: 'default',
         priority: Notifications.AndroidNotificationPriority.HIGH,
       },
@@ -574,7 +592,45 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         minute: minutes,
       } as any,
     });
+
+    if (dailyReminderScheduleTokenRef.current !== scheduleToken) {
+      await Notifications.cancelScheduledNotificationAsync(identifier);
+      return;
+    }
+
     await AsyncStorage.setItem(DAILY_REMINDER_NOTIFICATION_ID_KEY, identifier);
+  };
+
+  const cancelDailyReminderNotifications = async () => {
+    if (Platform.OS === 'web') return;
+
+    try {
+      const identifiers = new Set<string>();
+      const storedIdentifier = await AsyncStorage.getItem(DAILY_REMINDER_NOTIFICATION_ID_KEY);
+      if (storedIdentifier) {
+        identifiers.add(storedIdentifier);
+      }
+
+      const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
+      scheduledNotifications.forEach((request) => {
+        if (isDailyReminderRequest(request)) {
+          identifiers.add(request.identifier);
+        }
+      });
+
+      await Promise.all(
+        Array.from(identifiers).map(async (identifier) => {
+          try {
+            await Notifications.cancelScheduledNotificationAsync(identifier);
+          } catch (error) {
+            console.error('Error cancelling daily reminder notification:', error);
+          }
+        })
+      );
+      await AsyncStorage.removeItem(DAILY_REMINDER_NOTIFICATION_ID_KEY);
+    } catch (error) {
+      console.error('Error cancelling daily reminder notifications:', error);
+    }
   };
 
   const cancelStoredNotification = async (storageKey: string) => {
