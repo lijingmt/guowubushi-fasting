@@ -70,6 +70,7 @@ import { Colors, lightColors, darkColors } from '../theme/colors';
 const DAILY_REMINDER_NOTIFICATION_ID_KEY = '@guowu_daily_reminder_notification_id';
 const FASTING_NOTIFICATION_ID_KEY = '@guowu_fasting_notification_id';
 const DAILY_REMINDER_NOTIFICATION_KIND = 'dailyReminder';
+const DAILY_REMINDER_IDENTIFIER = 'guowu-daily-reminder';
 const LEGACY_DAILY_REMINDER_TITLES = ['过午不食打卡', 'Daily Check-In'];
 
 const isDailyReminderRequest = (request: Notifications.NotificationRequest) => {
@@ -78,13 +79,10 @@ const isDailyReminderRequest = (request: Notifications.NotificationRequest) => {
     return true;
   }
 
+  // 旧版本注册的通知没有 data.kind，且 Android 上读回的 trigger 形态不可靠，
+  // 只按标题识别即可覆盖旧版本积累的重复每日提醒。
   const title = typeof request.content.title === 'string' ? request.content.title : '';
-  const trigger = (request.trigger || {}) as Record<string, unknown>;
-  const triggerType = typeof trigger.type === 'string' ? trigger.type.toLowerCase() : '';
-  const looksLikeDailyTrigger = triggerType.includes('daily')
-    || (typeof trigger.hour === 'number' && typeof trigger.minute === 'number' && !('date' in trigger));
-
-  return looksLikeDailyTrigger && LEGACY_DAILY_REMINDER_TITLES.includes(title);
+  return LEGACY_DAILY_REMINDER_TITLES.includes(title);
 };
 
 // 检测设备语言并返回对应的应用语言
@@ -577,8 +575,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return 'Did you complete your fasting today? Check in now!';
     };
 
-    // 安排每日重复提醒
+    // 安排每日重复提醒。固定 identifier 可确保重复调度时替换旧通知，而非新增。
     const identifier = await Notifications.scheduleNotificationAsync({
+      identifier: DAILY_REMINDER_IDENTIFIER,
       content: {
         title: language === 'zh' ? '过午不食打卡' : 'Daily Check-In',
         body: getNotificationMessage(),
