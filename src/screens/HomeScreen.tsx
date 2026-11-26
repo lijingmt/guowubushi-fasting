@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Alert, Clipboard, Modal, TextInput, Platform, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Alert, Modal, TextInput, Platform, Image } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { Card } from '../components/Card';
 import { StatCard } from '../components/StatCard';

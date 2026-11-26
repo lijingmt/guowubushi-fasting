@@ -13,6 +13,7 @@ import { useApp } from '../context/AppContext';
 import { Card } from '../components/Card';
 import { AchievementShareCard } from '../components/AchievementShareCard';
 import { ACHIEVEMENTS } from '../constants/achievements';
+import { getLocalDateString, parseLocalDate } from '../utils/date';
 
 const { width } = Dimensions.get('window');
 
@@ -29,7 +30,7 @@ export const StatsScreen: React.FC = () => {
     for (let i = 6; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
+      const dateStr = getLocalDateString(date);
       const dayName = t.weekdayShort[date.getDay()];
       days.push(dayName);
 
@@ -45,7 +46,7 @@ export const StatsScreen: React.FC = () => {
     const recentWeights = weightRecords.slice(-7);
     return {
       labels: recentWeights.map((r) => {
-        const d = new Date(r.date);
+        const d = parseLocalDate(r.date);
         return `${d.getMonth() + 1}/${d.getDate()}`;
       }),
       data: recentWeights.map((r) => r.weight),

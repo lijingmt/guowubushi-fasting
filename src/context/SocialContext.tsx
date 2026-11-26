@@ -52,6 +52,7 @@ interface SocialContextType {
 
   shareMyStats: (stats: SharedStats) => void;
   getFriendStats: (userId: string) => void;
+  friendStatsMap: Record<string, SharedStats>;
 
   connect: () => void;
   disconnect: () => void;
@@ -75,6 +76,7 @@ export function useSocial(): SocialContextType {
 export function SocialProvider({ children }: { children: ReactNode }) {
   const partykit = usePartyKit();
   const publishLeaderboard = partykit.publishLeaderboardStats;
+  const shareStatsToServer = partykit.shareStats;
   const requestFriends = partykit.requestFriends;
   const remoteFriends = partykit.remoteFriends;
   const {
@@ -90,6 +92,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
   const [nickname, setNickname] = useState('');
   const [friends, setFriends] = useState<Friend[]>([]);
   const lastLeaderboardPublishRef = useRef('');
+  const lastSharedStatsRef = useRef('');
 
   useEffect(() => {
     (async () => {
@@ -258,6 +261,38 @@ export function SocialProvider({ children }: { children: ReactNode }) {
   ]);
 
   useEffect(() => {
+    if (isLoading || !partykit.isConnected || !userId) return;
+
+    const sharedPayload: SharedStats = {
+      userId,
+      nickname,
+      streak: stats.currentStreak,
+      totalMeditationMinutes: stats.totalMeditationMinutes,
+      totalMerit: stats.totalMerit,
+      meditationSessionCount: stats.meditationSessionCount,
+      longestMeditationSession: stats.longestMeditationSession,
+      totalMeditationDays: stats.totalMeditationDays,
+    };
+    const sharedKey = JSON.stringify(sharedPayload);
+    if (sharedKey === lastSharedStatsRef.current) return;
+
+    lastSharedStatsRef.current = sharedKey;
+    shareStatsToServer(sharedPayload);
+  }, [
+    isLoading,
+    partykit.isConnected,
+    userId,
+    nickname,
+    stats.currentStreak,
+    stats.totalMeditationMinutes,
+    stats.totalMerit,
+    stats.meditationSessionCount,
+    stats.longestMeditationSession,
+    stats.totalMeditationDays,
+    shareStatsToServer,
+  ]);
+
+  useEffect(() => {
     if (!userId || partykit.friendEncouragements.length === 0) return;
     partykit.friendEncouragements
       .filter((item) => item.toUserId === userId)
@@ -286,6 +321,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     sendFriendEncouragement: handleSendFriendEncouragement,
     shareMyStats,
     getFriendStats,
+    friendStatsMap: partykit.friendStatsMap,
     connect,
     disconnect,
     goOnline,

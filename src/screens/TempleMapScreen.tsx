@@ -33,6 +33,7 @@ import {
 } from '../data/sacredSites';
 import { getSacredSiteCheckIns, saveSacredSiteCheckIn } from '../services/storage';
 import { useApp } from '../context/AppContext';
+import { getLocalDateString } from '../utils/date';
 import { fs, layout, responsiveSize, rs, vs } from '../theme/responsive';
 import { SacredRegion, SacredRite, SacredSite, SacredSiteCheckIn, SacredTradition } from '../types';
 
@@ -128,7 +129,7 @@ const WORLD_LANDMASS_POINTS: GeoPoint[][] = [
 
 const WORLD_LANDMASSES = WORLD_LANDMASS_POINTS.map((points) => buildGeoPath(points));
 
-const getTodayString = () => new Date().toISOString().split('T')[0];
+const getTodayString = () => getLocalDateString();
 
 const projectWorld = (site: SacredSite) => ({
   ...projectLonLat(site.longitude, site.latitude),

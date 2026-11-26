@@ -14,6 +14,7 @@ import {
   SacredSiteCheckIn,
 } from '../types';
 import { DEFAULT_SETTINGS } from '../constants/achievements';
+import { addLocalDays, diffLocalDays, getLocalDateString } from '../utils/date';
 import { normalizeRetentionState } from '../utils/retention';
 
 const KEYS = {
@@ -97,7 +98,7 @@ export const saveCheckInRecord = async (record: DailyCheckIn): Promise<void> => 
 export const getTodayCheckIn = async (): Promise<DailyCheckIn | null> => {
   try {
     const records = await getCheckInRecords();
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     return records.find((r) => r.date === today) || null;
   } catch (error) {
     console.error('Error getting today checkin:', error);
@@ -149,7 +150,7 @@ export const deleteMealRecord = async (id: string): Promise<void> => {
 export const getTodayMeals = async (): Promise<MealRecord[]> => {
   try {
     const records = await getMealRecords();
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     return records.filter((r) => r.date === today);
   } catch (error) {
     console.error('Error getting today meals:', error);
@@ -244,7 +245,7 @@ export const deleteWaterRecord = async (id: string): Promise<void> => {
 export const deleteTodayWaterRecords = async (): Promise<void> => {
   try {
     const records = await getWaterRecords();
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     const filtered = records.filter((r) => r.date !== today);
     await AsyncStorage.setItem(KEYS.WATER_RECORDS, JSON.stringify(filtered));
   } catch (error) {
@@ -255,7 +256,7 @@ export const deleteTodayWaterRecords = async (): Promise<void> => {
 export const getTodayWaterIntake = async (): Promise<number> => {
   try {
     const records = await getWaterRecords();
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     return records
       .filter((r) => r.date === today)
       .reduce((sum, record) => sum + record.amount, 0);
@@ -332,7 +333,7 @@ export const deletePracticeRecord = async (id: string): Promise<void> => {
 export const deleteTodayPracticeRecords = async (): Promise<void> => {
   try {
     const records = await getPracticeRecords();
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     const filtered = records.filter((r) => r.date !== today);
     await AsyncStorage.setItem(KEYS.PRACTICE_RECORDS, JSON.stringify(filtered));
   } catch (error) {
@@ -343,7 +344,7 @@ export const deleteTodayPracticeRecords = async (): Promise<void> => {
 export const getTodayPracticeRecords = async (): Promise<PracticeRecord[]> => {
   try {
     const records = await getPracticeRecords();
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     return records.filter((r) => r.date === today);
   } catch (error) {
     console.error('Error getting today practice records:', error);
@@ -430,7 +431,7 @@ export const saveFastingSession = async (session: FastingSession): Promise<void>
 export const getTodayFastingSessions = async (): Promise<FastingSession[]> => {
   try {
     const sessions = await getFastingSessions();
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     return sessions.filter((s) => s.date === today);
   } catch (error) {
     console.error('Error getting today fasting sessions:', error);
@@ -518,7 +519,7 @@ export const calculateFastingStats = async (): Promise<{
       new Set(completedSessions.map((s) => s.date))
     ).sort((a, b) => b.localeCompare(a)); // 降序
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     let currentStreak = 0;
     let longestStreak = 0;
     let tempStreak = 0;
@@ -573,19 +574,10 @@ export const calculateFastingStats = async (): Promise<{
 };
 
 // 辅助函数：获取昨天的日期
-const getYesterdayDate = (): string => {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  return yesterday.toISOString().split('T')[0];
-};
+const getYesterdayDate = (): string => addLocalDays(getLocalDateString(), -1);
 
 // 辅助函数：计算两个日期之间的天数差
-const getDaysDifference = (date1: string, date2: string): number => {
-  const d1 = new Date(date1);
-  const d2 = new Date(date2);
-  const diffTime = d2.getTime() - d1.getTime();
-  return Math.round(diffTime / (1000 * 60 * 60 * 24));
-};
+const getDaysDifference = (date1: string, date2: string): number => diffLocalDays(date2, date1);
 
 // 禁食免责声明相关
 export const getFastingDisclaimerAgreed = async (): Promise<boolean> => {

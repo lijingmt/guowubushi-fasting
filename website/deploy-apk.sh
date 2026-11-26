@@ -7,7 +7,7 @@ PROJECT_DIR="/usr/local/games/guowubushi/GuowuBushiFasting"
 WEBSITE_DIR="/usr/local/games/guowubushi/website"
 REMOTE_SERVER="192.168.1.205"
 REMOTE_USER="root"
-REMOTE_PASS="Palm34cc1122"
+REMOTE_PASS="${REMOTE_PASS:-}"
 REMOTE_PATH="/usr/local/tomcat/webapps/guowubushi"
 APK_NAME="guowubushi-$(date +%Y%m%d-%H%M%S).apk"
 SSH_KEY="$HOME/.ssh/guowubushi_key"
@@ -38,6 +38,10 @@ if ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=5 "$REMOTE_US
     echo "✅ 已上传 (使用SSH密钥)"
 else
     # 使用密码
+    if [ -z "$REMOTE_PASS" ]; then
+        echo "❌ 请配置 SSH 密钥或通过环境变量 REMOTE_PASS 提供密码"
+        exit 1
+    fi
     which sshpass >/dev/null 2>&1 || brew install hudochenkov/sshpass/sshpass >/dev/null 2>&1
     sshpass -p "$REMOTE_PASS" scp -o StrictHostKeyChecking=no "$WEBSITE_DIR/$APK_NAME" "$REMOTE_USER@$REMOTE_SERVER:$REMOTE_PATH/"
     echo "✅ 已上传 (使用密码)"

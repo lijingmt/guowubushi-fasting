@@ -58,7 +58,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onDismiss, colors,
           },
           section4: {
             title: '🔒 Privacy & Data',
-            content: 'Your data is stored locally on your device. We do not collect, sell, or share your personal information with third parties.',
+            content: 'Your fasting, meal, water, and weight records are stored locally on your device. Optional leaderboard, nickname, and friend features sync anonymously with our server. We do not sell your personal information.',
           },
         },
       };
@@ -87,7 +87,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onDismiss, colors,
           },
           section4: {
             title: '🔒 Privacidad y Datos',
-            content: 'Tus datos se almacenan localmente en tu dispositivo. No recopilamos, vendemos ni compartimos tu información personal con terceros.',
+            content: 'Tus registros de ayuno, comidas, agua y peso se almacenan localmente en tu dispositivo. Las funciones opcionales de clasificación, apodo y amigos se sincronizan de forma anónima. No vendemos tu información personal.',
           },
         },
       };
@@ -115,7 +115,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onDismiss, colors,
         },
         section4: {
           title: '🔒 隐私与数据',
-          content: '您的数据仅存储在本地设备。我们不会收集、出售或与第三方共享您的个人信息。',
+          content: '您的打卡、饮食、饮水和体重记录仅保存在本地设备；排行榜、昵称与好友等可选社交功能采用匿名同步。我们不会出售您的个人信息。',
         },
       },
     };

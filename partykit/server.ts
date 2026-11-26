@@ -1,6 +1,6 @@
 /**
  * PartyKit Server for Fasting App
- * Uses Party.Server class API with correct parameter order
+ * Uses Party.Server class API with scoped notifications and sender binding.
  */
 import type * as Party from "partykit/server";
 
@@ -28,14 +28,6 @@ interface OnlineUser {
   startedAt: number;
 }
 
-interface ChatMessage {
-  id: string;
-  userId: string;
-  nickname: string;
-  text: string;
-  timestamp: number;
-}
-
 interface FriendRequest {
   id: string;
   fromUserId: string;
@@ -54,16 +46,6 @@ interface SharedStats {
   meditationSessionCount: number;
   longestMeditationSession: number;
   totalMeditationDays: number;
-}
-
-interface PrivateMessage {
-  id: string;
-  fromUserId: string;
-  fromNickname: string;
-  toUserId: string;
-  toNickname: string;
-  text: string;
-  timestamp: number;
 }
 
 interface FriendEncouragement {
@@ -85,12 +67,10 @@ interface FriendPair {
 interface ServerState {
   leaderboard: Record<string, LeaderboardEntry>;
   onlineUsers: Record<string, OnlineUser>;
-  chatMessages: ChatMessage[];
   userNicknames: Record<string, string>;
   pendingFriendRequests: Record<string, FriendRequest[]>;
   userStats: Record<string, SharedStats>;
   friendPairs: Record<string, FriendPair>;
-  privateMessages: Record<string, PrivateMessage[]>;
   friendEncouragements: Record<string, FriendEncouragement[]>;
   connectionUsers: Record<string, string>;
 }
@@ -100,25 +80,27 @@ type LeaderboardPeriod = "weekly" | "monthly" | "yearly";
 const LEADERBOARD_KEY_PREFIX = "leaderboard:";
 const FRIEND_PAIR_KEY_PREFIX = "friendPair:";
 const FRIEND_REQUEST_KEY_PREFIX = "friendRequest:";
-const PRIVATE_MESSAGE_KEY_PREFIX = "privateMessages:";
 const FRIEND_ENCOURAGEMENT_KEY_PREFIX = "friendEncouragements:";
-const MAX_PRIVATE_MESSAGES_PER_THREAD = 200;
+const USER_STATS_KEY_PREFIX = "userStats:";
 const MAX_FRIEND_ENCOURAGEMENTS_PER_USER = 100;
 const ONLINE_STALE_MS = 5 * 60 * 1000;
+const LEADERBOARD_BROADCAST_DELAY_MS = 1000;
+const ONLINE_BROADCAST_DELAY_MS = 500;
 
 export default class FastingServer implements Party.Server {
   state: ServerState = {
     leaderboard: {},
     onlineUsers: {},
-    chatMessages: [],
     userNicknames: {},
     pendingFriendRequests: {},
     userStats: {},
     friendPairs: {},
-    privateMessages: {},
     friendEncouragements: {},
     connectionUsers: {},
   };
+
+  private leaderboardBroadcastTimer: ReturnType<typeof setTimeout> | null = null;
+  private onlineBroadcastTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(readonly room: Party.Room) {}
 
@@ -156,33 +138,30 @@ export default class FastingServer implements Party.Server {
         continue;
       }
 
-      if (key.startsWith(PRIVATE_MESSAGE_KEY_PREFIX)) {
-        const messages = value as PrivateMessage[];
-        if (!Array.isArray(messages)) continue;
-        const pairKey = key.substring(PRIVATE_MESSAGE_KEY_PREFIX.length);
-        this.state.privateMessages[pairKey] = messages.slice(-MAX_PRIVATE_MESSAGES_PER_THREAD);
-        continue;
-      }
-
       if (key.startsWith(FRIEND_ENCOURAGEMENT_KEY_PREFIX)) {
         const encouragements = value as FriendEncouragement[];
         if (!Array.isArray(encouragements)) continue;
         const userId = key.substring(FRIEND_ENCOURAGEMENT_KEY_PREFIX.length);
         this.state.friendEncouragements[userId] = encouragements.slice(-MAX_FRIEND_ENCOURAGEMENTS_PER_USER);
+        continue;
+      }
+
+      if (key.startsWith(USER_STATS_KEY_PREFIX)) {
+        const stats = value as SharedStats;
+        if (stats && stats.userId) {
+          this.state.userStats[stats.userId] = stats;
+        }
       }
     }
   }
 
-  async onConnect(connection: Party.Connection, ctx: Party.ConnectionContext) {
-    console.log("[PartyKit] Client connected:", connection.id);
-
+  async onConnect(connection: Party.Connection, _ctx: Party.ConnectionContext) {
     connection.send(
       JSON.stringify({
         type: "init",
         leaderboard: this.getLeaderboard("fasting", "weekly"),
         onlineCount: Object.keys(this.state.onlineUsers).length,
         onlineUsers: Object.values(this.state.onlineUsers),
-        chatHistory: this.state.chatMessages.slice(-50),
       })
     );
   }
@@ -195,6 +174,7 @@ export default class FastingServer implements Party.Server {
         case "publish": {
           const entry = this.normalizeLeaderboardEntry(data.payload);
           if (!entry) break;
+          if (!this.bindOrVerifySender(sender, entry.userId)) break;
 
           this.state.leaderboard[entry.userId] = entry;
           if (entry.nickname) {
@@ -202,14 +182,14 @@ export default class FastingServer implements Party.Server {
           }
           await this.room.storage.put(`${LEADERBOARD_KEY_PREFIX}${entry.userId}`, entry);
 
-          // Broadcast updated leaderboards to all clients
-          this.broadcastLeaderboards();
+          this.scheduleLeaderboardBroadcast();
           break;
         }
 
         case "getLeaderboard": {
-          const category: LeaderboardCategory = data.category || "fasting";
-          const period: LeaderboardPeriod = data.period || "weekly";
+          const category: LeaderboardCategory = data.category === "meditation" ? "meditation" : "fasting";
+          const period: LeaderboardPeriod =
+            data.period === "monthly" || data.period === "yearly" ? data.period : "weekly";
           const entries = this.getLeaderboard(category, period);
           sender.send(JSON.stringify({
             type: "leaderboardUpdate",
@@ -221,76 +201,90 @@ export default class FastingServer implements Party.Server {
           break;
         }
 
-        case "removeUser":
-          delete this.state.leaderboard[data.userId];
-          await this.room.storage.delete(`${LEADERBOARD_KEY_PREFIX}${data.userId}`);
-          break;
-
-        case "online":
-          this.cleanupStaleOnlineUsers();
-          this.state.onlineUsers[data.payload.id] = data.payload;
-          this.state.connectionUsers[sender.id] = data.payload.id;
-          if (data.payload.nickname) {
-            this.state.userNicknames[data.payload.id] = data.payload.nickname;
+        case "removeUser": {
+          const targetUserId = typeof data.userId === "string" ? data.userId : "";
+          if (!targetUserId || this.state.connectionUsers[sender.id] !== targetUserId) {
+            break;
           }
-          this.sendPendingFriendRequests(sender, data.payload.id);
-          this.sendFriendEncouragementHistory(sender, data.payload.id);
-          this.broadcastAll(JSON.stringify({
-            type: "onlineUpdate",
-            onlineCount: Object.keys(this.state.onlineUsers).length,
-            onlineUsers: Object.values(this.state.onlineUsers),
-          }));
-          break;
-
-        case "offline":
-          delete this.state.onlineUsers[data.userId];
-          delete this.state.connectionUsers[sender.id];
-          this.broadcastAll(JSON.stringify({
-            type: "onlineUpdate",
-            onlineCount: Object.keys(this.state.onlineUsers).length,
-            onlineUsers: Object.values(this.state.onlineUsers),
-          }));
-          break;
-
-        case "chat": {
-          const msg: ChatMessage = {
-            id: Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
-            userId: data.payload.userId,
-            nickname: data.payload.nickname || "Anonymous",
-            text: data.payload.text.substring(0, 200),
-            timestamp: Date.now(),
-          };
-          this.state.chatMessages.push(msg);
-          if (this.state.chatMessages.length > 100) {
-            this.state.chatMessages = this.state.chatMessages.slice(-100);
-          }
-          this.broadcastAll(JSON.stringify({ type: "chatMessage", message: msg }));
+          delete this.state.leaderboard[targetUserId];
+          await this.room.storage.delete(`${LEADERBOARD_KEY_PREFIX}${targetUserId}`);
           break;
         }
 
-        case "getChatHistory":
-          sender.send(JSON.stringify({ type: "chatHistory", messages: this.state.chatMessages.slice(-50) }));
-          break;
+        case "online": {
+          const userId = typeof data.payload?.id === "string" ? data.payload.id.trim() : "";
+          if (!userId || !this.bindOrVerifySender(sender, userId)) break;
 
-        case "updateNickname":
-          this.state.userNicknames[data.userId] = data.nickname;
-          if (this.state.onlineUsers[data.userId]) {
-            this.state.onlineUsers[data.userId].nickname = data.nickname;
-            this.broadcastAll(JSON.stringify({
-              type: "onlineUpdate",
-              onlineCount: Object.keys(this.state.onlineUsers).length,
-              onlineUsers: Object.values(this.state.onlineUsers),
-            }));
+          this.cleanupStaleOnlineUsers();
+          const nickname = typeof data.payload?.nickname === "string" ? data.payload.nickname.substring(0, 40) : "";
+          const activity: OnlineUser["activity"] =
+            data.payload?.activity === "fasting" || data.payload?.activity === "checkin"
+              ? data.payload.activity
+              : "meditation";
+
+          this.state.onlineUsers[userId] = {
+            id: userId,
+            nickname,
+            activity,
+            startedAt: this.toNumber(data.payload?.startedAt, Date.now()),
+          };
+          if (nickname) {
+            this.state.userNicknames[userId] = nickname;
           }
-          this.broadcastAll(JSON.stringify({ type: "nicknameUpdate", userId: data.userId, nickname: data.nickname }));
+          this.sendPendingFriendRequests(sender, userId);
+          this.sendFriendEncouragementHistory(sender, userId);
+          this.scheduleOnlineBroadcast();
           break;
+        }
 
-        case "shareStats":
-          this.state.userStats[data.payload.userId] = data.payload;
+        case "offline": {
+          const userId = typeof data.userId === "string" ? data.userId : "";
+          if (!userId || !this.verifyBoundSender(sender, userId)) break;
+
+          delete this.state.onlineUsers[userId];
+          delete this.state.connectionUsers[sender.id];
+          this.scheduleOnlineBroadcast();
           break;
+        }
+
+        case "updateNickname": {
+          const userId = typeof data.userId === "string" ? data.userId : "";
+          const nickname = typeof data.nickname === "string" ? data.nickname.substring(0, 40) : "";
+          if (!userId || !this.bindOrVerifySender(sender, userId)) break;
+
+          this.state.userNicknames[userId] = nickname;
+          if (this.state.onlineUsers[userId]) {
+            this.state.onlineUsers[userId].nickname = nickname;
+            this.scheduleOnlineBroadcast();
+          }
+          this.broadcastAll(JSON.stringify({ type: "nicknameUpdate", userId, nickname }));
+          break;
+        }
+
+        case "shareStats": {
+          const payload = data.payload as Partial<SharedStats> | undefined;
+          const userId = typeof payload?.userId === "string" ? payload.userId.trim() : "";
+          if (!userId || !this.bindOrVerifySender(sender, userId)) break;
+
+          const normalizedStats: SharedStats = {
+            userId: userId.substring(0, 100),
+            nickname: typeof payload?.nickname === "string" ? payload.nickname.substring(0, 40) : "",
+            streak: this.clampNumber(payload?.streak, 36500),
+            totalMeditationMinutes: this.clampNumber(payload?.totalMeditationMinutes, 10_000_000),
+            totalMerit: this.clampNumber(payload?.totalMerit, 10_000_000),
+            meditationSessionCount: this.clampNumber(payload?.meditationSessionCount, 1_000_000),
+            longestMeditationSession: this.clampNumber(payload?.longestMeditationSession, 1440),
+            totalMeditationDays: this.clampNumber(payload?.totalMeditationDays, 36500),
+          };
+
+          this.state.userStats[normalizedStats.userId] = normalizedStats;
+          await this.room.storage.put(`${USER_STATS_KEY_PREFIX}${normalizedStats.userId}`, normalizedStats);
+          break;
+        }
 
         case "getStats": {
-          const stats = this.state.userStats[data.userId];
+          const targetUserId = typeof data.userId === "string" ? data.userId : "";
+          const stats = targetUserId ? this.state.userStats[targetUserId] : undefined;
           if (stats) {
             sender.send(JSON.stringify({ type: "userStats", stats }));
           }
@@ -298,59 +292,75 @@ export default class FastingServer implements Party.Server {
         }
 
         case "friendRequest": {
+          const fromUserId = typeof data.payload?.fromUserId === "string" ? data.payload.fromUserId.trim() : "";
+          const toUserId = typeof data.payload?.toUserId === "string" ? data.payload.toUserId.trim() : "";
+          if (!fromUserId || !toUserId || fromUserId === toUserId) break;
+          if (!this.bindOrVerifySender(sender, fromUserId)) break;
+
           const req: FriendRequest = {
             id: Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
-            fromUserId: data.payload.fromUserId,
-            fromNickname: data.payload.fromNickname,
-            toUserId: data.payload.toUserId,
+            fromUserId,
+            fromNickname: typeof data.payload?.fromNickname === "string" ? data.payload.fromNickname.substring(0, 40) : "",
+            toUserId,
             status: "pending",
             timestamp: Date.now(),
           };
-          if (!this.state.pendingFriendRequests[data.payload.toUserId]) {
-            this.state.pendingFriendRequests[data.payload.toUserId] = [];
+          if (!this.state.pendingFriendRequests[toUserId]) {
+            this.state.pendingFriendRequests[toUserId] = [];
           }
-          this.state.pendingFriendRequests[data.payload.toUserId].push(req);
+          this.state.pendingFriendRequests[toUserId].push(req);
           if (req.fromNickname) {
             this.state.userNicknames[req.fromUserId] = req.fromNickname;
           }
           await this.room.storage.put(`${FRIEND_REQUEST_KEY_PREFIX}${req.toUserId}:${req.id}`, req);
-          this.broadcastAll(JSON.stringify({ type: "friendRequestReceived", request: req }));
+          this.sendToUser(req.toUserId, JSON.stringify({ type: "friendRequestReceived", request: req }));
           break;
         }
 
         case "friendResponse": {
-          const requests = this.state.pendingFriendRequests[data.payload.toUserId] || [];
-          const found = requests.find((r) => r.id === data.payload.requestId);
+          const toUserId = typeof data.payload?.toUserId === "string" ? data.payload.toUserId : "";
+          const fromUserId = typeof data.payload?.fromUserId === "string" ? data.payload.fromUserId : "";
+          const requestId = typeof data.payload?.requestId === "string" ? data.payload.requestId : "";
+          if (!toUserId || !fromUserId || !requestId) break;
+          if (!this.bindOrVerifySender(sender, toUserId)) break;
+
+          const status: FriendRequest["status"] = data.payload?.status === "accepted" ? "accepted" : "rejected";
+          const requests = this.state.pendingFriendRequests[toUserId] || [];
+          const found = requests.find((r) => r.id === requestId);
           if (found) {
-            found.status = data.payload.status;
+            found.status = status;
             await this.room.storage.put(`${FRIEND_REQUEST_KEY_PREFIX}${found.toUserId}:${found.id}`, found);
           }
-          if (data.payload.status === "accepted") {
-            const pairKey = this.getPairKey(data.payload.fromUserId, data.payload.toUserId);
+          if (status === "accepted") {
+            const pairKey = this.getPairKey(fromUserId, toUserId);
             const pair: FriendPair = {
-              users: [data.payload.fromUserId, data.payload.toUserId].sort() as [string, string],
+              users: [fromUserId, toUserId].sort() as [string, string],
               addedAt: Date.now(),
             };
             this.state.friendPairs[pairKey] = pair;
             await this.room.storage.put(`${FRIEND_PAIR_KEY_PREFIX}${pairKey}`, pair);
-            this.broadcastAll(JSON.stringify({
+            const friendshipPayload = JSON.stringify({
               type: "friendshipUpdate",
               users: pair.users,
-            }));
+            });
+            this.sendToUser(pair.users[0], friendshipPayload);
+            this.sendToUser(pair.users[1], friendshipPayload);
           }
-          this.broadcastAll(JSON.stringify({
+          const resolvedPayload = JSON.stringify({
             type: "friendRequestResolved",
-            requestId: data.payload.requestId,
-            fromUserId: data.payload.fromUserId,
-            toUserId: data.payload.toUserId,
-            status: data.payload.status,
-          }));
+            requestId,
+            fromUserId,
+            toUserId,
+            status,
+          });
+          this.sendToUser(fromUserId, resolvedPayload);
+          this.sendToUser(toUserId, resolvedPayload);
           break;
         }
 
         case "getFriends": {
           const userId = typeof data.userId === "string" ? data.userId : this.state.connectionUsers[sender.id];
-          if (!userId) break;
+          if (!userId || !this.bindOrVerifySender(sender, userId)) break;
           sender.send(JSON.stringify({
             type: "friendsList",
             friends: this.getFriendsForUser(userId),
@@ -358,47 +368,15 @@ export default class FastingServer implements Party.Server {
           break;
         }
 
-        case "privateMessage": {
-          const fromUserId = data.payload.fromUserId;
-          const toUserId = data.payload.toUserId;
-
-          console.log("[PartyKit] PM from:", fromUserId, "to:", toUserId, "connections:", this.room.connections.size);
-
-          const pm: PrivateMessage = {
-            id: Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
-            fromUserId,
-            fromNickname: data.payload.fromNickname || "Anonymous",
-            toUserId,
-            toNickname: data.payload.toNickname || "Anonymous",
-            text: data.payload.text.substring(0, 200),
-            timestamp: Date.now(),
-          };
-
-          const pairKey = this.getPairKey(fromUserId, toUserId);
-          const messages = this.state.privateMessages[pairKey] || [];
-          const nextMessages = [...messages, pm].slice(-MAX_PRIVATE_MESSAGES_PER_THREAD);
-          this.state.privateMessages[pairKey] = nextMessages;
-          await this.room.storage.put(`${PRIVATE_MESSAGE_KEY_PREFIX}${pairKey}`, nextMessages);
-
-          this.broadcastAll(JSON.stringify({ type: "privateMessageReceived", message: pm }));
-          break;
-        }
-
-        case "getPrivateMessages": {
-          const messages = this.getPrivateMessagesForRequest(data, sender);
-          sender.send(JSON.stringify({
-            type: "privateMessagesHistory",
-            messages,
-          }));
-          break;
-        }
-
         case "friendEncouragement": {
-          const fromUserId = typeof data.payload?.fromUserId === "string" ? data.payload.fromUserId : "";
-          const toUserId = typeof data.payload?.toUserId === "string" ? data.payload.toUserId : "";
+          const fromUserId = typeof data.payload?.fromUserId === "string" ? data.payload.fromUserId.trim() : "";
+          const toUserId = typeof data.payload?.toUserId === "string" ? data.payload.toUserId.trim() : "";
           if (!fromUserId || !toUserId || fromUserId === toUserId) break;
+          if (!this.bindOrVerifySender(sender, fromUserId)) break;
 
-          const kind: FriendEncouragement["kind"] = ["like", "cheer", "streak"].includes(data.payload.kind) ? data.payload.kind : "cheer";
+          const kind: FriendEncouragement["kind"] = ["like", "cheer", "streak"].includes(data.payload.kind)
+            ? data.payload.kind
+            : "cheer";
           const encouragement: FriendEncouragement = {
             id: Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
             fromUserId,
@@ -415,13 +393,15 @@ export default class FastingServer implements Party.Server {
           this.state.friendEncouragements[toUserId] = next;
           await this.room.storage.put(`${FRIEND_ENCOURAGEMENT_KEY_PREFIX}${toUserId}`, next);
 
-          this.broadcastAll(JSON.stringify({ type: "friendEncouragementReceived", encouragement }));
+          const payload = JSON.stringify({ type: "friendEncouragementReceived", encouragement });
+          this.sendToUser(toUserId, payload);
+          this.sendToUser(fromUserId, payload);
           break;
         }
 
         case "getFriendEncouragements": {
           const userId = typeof data.userId === "string" ? data.userId : this.state.connectionUsers[sender.id];
-          if (!userId) break;
+          if (!userId || !this.bindOrVerifySender(sender, userId)) break;
           this.sendFriendEncouragementHistory(sender, userId);
           break;
         }
@@ -432,17 +412,12 @@ export default class FastingServer implements Party.Server {
   }
 
   async onClose(connection: Party.Connection) {
-    console.log("[PartyKit] Client disconnected:", connection.id);
     const userId = this.state.connectionUsers[connection.id];
     delete this.state.connectionUsers[connection.id];
     if (userId && !this.hasActiveConnectionForUser(userId)) {
       delete this.state.onlineUsers[userId];
     }
-    this.broadcastAll(JSON.stringify({
-      type: "onlineUpdate",
-      onlineCount: Object.keys(this.state.onlineUsers).length,
-      onlineUsers: Object.values(this.state.onlineUsers),
-    }));
+    this.scheduleOnlineBroadcast();
   }
 
   async onRequest(req: Party.Request) {
@@ -454,12 +429,33 @@ export default class FastingServer implements Party.Server {
           onlineCount: Object.keys(this.state.onlineUsers).length,
           leaderboardSize: Object.keys(this.state.leaderboard).length,
           roomId: this.room.id,
-          chatMessages: this.state.chatMessages.length,
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       );
     }
     return new Response("Method not allowed", { status: 405 });
+  }
+
+  bindOrVerifySender(connection: Party.Connection, userId: string): boolean {
+    const existing = this.state.connectionUsers[connection.id];
+    if (existing) {
+      return existing === userId;
+    }
+    this.state.connectionUsers[connection.id] = userId;
+    return true;
+  }
+
+  verifyBoundSender(connection: Party.Connection, userId: string): boolean {
+    const existing = this.state.connectionUsers[connection.id];
+    return !existing || existing === userId;
+  }
+
+  sendToUser(userId: string, message: string) {
+    for (const connection of this.room.getConnections()) {
+      if (this.state.connectionUsers[connection.id] === userId) {
+        connection.send(message);
+      }
+    }
   }
 
   getLeaderboard(category: LeaderboardCategory, period: LeaderboardPeriod): LeaderboardEntry[] {
@@ -494,27 +490,70 @@ export default class FastingServer implements Party.Server {
   normalizeLeaderboardEntry(payload: unknown): LeaderboardEntry | null {
     if (!payload || typeof payload !== "object") return null;
     const raw = payload as Partial<LeaderboardEntry>;
-    if (!raw.userId || typeof raw.userId !== "string") return null;
+    if (!raw.userId || typeof raw.userId !== "string" || !raw.userId.trim()) return null;
 
     return {
-      userId: raw.userId.substring(0, 100),
+      userId: raw.userId.trim().substring(0, 100),
       nickname: typeof raw.nickname === "string" ? raw.nickname.substring(0, 40) : "",
       lastUpdate: this.toNumber(raw.lastUpdate, Date.now()),
-      currentStreak: this.toNumber(raw.currentStreak),
-      fastingDaysThisWeek: this.toNumber(raw.fastingDaysThisWeek),
-      fastingDaysThisMonth: this.toNumber(raw.fastingDaysThisMonth),
-      fastingDaysThisYear: this.toNumber(raw.fastingDaysThisYear),
-      meditationMinutesThisWeek: this.toNumber(raw.meditationMinutesThisWeek),
-      meditationMinutesThisMonth: this.toNumber(raw.meditationMinutesThisMonth),
-      meditationMinutesThisYear: this.toNumber(raw.meditationMinutesThisYear),
-      meditationDaysThisMonth: this.toNumber(raw.meditationDaysThisMonth),
-      meditationDaysThisYear: this.toNumber(raw.meditationDaysThisYear),
-      sessionCountThisWeek: this.toNumber(raw.sessionCountThisWeek),
+      currentStreak: this.clampNumber(raw.currentStreak, 36500),
+      fastingDaysThisWeek: this.clampNumber(raw.fastingDaysThisWeek, 7),
+      fastingDaysThisMonth: this.clampNumber(raw.fastingDaysThisMonth, 31),
+      fastingDaysThisYear: this.clampNumber(raw.fastingDaysThisYear, 366),
+      meditationMinutesThisWeek: this.clampNumber(raw.meditationMinutesThisWeek, 10080),
+      meditationMinutesThisMonth: this.clampNumber(raw.meditationMinutesThisMonth, 44640),
+      meditationMinutesThisYear: this.clampNumber(raw.meditationMinutesThisYear, 527040),
+      meditationDaysThisMonth: this.clampNumber(raw.meditationDaysThisMonth, 31),
+      meditationDaysThisYear: this.clampNumber(raw.meditationDaysThisYear, 366),
+      sessionCountThisWeek: this.clampNumber(raw.sessionCountThisWeek, 500),
     };
   }
 
   toNumber(value: unknown, fallback = 0): number {
     return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.floor(value)) : fallback;
+  }
+
+  clampNumber(value: unknown, max: number, fallback = 0): number {
+    return Math.min(max, this.toNumber(value, fallback));
+  }
+
+  broadcastOnlineUsers() {
+    this.broadcastAll(JSON.stringify({
+      type: "onlineUpdate",
+      onlineCount: Object.keys(this.state.onlineUsers).length,
+      onlineUsers: Object.values(this.state.onlineUsers),
+    }));
+  }
+
+  scheduleLeaderboardBroadcast() {
+    if (this.leaderboardBroadcastTimer) return;
+    this.leaderboardBroadcastTimer = setTimeout(() => {
+      this.leaderboardBroadcastTimer = null;
+      this.broadcastLeaderboards();
+    }, LEADERBOARD_BROADCAST_DELAY_MS);
+    (this.leaderboardBroadcastTimer as unknown as { unref?: () => void })?.unref?.();
+  }
+
+  scheduleOnlineBroadcast() {
+    if (this.onlineBroadcastTimer) return;
+    this.onlineBroadcastTimer = setTimeout(() => {
+      this.onlineBroadcastTimer = null;
+      this.broadcastOnlineUsers();
+    }, ONLINE_BROADCAST_DELAY_MS);
+    (this.onlineBroadcastTimer as unknown as { unref?: () => void })?.unref?.();
+  }
+
+  flushPendingBroadcasts() {
+    if (this.leaderboardBroadcastTimer) {
+      clearTimeout(this.leaderboardBroadcastTimer);
+      this.leaderboardBroadcastTimer = null;
+      this.broadcastLeaderboards();
+    }
+    if (this.onlineBroadcastTimer) {
+      clearTimeout(this.onlineBroadcastTimer);
+      this.onlineBroadcastTimer = null;
+      this.broadcastOnlineUsers();
+    }
   }
 
   broadcastLeaderboards() {
@@ -554,11 +593,7 @@ export default class FastingServer implements Party.Server {
       }
     }
     if (changed) {
-      this.broadcastAll(JSON.stringify({
-        type: "onlineUpdate",
-        onlineCount: Object.keys(this.state.onlineUsers).length,
-        onlineUsers: Object.values(this.state.onlineUsers),
-      }));
+      this.scheduleOnlineBroadcast();
     }
   }
 
@@ -587,22 +622,5 @@ export default class FastingServer implements Party.Server {
           addedAt: pair.addedAt,
         };
       });
-  }
-
-  getPrivateMessagesForRequest(data: any, sender: Party.Connection): PrivateMessage[] {
-    const userId = typeof data.userId === "string" ? data.userId : this.state.connectionUsers[sender.id];
-    const fromUserId = typeof data.fromUserId === "string" ? data.fromUserId : userId;
-    const toUserId = typeof data.toUserId === "string" ? data.toUserId : "";
-
-    if (fromUserId && toUserId) {
-      return (this.state.privateMessages[this.getPairKey(fromUserId, toUserId)] || []).slice(-MAX_PRIVATE_MESSAGES_PER_THREAD);
-    }
-
-    if (!userId) return [];
-    return Object.entries(this.state.privateMessages)
-      .filter(([pairKey]) => pairKey.split(":").includes(userId))
-      .flatMap(([, messages]) => messages)
-      .sort((a, b) => a.timestamp - b.timestamp)
-      .slice(-MAX_PRIVATE_MESSAGES_PER_THREAD);
   }
 }

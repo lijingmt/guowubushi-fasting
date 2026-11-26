@@ -24,7 +24,9 @@ import {
   DailyRewardResult,
   FriendEncouragement,
 } from '../types';
-import { DEFAULT_SETTINGS, DINNER_CALORIES } from '../constants/achievements';
+import { DEFAULT_SETTINGS } from '../constants/achievements';
+import { getLocalDateString } from '../utils/date';
+import { computeUserStats } from '../utils/stats';
 import {
   getSettings,
   saveSettings,
@@ -441,7 +443,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         getHealthSyncStatus(),
         getRetentionState(),
       ]);
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDateString();
 
       // 加载打卡记录
       setCheckInRecords(savedCheckIns);
@@ -478,17 +480,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         if (savedActiveFasting.endTime > Date.now()) {
           setActiveFasting(savedActiveFasting);
         } else {
-          // 已过期，清除状态但不标记为完成（可能用户主动取消的）
+          // 已达到计划结束时间，清除活跃状态并标记为已完成
           await saveActiveFastingState(null);
-          // 只会话已开始了很久才标记为完成（超过1小时）
-          const hoursSinceEnd = (Date.now() - savedActiveFasting.endTime) / (1000 * 60 * 60);
-          if (hoursSinceEnd < 1) {
-            // 如果刚过期不久（1小时内），标记为完成
-            await updateFastingSessionStatus(savedActiveFasting.sessionId, 'completed', savedActiveFasting.endTime);
-          } else {
-            // 否则标记为取消
-            await updateFastingSessionStatus(savedActiveFasting.sessionId, 'cancelled', Date.now());
-          }
+          await updateFastingSessionStatus(savedActiveFasting.sessionId, 'completed', savedActiveFasting.endTime);
           const updatedSessions = await getFastingSessions();
           setFastingSessions(updatedSessions);
         }
@@ -646,206 +640,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const calculateStats = async () => {
-    const totalDays = checkInRecords.length;
-    const completedDays = checkInRecords.filter((r) => r.completed).length;
-
-    // 计算连续天数（带1天宽限期）
-    let currentStreak = 0;
-    let longestStreak = 0;
-
-    // 计算禁欲连续天数（带1天宽限期）
-    let currentAbstinenceStreak = 0;
-    let longestAbstinenceStreak = 0;
-
-    const sortedRecords = [...checkInRecords].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
-
-    const today = new Date().toISOString().split('T')[0];
-    let checkingDate = new Date(today);
-    let abstinenceDate = new Date(today);
-    let graceDaysUsed = 0; // 已使用的宽限天数
-    const GRACE_PERIOD = 1; // 宽限期天数
-
-    for (const record of sortedRecords) {
-      const recordDate = record.date;
-      if (record.completed) {
-        const checkDateStr = checkingDate.toISOString().split('T')[0];
-        const daysDiff = Math.floor(
-          (new Date(checkDateStr).getTime() - new Date(recordDate).getTime()) / (1000 * 60 * 60 * 24)
-        );
-
-        if (recordDate === checkDateStr) {
-          // 日期匹配，增加连胜
-          currentStreak++;
-          checkingDate.setDate(checkingDate.getDate() - 1);
-          graceDaysUsed = 0; // 重置宽限期使用天数
-        } else if (daysDiff === 1 + graceDaysUsed) {
-          // 在宽限期内（跳过1天）
-          currentStreak++;
-          checkingDate = new Date(recordDate);
-          checkingDate.setDate(checkingDate.getDate() - 1);
-          graceDaysUsed++; // 增加已使用的宽限天数
-        } else if (daysDiff > 1 + graceDaysUsed) {
-          // 超过宽限期，重置连胜
-          longestStreak = Math.max(longestStreak, currentStreak);
-          currentStreak = 1;
-          checkingDate = new Date(recordDate);
-          checkingDate.setDate(checkingDate.getDate() - 1);
-          graceDaysUsed = 0;
-        } else {
-          // daysDiff < 1，说明记录顺序有问题，跳过
-          continue;
-        }
-
-        // 检查是否禁欲完成
-        const hasAbstinence = record.notes && record.notes.includes('禁欲完成');
-        if (hasAbstinence) {
-          const abstinenceDateStr = abstinenceDate.toISOString().split('T')[0];
-          const abstinenceDaysDiff = Math.floor(
-            (new Date(abstinenceDateStr).getTime() - new Date(recordDate).getTime()) / (1000 * 60 * 60 * 24)
-          );
-
-          if (recordDate === abstinenceDateStr) {
-            currentAbstinenceStreak++;
-            abstinenceDate.setDate(abstinenceDate.getDate() - 1);
-          } else if (abstinenceDaysDiff === 1) {
-            // 禁欲也支持1天宽限期
-            currentAbstinenceStreak++;
-            abstinenceDate = new Date(recordDate);
-            abstinenceDate.setDate(abstinenceDate.getDate() - 1);
-          } else {
-            longestAbstinenceStreak = Math.max(longestAbstinenceStreak, currentAbstinenceStreak);
-            currentAbstinenceStreak = 1;
-            abstinenceDate = new Date(recordDate);
-            abstinenceDate.setDate(abstinenceDate.getDate() - 1);
-          }
-        } else {
-          // 如果当天没有禁欲，重置当前禁欲连胜
-          longestAbstinenceStreak = Math.max(longestAbstinenceStreak, currentAbstinenceStreak);
-          currentAbstinenceStreak = 0;
-        }
-      }
-    }
-
-    longestStreak = Math.max(longestStreak, currentStreak);
-    longestAbstinenceStreak = Math.max(longestAbstinenceStreak, currentAbstinenceStreak);
-
-    // 判断是否处于宽限期状态：今天没打卡，且昨天也没打卡，但有连胜记录
-    const todayRecord = sortedRecords.find(r => r.date === today);
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
-    const yesterdayRecord = sortedRecords.find(r => r.date === yesterdayStr);
-
-    // 如果今天没打卡（或没完成），且昨天也没完成打卡，但有连胜记录，说明处于宽限期
-    const streakInGracePeriod = currentStreak > 0 &&
-      (!todayRecord || !todayRecord.completed) &&
-      (!yesterdayRecord || !yesterdayRecord.completed);
-
-    // 计算节省的卡路里、少吃顿数和时间
-    const totalCaloriesSaved = completedDays * DINNER_CALORIES;
-    const totalMealsSkipped = completedDays;
-
-    // 每天节约：吃饭1小时 + 做饭1小时 = 2小时
-    const totalHoursSaved = completedDays * 2;
-
-    // 计算减重
-    let weightLoss = 0;
-    if (weightRecords.length >= 2) {
-      const firstWeight = weightRecords[0].weight;
-      const lastWeight = weightRecords[weightRecords.length - 1].weight;
-      weightLoss = firstWeight - lastWeight;
-    }
-
-    // 计算完成率
-    const completionRate = totalDays > 0 ? Math.round((completedDays / totalDays) * 100) : 0;
-
-    // 计算修行统计
-    let totalMeditationMinutes = 0;
-    let totalMeditationDays = 0;
-    let longestMeditationStreak = 0;
-    let currentMeditationStreak = 0;
-
-    let totalStandingMeditationMinutes = 0;
-    let totalStandingMeditationDays = 0;
-
-    let totalMerit = 0;
-
-    // 统计打坐记录
-    const meditationRecords = practiceRecords.filter((r) => r.type === 'meditation');
-    const meditationDates = [...new Set(meditationRecords.map((r) => r.date))];
-    totalMeditationDays = meditationDates.length;
-    totalMeditationMinutes = meditationRecords.reduce((sum, r) => sum + (r.duration || 0), 0);
-    const meditationSessionCount = meditationRecords.length;
-    const longestMeditationSession = meditationRecords.length > 0
-      ? Math.max(...meditationRecords.map((r) => r.duration || 0))
-      : 0;
-
-    // 计算打坐连续天数
-    const sortedMeditationDates = meditationDates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-    let meditationCheckDate = new Date(today);
-    for (const dateStr of sortedMeditationDates) {
-      if (dateStr === meditationCheckDate.toISOString().split('T')[0]) {
-        currentMeditationStreak++;
-        meditationCheckDate.setDate(meditationCheckDate.getDate() - 1);
-      } else {
-        longestMeditationStreak = Math.max(longestMeditationStreak, currentMeditationStreak);
-        currentMeditationStreak = 1;
-        meditationCheckDate = new Date(dateStr);
-        meditationCheckDate.setDate(meditationCheckDate.getDate() - 1);
-      }
-    }
-    longestMeditationStreak = Math.max(longestMeditationStreak, currentMeditationStreak);
-
-    // 统计站桩记录
-    const standingRecords = practiceRecords.filter((r) => r.type === 'standing_meditation');
-    totalStandingMeditationDays = [...new Set(standingRecords.map((r) => r.date))].length;
-    totalStandingMeditationMinutes = standingRecords.reduce((sum, r) => sum + (r.duration || 0), 0);
-
-    // 计算功德值：诵经+10，听经+5
-    totalMerit = practiceRecords.reduce((sum, r) => {
-      if (r.type === 'scripture_chanting') return sum + 10;
-      if (r.type === 'scripture_listening') return sum + 5;
-      return sum;
-    }, 0);
-
-    // 计算单次禁食统计
     const fastingStats = await calculateFastingStats();
-
-    setStats({
-      totalCheckInDays: totalDays,
-      completedDays,
-      currentStreak,
-      longestStreak,
-      totalMealsSkipped,
-      totalCaloriesSaved,
-      totalWeightLost: weightLoss > 0 ? weightLoss : 0,
-      achievements: [],
-      completionRate,
-      totalHoursSaved,
-      currentAbstinenceStreak,
-      longestAbstinenceStreak,
-      streakInGracePeriod,
-      totalMeditationMinutes,
-      totalMeditationDays,
-      longestMeditationStreak,
-      meditationSessionCount,
-      longestMeditationSession,
-      totalStandingMeditationMinutes,
-      totalStandingMeditationDays,
-      totalMerit,
-      totalSingleFastingSessions: fastingStats.totalSessions,
-      totalSingleFastingMinutes: fastingStats.totalMinutes,
-      currentSingleFastingStreak: fastingStats.currentStreak,
-      longestSingleFastingStreak: fastingStats.longestStreak,
-      // 计算禁食节省的卡路里
-      // 假设：每小时禁食节省约70卡路里（相当于一顿轻食）
-      fastingCaloriesSaved: Math.round(fastingStats.totalMinutes * (70 / 60)),
-      // 计算预计体重减少
-      // 假设：7700卡路里 ≈ 1公斤体重
-      fastingEstimatedWeightLoss: parseFloat((fastingStats.totalMinutes * (70 / 60) / 7700).toFixed(2)),
-    });
+    setStats(
+      computeUserStats({
+        checkInRecords,
+        weightRecords,
+        practiceRecords,
+        fastingStats,
+        today: getLocalDateString(),
+      })
+    );
   };
 
   const updateSettings = async (newSettings: Partial<UserSettings>) => {
@@ -868,7 +672,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const dailyCheckIn = async (completed: boolean, notes?: string) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
 
     // Check if there's already a check-in for today
     const existingRecord = todayCheckIn || checkInRecords.find(r => r.date === today);
@@ -903,7 +707,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       await saveCheckInRecord(record);
       setTodayCheckIn(record);
-      setHasCheckedToday(true);
+      setHasCheckedToday(completed);
 
       const updatedRecords = await getCheckInRecords();
       setCheckInRecords(updatedRecords);
@@ -911,7 +715,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const addMeal = async (meal: Omit<MealRecord, 'id' | 'date'>) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     const newMeal: MealRecord = {
       ...meal,
       id: `meal_${Date.now()}`,
@@ -931,7 +735,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     await deleteMealRecord(id);
     const updatedRecords = await getMealRecords();
     setMealRecords(updatedRecords);
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     const todayMealList = updatedRecords.filter((r) => r.date === today);
     setTodayMeals(todayMealList);
     const calories = todayMealList.reduce((sum, item) => sum + item.calories, 0);
@@ -939,7 +743,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const addWeight = async (weight: number, date?: string, note?: string) => {
-    const recordDate = date || new Date().toISOString().split('T')[0];
+    const recordDate = date || getLocalDateString();
     const newRecord: WeightRecord = {
       id: `weight_${Date.now()}`,
       date: recordDate,
@@ -961,7 +765,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const addWater = async (amount: number) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     const now = new Date();
     const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
@@ -986,7 +790,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     duration?: number,
     subtype?: MeditationType
   ) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
 
     // 计算功德值
     let merit = 0;
@@ -1013,7 +817,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     await deleteTodayWaterRecords();
     const updatedPractices = await getPracticeRecords();
     const updatedWater = await getWaterRecords();
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     setPracticeRecords(updatedPractices);
     setWaterRecords(updatedWater);
     setTodayWater(
@@ -1038,7 +842,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const now = Date.now();
     const endTime = now + durationHours * 60 * 60 * 1000;
     const sessionId = `fasting_${now}`;
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
 
     if (__DEV__) {
       console.log('Starting fasting session:', { durationHours, startTime: now, endTime });

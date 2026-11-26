@@ -16,6 +16,8 @@ import type {
   WeeklySummary,
 } from '../types';
 
+import { addLocalDays, getLocalDateString, getLocalWeekKey } from './date';
+
 export const DEFAULT_RETENTION_STATE: RetentionState = {
   totalEnergy: 0,
   repairCards: 1,
@@ -27,24 +29,13 @@ export const DEFAULT_RETENTION_STATE: RetentionState = {
   friendEncouragementsReceived: [],
 };
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-export const getDateString = (date = new Date()): string => date.toISOString().split('T')[0];
+export const getDateString = (date = new Date()): string => getLocalDateString(date);
 
-export const addDays = (dateString: string, days: number): string => {
-  const date = new Date(dateString);
-  date.setUTCDate(date.getUTCDate() + days);
-  return getDateString(date);
-};
+export const addDays = (dateString: string, days: number): string => addLocalDays(dateString, days);
 
-export const getWeekKey = (dateString = getDateString()): string => {
-  const date = new Date(dateString);
-  const day = date.getUTCDay() || 7;
-  date.setUTCDate(date.getUTCDate() - day + 1);
-  return getDateString(date);
-};
+export const getWeekKey = (dateString = getDateString()): string => getLocalWeekKey(dateString);
 
 export const normalizeRetentionState = (state?: Partial<RetentionState> | null): RetentionState => ({
   ...DEFAULT_RETENTION_STATE,

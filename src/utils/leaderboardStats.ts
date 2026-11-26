@@ -1,4 +1,5 @@
 import type { DailyCheckIn, PracticeRecord, LeaderboardEntry } from '../types';
+import { getLocalDateString } from './date';
 
 export function calculatePeriodStats(
   userId: string,
@@ -8,19 +9,19 @@ export function calculatePeriodStats(
   currentStreak: number,
 ): LeaderboardEntry {
   const now = new Date();
-  const today = now.toISOString().split('T')[0];
+  const today = getLocalDateString(now);
 
   // Week: Monday to Sunday
   const weekStart = getStartOfWeek(now);
-  const weekStartStr = formatDate(weekStart);
+  const weekStartStr = getLocalDateString(weekStart);
 
   // Month: 1st to end
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthStartStr = formatDate(monthStart);
+  const monthStartStr = getLocalDateString(monthStart);
 
   // Year: Jan 1
   const yearStart = new Date(now.getFullYear(), 0, 1);
-  const yearStartStr = formatDate(yearStart);
+  const yearStartStr = getLocalDateString(yearStart);
 
   // Fasting days in each period
   const fastingDaysThisWeek = checkInRecords.filter(
@@ -88,11 +89,4 @@ function getStartOfWeek(date: Date): Date {
   d.setDate(diff);
   d.setHours(0, 0, 0, 0);
   return d;
-}
-
-function formatDate(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
 }

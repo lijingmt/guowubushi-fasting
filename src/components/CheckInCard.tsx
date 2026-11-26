@@ -8,6 +8,7 @@ import { MeditationType } from '../types';
 import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
 import { getLastWeight, saveLastWeight } from '../services/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getLocalDateString } from '../utils/date';
 
 // Time options for meditation and standing meditation
 const TIME_OPTIONS = [
@@ -287,7 +288,7 @@ export const CheckInCard: React.FC = () => {
       }
 
       // Load today's practice records
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDateString();
       const todayPractices = practiceRecords.filter(r => r.date === today);
 
       for (const practice of todayPractices) {

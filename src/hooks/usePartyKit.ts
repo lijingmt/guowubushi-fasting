@@ -42,6 +42,7 @@ interface UsePartyKitReturn {
   friendRequests: FriendRequest[];
   leaderboardData: LeaderboardData;
   friendEncouragements: FriendEncouragement[];
+  friendStatsMap: Record<string, SharedStats>;
   remoteFriends: Friend[];
   totalParticipants: number;
   connect: (userId: string, nickname: string) => void;
@@ -80,6 +81,7 @@ export function usePartyKit(): UsePartyKitReturn {
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardData>(emptyLeaderboard);
   const [friendEncouragements, setFriendEncouragements] = useState<FriendEncouragement[]>([]);
+  const [friendStatsMap, setFriendStatsMap] = useState<Record<string, SharedStats>>({});
   const [remoteFriends, setRemoteFriends] = useState<Friend[]>([]);
   const [totalParticipants, setTotalParticipants] = useState(0);
 
@@ -205,6 +207,12 @@ export function usePartyKit(): UsePartyKitReturn {
               break;
 
             case 'userStats':
+              if (data.stats && data.stats.userId) {
+                setFriendStatsMap((prev) => ({
+                  ...prev,
+                  [data.stats.userId]: data.stats,
+                }));
+              }
               break;
 
             case 'leaderboardUpdate':
@@ -399,9 +407,10 @@ export function usePartyKit(): UsePartyKitReturn {
     onlineUsers,
     onlineCount,
     friendRequests,
-	    leaderboardData,
+    leaderboardData,
     friendEncouragements,
-	    remoteFriends,
+    friendStatsMap,
+    remoteFriends,
 	    totalParticipants,
     connect,
     disconnect,

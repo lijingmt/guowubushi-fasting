@@ -12,10 +12,12 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import * as Clipboard from 'expo-clipboard';
 import { useSocial } from '../context/SocialContext';
 import { useApp } from '../context/AppContext';
 import { Card } from '../components/Card';
 import { rs, vs, fs } from '../theme/responsive';
+import { getLocalDateString } from '../utils/date';
 
 export const FriendsScreen: React.FC = () => {
   const { colors, t, language, retentionState } = useApp();
@@ -33,7 +35,7 @@ export const FriendsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
 
   const [addCode, setAddCode] = useState('');
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
   const encouragedToday = retentionState.friendEncouragementsSent[today] || [];
 
   const handleAddFriend = () => {
@@ -92,10 +94,8 @@ export const FriendsScreen: React.FC = () => {
           <Text style={[styles.codeValue, { color: colors.primary }]}>{userId}</Text>
           <TouchableOpacity
             style={[styles.copyBtn, { backgroundColor: colors.primary }]}
-            onPress={() => {
-              // Copy to clipboard
-              const { Clipboard } = require('react-native');
-              Clipboard.setString(userId);
+            onPress={async () => {
+              await Clipboard.setStringAsync(userId);
               Alert.alert(t.success, t.friendCodeCopied);
             }}
           >

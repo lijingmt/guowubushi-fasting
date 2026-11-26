@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSocial } from '../context/SocialContext';
 import { useApp } from '../context/AppContext';
 import { Card } from '../components/Card';
 import { rs, vs, fs } from '../theme/responsive';
-import type { SharedStats } from '../types';
 
 interface Props {
   route: {
@@ -19,16 +18,14 @@ interface Props {
 export const FriendDetailScreen: React.FC<Props> = ({ route }) => {
   const { userId: friendId, nickname } = route.params;
   const { colors, t, language } = useApp();
-  const { getFriendStats, removeFriend, sendFriendEncouragement } = useSocial();
+  const { getFriendStats, friendStatsMap, removeFriend, sendFriendEncouragement } = useSocial();
   const insets = useSafeAreaInsets();
 
-  const [stats, setStats] = useState<SharedStats | null>(null);
+  const stats = friendStatsMap[friendId] || null;
 
   useEffect(() => {
-    // Request stats from server
-    // The response will come via WebSocket; for now, try requesting
     getFriendStats(friendId);
-  }, [friendId]);
+  }, [friendId, getFriendStats]);
 
   const handleRemove = () => {
     Alert.alert(

@@ -14,6 +14,7 @@ import {
   Platform,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useApp } from '../context/AppContext';
@@ -21,6 +22,7 @@ import { useSocial } from '../context/SocialContext';
 import { Card } from '../components/Card';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { getLocalDateString } from '../utils/date';
 
 // 开发者模式
 const IS_DEV = __DEV__;
@@ -50,8 +52,6 @@ export const SettingsScreen: React.FC = () => {
     t,
     settings,
     updateSettings,
-    healthSync,
-    updateHealthSync,
     colors,
     isDarkMode,
     language,
@@ -136,7 +136,7 @@ export const SettingsScreen: React.FC = () => {
   const getDateDaysAgo = (days: number) => {
     const date = new Date();
     date.setDate(date.getDate() - days);
-    return date.toISOString().split('T')[0];
+    return getLocalDateString(date);
   };
 
   const generateCheckInRecord = (date: string, completed: boolean) => ({
@@ -357,27 +357,6 @@ export const SettingsScreen: React.FC = () => {
         />
       </Card>
 
-      {/* 健康同步 */}
-      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t.dataSync}</Text>
-      <Card>
-        <View style={styles.settingItem}>
-          <View>
-            <Text style={[styles.settingLabel, { color: colors.text }]}>{t.appleHealth}</Text>
-            <Text style={[styles.settingDesc, { color: colors.textLight }]}>
-              {healthSync.healthKitEnabled ? t.enabled : t.notEnabled}
-            </Text>
-          </View>
-          <Switch
-            value={healthSync.healthKitEnabled}
-            onValueChange={(value) =>
-              updateHealthSync({ healthKitEnabled: value })
-            }
-            trackColor={{ false: '#ccc', true: colors.success }}
-            thumbColor="#fff"
-          />
-        </View>
-      </Card>
-
       {/* 关于 */}
       <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t.about}</Text>
       <Card>
@@ -386,11 +365,11 @@ export const SettingsScreen: React.FC = () => {
           onPress={handleShareApp}
           rightElement={<Text style={{ fontSize: 20 }}>📤</Text>}
         />
-        <SettingItem label={t.version} value="1.0.0" />
+        <SettingItem label={t.version} value={Constants.expoConfig?.version || '1.0.34'} />
         <SettingItem
           label={language === 'zh' ? '隐私政策' : 'Privacy Policy'}
           onPress={() => {
-            Linking.openURL('https://github.com/lijingmt/guowubushi-fasting/blob/main/PRIVACY.md');
+            Linking.openURL('https://github.com/lijingmt/guowubushi-fasting/blob/main/PRIVACY_POLICY.md');
           }}
         />
         <Divider />

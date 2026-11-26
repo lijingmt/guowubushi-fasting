@@ -22,6 +22,7 @@ import { MeditationShareCard } from '../components/MeditationShareCard';
 import { MeditationAnimation } from '../components/MeditationAnimation';
 import { OnlineMeditatorsList } from '../components/OnlineMeditatorsList';
 import { NicknameEditField } from '../components/NicknameEditField';
+import { getLocalDateString } from '../utils/date';
 import type { Language } from '../i18n/translations';
 
 const MEDITATION_DURATION_KEY = '@guowu_meditation_duration';
@@ -52,14 +53,21 @@ export const MeditationScreen = () => {
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [hasActiveSession, setHasActiveSession] = useState(false);
 
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const bellSoundRef = useRef<Audio.Sound | null>(null);
   const backgroundSoundRef = useRef<Audio.Sound | null>(null);
-  const backgroundTimeRef = useRef<number>(0);
+  const isTimerRunningRef = useRef(false);
+  const endTimeRef = useRef<number>(0);
+  const selectedDurationRef = useRef(15);
+  const completingRef = useRef(false);
   const scrollRef = useRef<ScrollView>(null);
   const getSoundLabel = (sound: BackgroundSound) => (
     BACKGROUND_SOUNDS[sound][language] || BACKGROUND_SOUNDS[sound].en
   );
+
+  useEffect(() => {
+    selectedDurationRef.current = selectedDuration;
+  }, [selectedDuration]);
 
   // 播放钟声（用于完成和暂停）
   const playBellSound = async () => {
@@ -173,26 +181,24 @@ export const MeditationScreen = () => {
 
   // 处理应用状态变化（后台/前台）
   const handleAppStateChange = (nextAppState: AppStateStatus) => {
-    if (nextAppState === 'background' && isTimerRunning && timeLeft > 0) {
-      // 进入后台时，记录当前时间
-      backgroundTimeRef.current = Date.now();
-    } else if (nextAppState === 'active' && backgroundTimeRef.current > 0) {
-      // 回到前台时，计算经过的时间并更新倒计时
-      const elapsed = Math.floor((Date.now() - backgroundTimeRef.current) / 1000);
-      if (elapsed > 0 && timeLeft > elapsed) {
-        setTimeLeft(timeLeft - elapsed);
-      } else if (elapsed >= timeLeft) {
-        // 时间已过，完成打坐
-        completeSession();
+    if (nextAppState === 'active' && isTimerRunningRef.current && endTimeRef.current > 0) {
+      const remaining = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000));
+      if (remaining <= 0) {
+        setTimeLeft(0);
+        void completeSession();
+      } else {
+        setTimeLeft(remaining);
       }
-      backgroundTimeRef.current = 0;
     }
   };
 
   const cleanup = () => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
+      timerRef.current = null;
     }
+    isTimerRunningRef.current = false;
+    endTimeRef.current = 0;
     stopBackgroundSound();
   };
 
@@ -231,7 +237,16 @@ export const MeditationScreen = () => {
   const startTimer = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
     const totalSeconds = selectedDuration * 60;
+    completingRef.current = false;
+    selectedDurationRef.current = selectedDuration;
+    endTimeRef.current = Date.now() + totalSeconds * 1000;
+    isTimerRunningRef.current = true;
     setTimeLeft(totalSeconds);
     setHasActiveSession(true);
     setIsTimerRunning(true);
@@ -243,19 +258,23 @@ export const MeditationScreen = () => {
     playBackgroundSound(backgroundSound);
 
     timerRef.current = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          completeSession();
-          return 0;
-        }
-        return prev - 1;
-      });
+      const remaining = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000));
+      setTimeLeft(remaining);
+      if (remaining <= 0) {
+        void completeSession();
+      }
     }, 1000);
   };
 
   const completeSession = async () => {
+    if (completingRef.current || !isTimerRunningRef.current) return;
+    completingRef.current = true;
+    isTimerRunningRef.current = false;
+    endTimeRef.current = 0;
+
     if (timerRef.current) {
       clearInterval(timerRef.current);
+      timerRef.current = null;
     }
 
     setIsTimerRunning(false);
@@ -264,7 +283,7 @@ export const MeditationScreen = () => {
     // 停止背景音乐
     await stopBackgroundSound();
 
-    await addPractice('meditation', selectedDuration);
+    await addPractice('meditation', selectedDurationRef.current);
 
     // 播放钟声
     await playBellSound();
@@ -277,12 +296,20 @@ export const MeditationScreen = () => {
 
     if (timerRef.current) {
       clearInterval(timerRef.current);
+      timerRef.current = null;
     }
+
+    const durationMins = selectedDurationRef.current;
+    const remaining = endTimeRef.current > 0
+      ? Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000))
+      : timeLeft;
+    isTimerRunningRef.current = false;
+    endTimeRef.current = 0;
 
     // 停止背景音乐
     await stopBackgroundSound();
 
-    const elapsedMinutes = Math.round((selectedDuration * 60 - timeLeft) / 60);
+    const elapsedMinutes = Math.round((durationMins * 60 - remaining) / 60);
     if (elapsedMinutes > 0) {
       await addPractice('meditation', elapsedMinutes);
     }
@@ -351,6 +378,13 @@ export const MeditationScreen = () => {
     if (language === 'zh') return '开始打坐';
     if (language === 'es') return 'Comenzar';
     return 'Start Meditation';
+  };
+
+  const getTodayMinutes = () => {
+    const today = getLocalDateString();
+    return practiceRecords
+      .filter((r) => r.type === 'meditation' && r.date === today)
+      .reduce((sum, r) => sum + (r.duration || 0), 0);
   };
 
   const getTodayStatsLabel = () => {
@@ -467,7 +501,7 @@ export const MeditationScreen = () => {
           {getTodayStatsLabel()}
         </Text>
         <Text style={[styles.todayStatsValue, { color: colors.primary }]}>
-          {stats.totalMeditationMinutes || 0} {getMinutesLabel()}
+          {getTodayMinutes()} {getMinutesLabel()}
         </Text>
       </View>
 
