@@ -1,12 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import type {
   OnlineUser,
-  ChatMessage,
   FriendRequest,
   Friend,
   SharedStats,
   LeaderboardEntry,
-  PrivateMessage,
   FriendEncouragement,
 } from '../types';
 import { usePartyKit } from '../hooks/usePartyKit';
@@ -42,9 +40,6 @@ interface SocialContextType {
   onlineUsers: OnlineUser[];
   onlineCount: number;
 
-  chatMessages: ChatMessage[];
-  sendChat: (text: string) => void;
-
   updateNickname: (name: string) => void;
 
   friends: Friend[];
@@ -67,14 +62,6 @@ interface SocialContextType {
   totalParticipants: number;
   publishLeaderboardStats: (entry: LeaderboardEntry) => void;
   requestLeaderboard: (category: 'fasting' | 'meditation', period: 'weekly' | 'monthly' | 'yearly') => void;
-
-  privateMessages: PrivateMessage[];
-  sendPrivateMessage: (toUserId: string, toNickname: string, text: string) => void;
-  getPrivateMessages: (withUserId: string) => void;
-  getConversationMessages: (withUserId: string) => PrivateMessage[];
-  markMessagesAsRead: (withUserId: string) => void;
-  getUnreadMessages: () => PrivateMessage[];
-  getConversations: () => { userId: string; nickname: string; lastMessage: PrivateMessage; unreadCount: number }[];
 }
 
 const SocialContext = createContext<SocialContextType | null>(null);
@@ -161,10 +148,6 @@ export function SocialProvider({ children }: { children: ReactNode }) {
   const goOffline = useCallback(() => {
     partykit.sendOffline(userId);
   }, [userId, partykit]);
-
-  const sendChat = useCallback((text: string) => {
-    partykit.sendChat(userId, nickname, text);
-  }, [userId, nickname, partykit]);
 
   const updateNickname = useCallback(async (name: string) => {
     setNickname(name);
@@ -283,59 +266,6 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       });
   }, [userId, partykit.friendEncouragements, recordReceivedFriendEncouragement]);
 
-  const sendPrivateMessage = useCallback((toUserId: string, toNickname: string, text: string) => {
-    partykit.sendPrivateMessage(userId, nickname, toUserId, toNickname, text);
-  }, [userId, nickname, partykit]);
-
-  const getPrivateMessages = useCallback((withUserId: string) => {
-    partykit.getPrivateMessages(userId, withUserId);
-  }, [userId, partykit]);
-
-  const getConversationMessages = useCallback((withUserId: string) => {
-    return partykit.privateMessages.filter(
-      (m) =>
-        (m.fromUserId === userId && m.toUserId === withUserId) ||
-        (m.fromUserId === withUserId && m.toUserId === userId)
-    ).sort((a, b) => a.timestamp - b.timestamp);
-  }, [userId, partykit.privateMessages]);
-
-  const markMessagesAsRead = useCallback((withUserId: string) => {
-    partykit.markMessagesAsRead(withUserId);
-  }, [partykit]);
-
-  const getUnreadMessages = useCallback((): PrivateMessage[] => {
-    return partykit.getUnreadMessages();
-  }, [partykit]);
-
-  const getConversations = useCallback(() => {
-    const convMap = new Map<string, { nickname: string; lastMessage: PrivateMessage; unreadCount: number }>();
-    const unread = partykit.getUnreadMessages();
-    const unreadByUser = new Map<string, number>();
-    unread.forEach((m) => {
-      const otherId = m.fromUserId === userId ? m.toUserId : m.fromUserId;
-      unreadByUser.set(otherId, (unreadByUser.get(otherId) || 0) + 1);
-    });
-
-    partykit.privateMessages.forEach((m) => {
-      const otherId = m.fromUserId === userId ? m.toUserId : m.fromUserId;
-      const otherName = m.fromUserId === userId ? m.toNickname : m.fromNickname;
-      const existing = convMap.get(otherId);
-      if (!existing || m.timestamp > existing.lastMessage.timestamp) {
-        convMap.set(otherId, {
-          nickname: otherName,
-          lastMessage: m,
-          unreadCount: unreadByUser.get(otherId) || 0,
-        });
-      } else if (existing) {
-        existing.unreadCount = unreadByUser.get(otherId) || 0;
-      }
-    });
-
-    return Array.from(convMap.entries())
-      .map(([userId, data]) => ({ userId, ...data }))
-      .sort((a, b) => b.lastMessage.timestamp - a.lastMessage.timestamp);
-  }, [userId, partykit]);
-
   const isFriend = useCallback((otherUserId: string) => {
     return friends.some((f) => f.userId === otherUserId);
   }, [friends]);
@@ -346,11 +276,9 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     nickname,
     onlineUsers: partykit.onlineUsers,
     onlineCount: partykit.onlineCount,
-    chatMessages: partykit.chatMessages,
     friendRequests: partykit.friendRequests,
     friendEncouragements: partykit.friendEncouragements,
     friends,
-    sendChat,
     updateNickname,
     sendFriendRequest: handleSendFriendRequest,
     respondToFriendRequest: handleRespondToFriendRequest,
@@ -366,13 +294,6 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     totalParticipants: partykit.totalParticipants,
     publishLeaderboardStats,
     requestLeaderboard,
-    privateMessages: partykit.privateMessages,
-    sendPrivateMessage,
-    getPrivateMessages,
-    getConversationMessages,
-    markMessagesAsRead,
-    getUnreadMessages,
-    getConversations,
   };
 
   return (

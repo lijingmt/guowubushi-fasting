@@ -314,14 +314,6 @@ export interface HealthSyncStatus {
 
 // ============ 社交类型 ============
 
-export interface ChatMessage {
-  id: string;
-  userId: string;
-  nickname: string;
-  text: string;
-  timestamp: number;
-}
-
 export interface OnlineUser {
   id: string;
   nickname: string;
@@ -375,16 +367,6 @@ export interface LeaderboardEntry {
   sessionCountThisWeek: number;
 }
 
-export interface PrivateMessage {
-  id: string;
-  fromUserId: string;
-  fromNickname: string;
-  toUserId: string;
-  toNickname: string;
-  text: string;
-  timestamp: number;
-}
-
 // 导航类型
 export type RootStackParamList = {
   Home: undefined;
@@ -398,8 +380,6 @@ export type RootStackParamList = {
   Friends: undefined;
   FriendDetail: { userId: string; nickname: string };
   Leaderboard: undefined;
-  ChatDetail: { userId: string; nickname: string };
-  Conversations: undefined;
   Retention: undefined;
 };
 

@@ -3,12 +3,10 @@ import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type {
   OnlineUser,
-  ChatMessage,
   FriendRequest,
   Friend,
   SharedStats,
   LeaderboardEntry,
-  PrivateMessage,
   FriendEncouragement,
 } from '../types';
 
@@ -41,10 +39,8 @@ interface UsePartyKitReturn {
   isConnected: boolean;
   onlineUsers: OnlineUser[];
   onlineCount: number;
-  chatMessages: ChatMessage[];
   friendRequests: FriendRequest[];
   leaderboardData: LeaderboardData;
-  privateMessages: PrivateMessage[];
   friendEncouragements: FriendEncouragement[];
   remoteFriends: Friend[];
   totalParticipants: number;
@@ -52,7 +48,6 @@ interface UsePartyKitReturn {
   disconnect: () => void;
   sendOnline: (userId: string, nickname: string, activity: OnlineUser['activity']) => void;
   sendOffline: (userId: string) => void;
-  sendChat: (userId: string, nickname: string, text: string) => void;
   updateNickname: (userId: string, nickname: string) => void;
   shareStats: (stats: SharedStats) => void;
   getStats: (userId: string) => void;
@@ -61,8 +56,6 @@ interface UsePartyKitReturn {
   requestFriends: (userId: string) => void;
   publishLeaderboardStats: (entry: LeaderboardEntry) => void;
   requestLeaderboard: (category: 'fasting' | 'meditation', period: 'weekly' | 'monthly' | 'yearly') => void;
-  sendPrivateMessage: (fromUserId: string, fromNickname: string, toUserId: string, toNickname: string, text: string) => void;
-  getPrivateMessages: (fromUserId: string, toUserId: string) => void;
   sendFriendEncouragement: (
     fromUserId: string,
     fromNickname: string,
@@ -71,8 +64,6 @@ interface UsePartyKitReturn {
     kind: FriendEncouragement['kind'],
     text?: string
   ) => void;
-  markMessagesAsRead: (withUserId: string) => void;
-  getUnreadMessages: () => PrivateMessage[];
 }
 
 export function usePartyKit(): UsePartyKitReturn {
@@ -82,15 +73,12 @@ export function usePartyKit(): UsePartyKitReturn {
   const lastOnlineRef = useRef<{ userId: string; nickname: string; activity: OnlineUser['activity'] } | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectDelayRef = useRef(1000);
-  const readMessageIdsRef = useRef<Set<string>>(new Set());
 
   const [isConnected, setIsConnected] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [onlineCount, setOnlineCount] = useState(0);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardData>(emptyLeaderboard);
-  const [privateMessages, setPrivateMessages] = useState<PrivateMessage[]>([]);
   const [friendEncouragements, setFriendEncouragements] = useState<FriendEncouragement[]>([]);
   const [remoteFriends, setRemoteFriends] = useState<Friend[]>([]);
   const [totalParticipants, setTotalParticipants] = useState(0);
@@ -102,10 +90,6 @@ export function usePartyKit(): UsePartyKitReturn {
         const cached = await AsyncStorage.getItem('@guowu_leaderboard_cache');
         if (cached) {
           setLeaderboardData(JSON.parse(cached));
-        }
-        const cachedMessages = await AsyncStorage.getItem('@guowu_private_messages');
-        if (cachedMessages) {
-          setPrivateMessages(JSON.parse(cachedMessages));
         }
         const cachedEncouragements = await AsyncStorage.getItem('@guowu_friend_encouragements');
         if (cachedEncouragements) {
@@ -164,7 +148,6 @@ export function usePartyKit(): UsePartyKitReturn {
         ws.send(JSON.stringify({ type: 'getLeaderboard', category: 'meditation', period: 'monthly' }));
         ws.send(JSON.stringify({ type: 'getLeaderboard', category: 'meditation', period: 'yearly' }));
         ws.send(JSON.stringify({ type: 'getFriends', userId }));
-        ws.send(JSON.stringify({ type: 'getPrivateMessages', userId }));
         ws.send(JSON.stringify({ type: 'getFriendEncouragements', userId }));
       };
 
@@ -176,9 +159,6 @@ export function usePartyKit(): UsePartyKitReturn {
             case 'init':
               setOnlineUsers(data.onlineUsers || []);
               setOnlineCount(data.onlineCount || 0);
-              if (data.chatHistory) {
-                setChatMessages(data.chatHistory);
-              }
               if (data.leaderboard) {
                 setLeaderboardData((prev) => ({
                   ...prev,
@@ -190,17 +170,6 @@ export function usePartyKit(): UsePartyKitReturn {
             case 'onlineUpdate':
               setOnlineUsers(data.onlineUsers || []);
               setOnlineCount(data.onlineCount || 0);
-              break;
-
-            case 'chatMessage':
-              setChatMessages((prev) => {
-                const next = [...prev, data.message];
-                return next.length > 50 ? next.slice(-50) : next;
-              });
-              break;
-
-            case 'chatHistory':
-              setChatMessages(data.messages || []);
               break;
 
             case 'nicknameUpdate':
@@ -254,32 +223,6 @@ export function usePartyKit(): UsePartyKitReturn {
                 if (data.totalParticipants !== undefined) {
                   setTotalParticipants(data.totalParticipants);
                 }
-              }
-              break;
-
-            case 'privateMessageReceived':
-              debugLog('[PartyKit] PM received:', data.message?.id, 'to:', data.message?.toUserId, 'from:', data.message?.fromUserId, 'myId:', userIdRef.current);
-              if (data.message.toUserId === userIdRef.current || data.message.fromUserId === userIdRef.current) {
-                setPrivateMessages((prev) => {
-                  if (prev.find((m) => m.id === data.message.id)) return prev;
-                  const next = [...prev, data.message];
-                  return next.length > 200 ? next.slice(-200) : next;
-                });
-              } else {
-                debugLog('[PartyKit] PM filtered out - not for me');
-              }
-              break;
-
-            case 'privateMessagesHistory':
-              if (data.messages) {
-                setPrivateMessages((prev) => {
-                  // Merge with existing, dedup by id
-                  const existingIds = new Set(prev.map((m) => m.id));
-                  const newMsgs = data.messages.filter((m: PrivateMessage) => !existingIds.has(m.id));
-                  return [...prev, ...newMsgs]
-                    .sort((a, b) => a.timestamp - b.timestamp)
-                    .slice(-200);
-                });
               }
               break;
 
@@ -368,10 +311,6 @@ export function usePartyKit(): UsePartyKitReturn {
 	    send({ type: 'offline', userId });
 	  }, [send]);
 
-  const sendChat = useCallback((userId: string, nickname: string, text: string) => {
-    send({ type: 'chat', payload: { userId, nickname, text } });
-  }, [send]);
-
   const updateNickname = useCallback((userId: string, nickname: string) => {
     send({ type: 'updateNickname', userId, nickname });
   }, [send]);
@@ -406,15 +345,6 @@ export function usePartyKit(): UsePartyKitReturn {
     send({ type: 'getLeaderboard', category, period });
   }, [send]);
 
-  const sendPrivateMessage = useCallback((fromUserId: string, fromNickname: string, toUserId: string, toNickname: string, text: string) => {
-    debugLog('[PartyKit] Sending PM from:', fromUserId, 'to:', toUserId, 'wsState:', wsRef.current?.readyState);
-    send({ type: 'privateMessage', payload: { fromUserId, fromNickname, toUserId, toNickname, text } });
-  }, [send]);
-
-  const getPrivateMessages = useCallback((fromUserId: string, toUserId: string) => {
-    send({ type: 'getPrivateMessages', fromUserId, toUserId });
-  }, [send]);
-
   const sendFriendEncouragement = useCallback((
     fromUserId: string,
     fromNickname: string,
@@ -425,21 +355,6 @@ export function usePartyKit(): UsePartyKitReturn {
   ) => {
     send({ type: 'friendEncouragement', payload: { fromUserId, fromNickname, toUserId, toNickname, kind, text } });
   }, [send]);
-
-  const markMessagesAsRead = useCallback((withUserId: string) => {
-    privateMessages.forEach((m) => {
-      if (m.fromUserId === withUserId || m.toUserId === withUserId) {
-        readMessageIdsRef.current.add(m.id);
-      }
-    });
-    setPrivateMessages((prev) => [...prev]); // trigger re-render
-  }, [privateMessages]);
-
-  const getUnreadMessages = useCallback((): PrivateMessage[] => {
-    return privateMessages.filter(
-      (m) => m.toUserId === userIdRef.current && !readMessageIdsRef.current.has(m.id)
-    );
-  }, [privateMessages]);
 
   useEffect(() => {
     const handleAppState = (nextState: string) => {
@@ -464,13 +379,6 @@ export function usePartyKit(): UsePartyKitReturn {
     return () => sub.remove();
   }, [connect, send]);
 
-  // Save private messages to local storage when they change
-  useEffect(() => {
-    if (privateMessages.length > 0) {
-      AsyncStorage.setItem('@guowu_private_messages', JSON.stringify(privateMessages.slice(-200))).catch(() => {});
-    }
-  }, [privateMessages]);
-
   useEffect(() => {
     if (friendEncouragements.length > 0) {
       AsyncStorage.setItem('@guowu_friend_encouragements', JSON.stringify(friendEncouragements.slice(0, 100))).catch(() => {});
@@ -490,10 +398,8 @@ export function usePartyKit(): UsePartyKitReturn {
     isConnected,
     onlineUsers,
     onlineCount,
-    chatMessages,
     friendRequests,
 	    leaderboardData,
-	    privateMessages,
     friendEncouragements,
 	    remoteFriends,
 	    totalParticipants,
@@ -501,7 +407,6 @@ export function usePartyKit(): UsePartyKitReturn {
     disconnect,
     sendOnline,
     sendOffline,
-    sendChat,
     updateNickname,
     shareStats,
     getStats,
@@ -510,10 +415,6 @@ export function usePartyKit(): UsePartyKitReturn {
 	    requestFriends,
     publishLeaderboardStats,
     requestLeaderboard,
-    sendPrivateMessage,
-    getPrivateMessages,
     sendFriendEncouragement,
-    markMessagesAsRead,
-    getUnreadMessages,
   };
 }

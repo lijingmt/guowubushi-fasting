@@ -21,7 +21,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MeditationShareCard } from '../components/MeditationShareCard';
 import { MeditationAnimation } from '../components/MeditationAnimation';
 import { OnlineMeditatorsList } from '../components/OnlineMeditatorsList';
-import { ChatPanel } from '../components/ChatPanel';
 import { NicknameEditField } from '../components/NicknameEditField';
 import type { Language } from '../i18n/translations';
 
@@ -490,7 +489,6 @@ export const MeditationScreen = () => {
           <View style={styles.socialContent}>
             <NicknameEditField />
             <OnlineMeditatorsList />
-            <ChatPanel />
           </View>
         )}
       </View>

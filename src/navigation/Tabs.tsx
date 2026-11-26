@@ -15,8 +15,6 @@ import { MeditationScreen } from '../screens/MeditationScreen';
 import { FriendsScreen } from '../screens/FriendsScreen';
 import { FriendDetailScreen } from '../screens/FriendDetailScreen';
 import { LeaderboardScreen } from '../screens/LeaderboardScreen';
-import { ChatDetailScreen } from '../screens/ChatDetailScreen';
-import { ConversationsScreen } from '../screens/ConversationsScreen';
 import { RetentionScreen } from '../screens/RetentionScreen';
 import { TempleMapScreen } from '../screens/TempleMapScreen';
 import { responsiveSize, fs, vs, rs, layout, responsive } from '../theme/responsive';
@@ -169,18 +167,6 @@ export const AppNavigator = () => {
           name="Leaderboard"
           component={LeaderboardScreen}
           options={{ title: '修行排行榜' }}
-        />
-        <Stack.Screen
-          name="ChatDetail"
-          component={ChatDetailScreen as any}
-          options={({ route }: any) => ({
-            title: route.params?.nickname || (language === 'zh' ? '私信' : 'Message'),
-          })}
-        />
-        <Stack.Screen
-          name="Conversations"
-          component={ConversationsScreen}
-          options={{ title: language === 'zh' ? '私信' : 'Messages' }}
         />
         <Stack.Screen
           name="Retention"

@@ -78,8 +78,8 @@ export const LeaderboardScreen = () => {
     Alert.alert(t.success, t.requestSent);
   };
 
-  const handleSendMessage = (entry: LeaderboardEntry) => {
-    navigation.navigate('ChatDetail', {
+  const handleViewFriend = (entry: LeaderboardEntry) => {
+    navigation.navigate('FriendDetail', {
       userId: entry.userId,
       nickname: entry.nickname || `${t.anonymous} #${entry.userId.substring(0, 4)}`,
     });
@@ -127,10 +127,10 @@ export const LeaderboardScreen = () => {
             {friend ? (
               <TouchableOpacity
                 style={[styles.actionButton, { backgroundColor: colors.primary + '20' }]}
-                onPress={() => handleSendMessage(item)}
+                onPress={() => handleViewFriend(item)}
               >
                 <Text style={[styles.actionText, { color: colors.primary }]}>
-                  {t.sendPrivateMessage}
+                  {t.friendStats}
                 </Text>
               </TouchableOpacity>
             ) : (
@@ -178,42 +178,6 @@ export const LeaderboardScreen = () => {
               </View>
             </View>
           ))}
-        </View>
-      )}
-
-      {/* Unread private messages */}
-      {social.getUnreadMessages().length > 0 && (
-        <View style={[styles.friendRequestBar, { backgroundColor: colors.card, borderColor: colors.primary }]}>
-          <Text style={[styles.friendRequestTitle, { color: colors.text }]}>
-            {language === 'zh' ? '新私信' : 'New Messages'} ({social.getUnreadMessages().length})
-          </Text>
-          {social.getUnreadMessages()
-            .slice(-5)
-            .map((msg) => (
-              <TouchableOpacity
-                key={msg.id}
-                style={styles.friendRequestRow}
-                onPress={() => {
-                  social.markMessagesAsRead(msg.fromUserId);
-                  navigation.navigate('ChatDetail', {
-                    userId: msg.fromUserId,
-                    nickname: msg.fromNickname,
-                  });
-                }}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.friendRequestName, { color: colors.text, fontWeight: '600' }]}>
-                    {msg.fromNickname || `${t.anonymous}`}
-                  </Text>
-                  <Text style={{ color: colors.textSecondary, fontSize: fs(13) }} numberOfLines={1}>
-                    {msg.text}
-                  </Text>
-                </View>
-                <Text style={{ color: colors.primary, fontSize: fs(13) }}>
-                  {language === 'zh' ? '查看 ›' : 'View ›'}
-                </Text>
-              </TouchableOpacity>
-            ))}
         </View>
       )}
 
