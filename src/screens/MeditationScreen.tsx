@@ -27,6 +27,9 @@ import type { Language } from '../i18n/translations';
 
 const MEDITATION_DURATION_KEY = '@guowu_meditation_duration';
 const MEDITATION_SOUND_KEY = '@guowu_meditation_sound';
+const BG_TARGET_VOLUME = 0.5;
+const BG_CROSSFADE_MS = 2500;
+const BG_CROSSFADE_STEPS = 10;
 
 const DURATIONS = [1, 5, 10, 15, 30, 60, 120, 180, 300];
 
@@ -55,7 +58,11 @@ export const MeditationScreen = () => {
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const bellSoundRef = useRef<Audio.Sound | null>(null);
-  const backgroundSoundRef = useRef<Audio.Sound | null>(null);
+  const activeSoundRef = useRef<Audio.Sound | null>(null);
+  const standbySoundRef = useRef<Audio.Sound | null>(null);
+  const fadeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const crossfadingRef = useRef(false);
+  const audioSessionIdRef = useRef(0);
   const isTimerRunningRef = useRef(false);
   const endTimeRef = useRef<number>(0);
   const selectedDurationRef = useRef(15);
@@ -90,17 +97,142 @@ export const MeditationScreen = () => {
     }
   };
 
-  // 播放背景音乐
-  const playBackgroundSound = async (sound: BackgroundSound) => {
+  // 停止背景音乐（安全卸载双轨实例与淡化定时器）
+  const stopBackgroundSound = async () => {
+    audioSessionIdRef.current += 1;
+    if (fadeIntervalRef.current) {
+      clearInterval(fadeIntervalRef.current);
+      fadeIntervalRef.current = null;
+    }
+    crossfadingRef.current = false;
+
+    const sounds = [activeSoundRef.current, standbySoundRef.current];
+    activeSoundRef.current = null;
+    standbySoundRef.current = null;
+
+    await Promise.all(
+      sounds.map(async (sound) => {
+        if (!sound) return;
+        try {
+          sound.setOnPlaybackStatusUpdate(null);
+          await sound.stopAsync();
+          await sound.unloadAsync();
+        } catch (e) {
+          // Ignore
+        }
+      })
+    );
+  };
+
+  // A/B 双轨等响度交叉淡化，彻底消除循环接缝与 seek 停顿
+  const runCrossfade = async (outgoing: Audio.Sound, incoming: Audio.Sound, sessionId: number) => {
+    if (crossfadingRef.current || audioSessionIdRef.current !== sessionId) return;
+    crossfadingRef.current = true;
+    outgoing.setOnPlaybackStatusUpdate(null);
+
     try {
-      // 停止之前的背景音乐
-      if (backgroundSoundRef.current) {
-        await backgroundSoundRef.current.stopAsync();
-        await backgroundSoundRef.current.unloadAsync();
-        backgroundSoundRef.current = null;
+      await incoming.setPositionAsync(0);
+      await incoming.setVolumeAsync(0);
+      await incoming.playAsync();
+    } catch (error) {
+      crossfadingRef.current = false;
+      return;
+    }
+
+    if (audioSessionIdRef.current !== sessionId) {
+      crossfadingRef.current = false;
+      return;
+    }
+
+    let step = 0;
+    const stepMs = Math.max(50, Math.floor(BG_CROSSFADE_MS / BG_CROSSFADE_STEPS));
+    fadeIntervalRef.current = setInterval(() => {
+      if (audioSessionIdRef.current !== sessionId) {
+        if (fadeIntervalRef.current) {
+          clearInterval(fadeIntervalRef.current);
+          fadeIntervalRef.current = null;
+        }
+        crossfadingRef.current = false;
+        return;
       }
 
+      step += 1;
+      const progress = Math.min(1, step / BG_CROSSFADE_STEPS);
+      const inVol = BG_TARGET_VOLUME * Math.sin((progress * Math.PI) / 2);
+      const outVol = BG_TARGET_VOLUME * Math.cos((progress * Math.PI) / 2);
+
+      void incoming.setVolumeAsync(inVol).catch(() => {});
+      void outgoing.setVolumeAsync(outVol).catch(() => {});
+
+      if (step >= BG_CROSSFADE_STEPS) {
+        if (fadeIntervalRef.current) {
+          clearInterval(fadeIntervalRef.current);
+          fadeIntervalRef.current = null;
+        }
+        void (async () => {
+          try {
+            await outgoing.stopAsync();
+            await outgoing.setPositionAsync(0);
+            await outgoing.setVolumeAsync(0);
+          } catch (e) {
+            // Ignore
+          }
+          if (audioSessionIdRef.current !== sessionId) {
+            crossfadingRef.current = false;
+            return;
+          }
+          activeSoundRef.current = incoming;
+          standbySoundRef.current = outgoing;
+          crossfadingRef.current = false;
+          attachLoopMonitor(incoming, outgoing, sessionId);
+        })();
+      }
+    }, stepMs);
+  };
+
+  const attachLoopMonitor = (active: Audio.Sound, standby: Audio.Sound, sessionId: number) => {
+    active.setOnPlaybackStatusUpdate((status) => {
+      if (audioSessionIdRef.current !== sessionId || !status.isLoaded) return;
+
+      if (
+        status.durationMillis &&
+        status.durationMillis > BG_CROSSFADE_MS + 1000 &&
+        status.positionMillis >= status.durationMillis - BG_CROSSFADE_MS &&
+        !crossfadingRef.current
+      ) {
+        void runCrossfade(active, standby, sessionId);
+        return;
+      }
+
+      // 兜底：若系统延迟触发，立即切到备用轨继续播放
+      if (status.didJustFinish && !crossfadingRef.current) {
+        active.setOnPlaybackStatusUpdate(null);
+        void (async () => {
+          try {
+            await standby.setPositionAsync(0);
+            await standby.setVolumeAsync(BG_TARGET_VOLUME);
+            await standby.playAsync();
+            await active.setPositionAsync(0);
+            await active.setVolumeAsync(0);
+          } catch (e) {
+            return;
+          }
+          if (audioSessionIdRef.current !== sessionId) return;
+          activeSoundRef.current = standby;
+          standbySoundRef.current = active;
+          attachLoopMonitor(standby, active, sessionId);
+        })();
+      }
+    });
+  };
+
+  // 播放背景音乐（双轨无缝无限循环）
+  const playBackgroundSound = async (sound: BackgroundSound) => {
+    try {
+      await stopBackgroundSound();
       if (sound === 'none') return;
+
+      const sessionId = audioSessionIdRef.current;
 
       let source: any;
       if (sound === 'insects') {
@@ -113,28 +245,38 @@ export const MeditationScreen = () => {
         source = require('../../assets/sounds/birds.mp3');
       }
 
-      if (source) {
-        const { sound: newSound } = await Audio.Sound.createAsync(
-          source,
-          { shouldPlay: true, volume: 0.5, isLooping: true }
-        );
-        backgroundSoundRef.current = newSound;
+      if (!source) return;
+
+      const [{ sound: trackA }, { sound: trackB }] = await Promise.all([
+        Audio.Sound.createAsync(source, {
+          shouldPlay: true,
+          volume: BG_TARGET_VOLUME,
+          isLooping: false,
+          progressUpdateIntervalMillis: 250,
+        }),
+        Audio.Sound.createAsync(source, {
+          shouldPlay: false,
+          volume: 0,
+          isLooping: false,
+          progressUpdateIntervalMillis: 250,
+        }),
+      ]);
+
+      if (audioSessionIdRef.current !== sessionId) {
+        await Promise.all([
+          trackA.stopAsync().catch(() => {}),
+          trackA.unloadAsync().catch(() => {}),
+          trackB.stopAsync().catch(() => {}),
+          trackB.unloadAsync().catch(() => {}),
+        ]);
+        return;
       }
+
+      activeSoundRef.current = trackA;
+      standbySoundRef.current = trackB;
+      attachLoopMonitor(trackA, trackB, sessionId);
     } catch (error) {
       console.error('Error playing background sound:', error);
-    }
-  };
-
-  // 停止背景音乐
-  const stopBackgroundSound = async () => {
-    if (backgroundSoundRef.current) {
-      try {
-        await backgroundSoundRef.current.stopAsync();
-        await backgroundSoundRef.current.unloadAsync();
-      } catch (e) {
-        // Ignore
-      }
-      backgroundSoundRef.current = null;
     }
   };
 

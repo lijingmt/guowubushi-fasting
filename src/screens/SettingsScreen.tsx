@@ -365,7 +365,7 @@ export const SettingsScreen: React.FC = () => {
           onPress={handleShareApp}
           rightElement={<Text style={{ fontSize: 20 }}>📤</Text>}
         />
-        <SettingItem label={t.version} value={Constants.expoConfig?.version || '1.0.34'} />
+        <SettingItem label={t.version} value={Constants.expoConfig?.version || '1.0.35'} />
         <SettingItem
           label={language === 'zh' ? '隐私政策' : 'Privacy Policy'}
           onPress={() => {
