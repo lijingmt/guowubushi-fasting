@@ -23,6 +23,9 @@ import { Card } from '../components/Card';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { getLocalDateString } from '../utils/date';
+import { FASTING_GOALS, FASTING_TIERS } from '../utils/fastingRhythm';
+import { computePilgrimageProgress } from '../utils/pilgrimage';
+import type { FastingGoal, FastingTier } from '../types';
 
 // 开发者模式
 const IS_DEV = __DEV__;
@@ -55,6 +58,9 @@ export const SettingsScreen: React.FC = () => {
     colors,
     isDarkMode,
     language,
+    stats,
+    growthProfile,
+    retentionState,
   } = useApp();
   const social = useSocial();
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -62,6 +68,13 @@ export const SettingsScreen: React.FC = () => {
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [showWeightUnitPicker, setShowWeightUnitPicker] = useState(false);
+  const [showTierPicker, setShowTierPicker] = useState(false);
+  const [showGoalPicker, setShowGoalPicker] = useState(false);
+
+  const isZh = language === 'zh' || language === 'zh-Hant';
+  const currentTier = FASTING_TIERS[settings.fastingTier || 'classic'];
+  const currentGoal = FASTING_GOALS.find((g) => g.id === (settings.fastingGoal || 'mindful_discipline')) || FASTING_GOALS[2];
+  const pilgrimage = computePilgrimageProgress(stats, settings.selectedPilgrimageRouteId);
 
   const handleToggleNotifications = async (value: boolean) => {
     if (value) {
@@ -229,7 +242,91 @@ export const SettingsScreen: React.FC = () => {
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={styles.content}>
-      <Text style={[styles.title, { color: colors.text }]}>{t.settings}</Text>
+      <Text style={[styles.title, { color: colors.text }]}>{isZh ? '我的修行档案' : t.settings}</Text>
+
+      {/* 个人档案概览卡片 */}
+      <Card style={{ marginBottom: 14 }}>
+        <View style={styles.profileHeader}>
+          <View style={[styles.profileSeal, { backgroundColor: colors.primary + '1A', borderColor: colors.primary }]}>
+            <Text style={[styles.profileSealText, { color: colors.primary }]}>Lv.{growthProfile.level}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.profileName, { color: colors.text }]}>
+              {social.nickname || (isZh ? '清修同修' : 'Mindful Practitioner')}
+            </Text>
+            <Text style={[styles.profileMeta, { color: colors.textSecondary }]}>
+              {isZh
+                ? `${growthProfile.title} · 连胜 ${stats.currentStreak} 天 · 行脚 ${pilgrimage.totalKm} km`
+                : `Lv.${growthProfile.level} · ${stats.currentStreak}d streak · ${pilgrimage.totalKm} km`}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.profileStatsRow}>
+          <View style={[styles.profileMiniTile, { backgroundColor: colors.backgroundSecondary }]}>
+            <Text style={[styles.profileMiniVal, { color: colors.primary }]}>{retentionState.repairCards}</Text>
+            <Text style={[styles.profileMiniLbl, { color: colors.textSecondary }]}>{isZh ? '护航补签卡' : 'Repair Cards'}</Text>
+          </View>
+          <View style={[styles.profileMiniTile, { backgroundColor: colors.backgroundSecondary }]}>
+            <Text style={[styles.profileMiniVal, { color: colors.error }]}>{pilgrimage.unlockedStamps.length}</Text>
+            <Text style={[styles.profileMiniLbl, { color: colors.textSecondary }]}>{isZh ? '已获印章' : 'Stamps'}</Text>
+          </View>
+          <View style={[styles.profileMiniTile, { backgroundColor: colors.backgroundSecondary }]}>
+            <Text style={[styles.profileMiniVal, { color: colors.warning }]}>{stats.totalMeditationMinutes}m</Text>
+            <Text style={[styles.profileMiniLbl, { color: colors.textSecondary }]}>{isZh ? '累计静坐' : 'Zen Min'}</Text>
+          </View>
+        </View>
+        <View style={styles.quickNavGrid}>
+          {[
+            { label: isZh ? '📊 统计' : '📊 Stats', route: 'Stats' },
+            { label: isZh ? '📅 历史' : '📅 History', route: 'History' },
+            { label: isZh ? '🍽️ 饮食' : '🍽️ Meals', route: 'Meals' },
+            { label: isZh ? '✨ 今日修行' : '✨ Practice', route: 'Retention' },
+          ].map((item) => (
+            <TouchableOpacity
+              key={item.route}
+              style={[styles.quickNavBtn, { backgroundColor: colors.backgroundSecondary }]}
+              onPress={() => navigation.navigate(item.route)}
+            >
+              <Text style={[styles.quickNavText, { color: colors.text }]}>{item.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </Card>
+
+      {/* 节律与模式 */}
+      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+        {isZh ? '节律与模式' : 'Rhythm & Mode'}
+      </Text>
+      <Card>
+        <SettingItem
+          label={isZh ? '当前目标' : 'Main Goal'}
+          value={isZh ? currentGoal.titleZh : currentGoal.titleEn}
+          onPress={() => setShowGoalPicker(true)}
+        />
+        <Divider />
+        <SettingItem
+          label={isZh ? '过午阶梯' : 'Fasting Tier'}
+          value={isZh ? `${currentTier.nameZh} (${currentTier.windowZh})` : `${currentTier.nameEn} (${currentTier.ratio})`}
+          onPress={() => setShowTierPicker(true)}
+        />
+        <Divider />
+        <View style={styles.settingItem}>
+          <View style={{ flex: 1, paddingRight: 12 }}>
+            <Text style={[styles.settingLabel, { color: colors.text }]}>
+              {isZh ? '传统过午修行风格' : 'Traditional Practice Style'}
+            </Text>
+            <Text style={[styles.settingDesc, { color: colors.textLight }]}>
+              {isZh ? '开启后突出传统典籍与清修称谓，关闭则偏向现代轻断食' : 'Emphasize classical terms or keep modern wellness phrasing'}
+            </Text>
+          </View>
+          <Switch
+            value={Boolean(settings.traditionalMode)}
+            onValueChange={(val) => updateSettings({ traditionalMode: val })}
+            trackColor={{ false: '#ccc', true: colors.primary }}
+            thumbColor="#fff"
+          />
+        </View>
+      </Card>
 
       {/* 打卡提醒设置 */}
       <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t.checkInReminder}</Text>
@@ -357,6 +454,21 @@ export const SettingsScreen: React.FC = () => {
         />
       </Card>
 
+      {/* 轻享 Pro 路线预告（核心功能永久免费） */}
+      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+        {isZh ? '未来计划 · 轻享 Pro' : 'Roadmap · Mindful Pro'}
+      </Text>
+      <Card>
+        <Text style={[styles.settingLabel, { color: colors.primary, fontWeight: '700', marginBottom: 6 }]}>
+          {isZh ? '当前核心功能 100% 免费开放' : 'All Core Features Are 100% Free'}
+        </Text>
+        <Text style={[styles.settingDesc, { color: colors.textSecondary, lineHeight: 19 }]}>
+          {isZh
+            ? '后续规划：二十四节气限定日签模板、白噪音混音台、更多国内外云行脚路线，以及加密 iCloud 自动备份。'
+            : 'Upcoming perks: full 24-solar-term poster themes, ambient sound mixer, extended pilgrimage routes & iCloud sync.'}
+        </Text>
+      </Card>
+
       {/* 关于 */}
       <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t.about}</Text>
       <Card>
@@ -365,7 +477,7 @@ export const SettingsScreen: React.FC = () => {
           onPress={handleShareApp}
           rightElement={<Text style={{ fontSize: 20 }}>📤</Text>}
         />
-        <SettingItem label={t.version} value={Constants.expoConfig?.version || '1.0.35'} />
+        <SettingItem label={t.version} value={Constants.expoConfig?.version || '1.0.36'} />
         <SettingItem
           label={language === 'zh' ? '隐私政策' : 'Privacy Policy'}
           onPress={() => {
@@ -649,6 +761,95 @@ export const SettingsScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Fasting Tier Picker */}
+      <Modal
+        visible={showTierPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowTierPicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContentLarge, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              {isZh ? '选择过午阶梯' : 'Choose Fasting Tier'}
+            </Text>
+            {(['beginner', 'intermediate', 'classic'] as FastingTier[]).map((tierId) => {
+              const tier = FASTING_TIERS[tierId];
+              return (
+                <TouchableOpacity
+                  key={tierId}
+                  style={[styles.optionButton, { backgroundColor: colors.backgroundSecondary }]}
+                  onPress={async () => {
+                    await updateSettings({ fastingTier: tierId });
+                    setShowTierPicker(false);
+                  }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.optionText, { color: colors.text }]}>
+                      {isZh ? `${tier.nameZh} · ${tier.windowZh}` : `${tier.nameEn} · ${tier.ratio}`}
+                    </Text>
+                    <Text style={[styles.settingDesc, { color: colors.textLight }]}>
+                      {isZh ? tier.descZh : tier.descEn}
+                    </Text>
+                  </View>
+                  {(settings.fastingTier || 'classic') === tierId && (
+                    <Text style={[styles.checkIcon, { color: colors.primary }]}>✓</Text>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+            <TouchableOpacity
+              style={[styles.cancelButton, { backgroundColor: colors.divider }]}
+              onPress={() => setShowTierPicker(false)}
+            >
+              <Text style={[styles.cancelButtonText, { color: colors.text }]}>{t.cancel}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Fasting Goal Picker */}
+      <Modal
+        visible={showGoalPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowGoalPicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContentLarge, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              {isZh ? '选择当前目标' : 'Select Goal'}
+            </Text>
+            {FASTING_GOALS.map((goal) => (
+              <TouchableOpacity
+                key={goal.id}
+                style={[styles.optionButton, { backgroundColor: colors.backgroundSecondary }]}
+                onPress={async () => {
+                  await updateSettings({
+                    fastingGoal: goal.id as FastingGoal,
+                    traditionalMode: goal.traditionalMode,
+                  });
+                  setShowGoalPicker(false);
+                }}
+              >
+                <Text style={[styles.optionText, { color: colors.text }]}>
+                  {goal.icon} {isZh ? goal.titleZh : goal.titleEn}
+                </Text>
+                {(settings.fastingGoal || 'mindful_discipline') === goal.id && (
+                  <Text style={[styles.checkIcon, { color: colors.primary }]}>✓</Text>
+                )}
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={[styles.cancelButton, { backgroundColor: colors.divider }]}
+              onPress={() => setShowGoalPicker(false)}
+            >
+              <Text style={[styles.cancelButtonText, { color: colors.text }]}>{t.cancel}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
@@ -816,5 +1017,65 @@ const styles = StyleSheet.create({
   iconAttributionText: {
     fontSize: 12,
     textAlign: 'center',
+  },
+  profileHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  profileSeal: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileSealText: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  profileName: {
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  profileMeta: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  profileStatsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  profileMiniTile: {
+    flex: 1,
+    borderRadius: 10,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  profileMiniVal: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  profileMiniLbl: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  quickNavGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  quickNavBtn: {
+    width: '48.5%',
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  quickNavText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

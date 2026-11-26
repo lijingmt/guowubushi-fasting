@@ -6,7 +6,13 @@ import type {
   SharedStats,
   LeaderboardEntry,
   FriendEncouragement,
+  SilentGestureType,
+  SilentRoomCounts,
+  SilentGestureEvent,
+  BuddyChallenge,
+  RepairCardGift,
 } from '../types';
+import { getLocalDateString } from '../utils/date';
 import { usePartyKit } from '../hooks/usePartyKit';
 import {
   getOrCreateUserId,
@@ -63,6 +69,16 @@ interface SocialContextType {
   totalParticipants: number;
   publishLeaderboardStats: (entry: LeaderboardEntry) => void;
   requestLeaderboard: (category: 'fasting' | 'meditation', period: 'weekly' | 'monthly' | 'yearly') => void;
+
+  silentRoomCounts: SilentRoomCounts;
+  recentSilentGestures: SilentGestureEvent[];
+  sendSilentGesture: (gesture: SilentGestureType) => void;
+
+  buddyChallenges: BuddyChallenge[];
+  pendingRepairGifts: RepairCardGift[];
+  startBuddyChallenge: (toUserId: string, toNickname: string, durationDays: 7 | 21) => void;
+  lightBuddyLamp: (partnerUserId: string, date?: string) => void;
+  giftRepairCard: (toUserId: string) => Promise<boolean>;
 }
 
 const SocialContext = createContext<SocialContextType | null>(null);
@@ -86,6 +102,8 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     practiceRecords,
     recordFriendEncouragement,
     recordReceivedFriendEncouragement,
+    consumeRepairCardForGift,
+    receiveRepairCardGifts,
   } = useApp();
 
   const [userId, setUserId] = useState('');
@@ -221,6 +239,41 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     partykit.requestLeaderboard(category, period);
   }, [partykit]);
 
+  const sendSilentGesture = useCallback((gesture: SilentGestureType) => {
+    if (!userId) return;
+    partykit.sendSilentGesture(userId, nickname, gesture);
+  }, [userId, nickname, partykit]);
+
+  const startBuddyChallenge = useCallback((toUserId: string, toNickname: string, durationDays: 7 | 21) => {
+    if (!userId) return;
+    partykit.startBuddyChallenge(userId, nickname, toUserId, toNickname, durationDays, getLocalDateString());
+  }, [userId, nickname, partykit]);
+
+  const lightBuddyLamp = useCallback((partnerUserId: string, date?: string) => {
+    if (!userId) return;
+    partykit.lightBuddyLamp(userId, partnerUserId, date || getLocalDateString());
+  }, [userId, partykit]);
+
+  const giftRepairCard = useCallback(async (toUserId: string): Promise<boolean> => {
+    if (!userId) return false;
+    const consumed = await consumeRepairCardForGift();
+    if (!consumed) return false;
+    partykit.giftRepairCard(userId, nickname, toUserId);
+    return true;
+  }, [userId, nickname, partykit, consumeRepairCardForGift]);
+
+  const processedGiftIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!userId || partykit.pendingRepairGifts.length === 0) return;
+    const unclaimed = partykit.pendingRepairGifts.filter((g) => !processedGiftIdsRef.current.has(g.id));
+    if (unclaimed.length === 0) return;
+    unclaimed.forEach((g) => processedGiftIdsRef.current.add(g.id));
+    void (async () => {
+      await receiveRepairCardGifts(unclaimed.length);
+      partykit.claimRepairCardGifts(userId);
+    })();
+  }, [userId, partykit.pendingRepairGifts, partykit, receiveRepairCardGifts]);
+
   useEffect(() => {
     if (isLoading || !partykit.isConnected || !userId) return;
 
@@ -330,6 +383,14 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     totalParticipants: partykit.totalParticipants,
     publishLeaderboardStats,
     requestLeaderboard,
+    silentRoomCounts: partykit.silentRoomCounts,
+    recentSilentGestures: partykit.recentSilentGestures,
+    sendSilentGesture,
+    buddyChallenges: partykit.buddyChallenges,
+    pendingRepairGifts: partykit.pendingRepairGifts,
+    startBuddyChallenge,
+    lightBuddyLamp,
+    giftRepairCard,
   };
 
   return (

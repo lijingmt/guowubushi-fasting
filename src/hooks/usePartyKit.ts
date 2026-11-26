@@ -8,6 +8,11 @@ import type {
   SharedStats,
   LeaderboardEntry,
   FriendEncouragement,
+  SilentGestureType,
+  SilentRoomCounts,
+  SilentGestureEvent,
+  BuddyChallenge,
+  RepairCardGift,
 } from '../types';
 
 const PARTYKIT_URL = 'wss://partykit.guowubushi.net/party/meditation-room';
@@ -45,6 +50,10 @@ interface UsePartyKitReturn {
   friendStatsMap: Record<string, SharedStats>;
   remoteFriends: Friend[];
   totalParticipants: number;
+  silentRoomCounts: SilentRoomCounts;
+  recentSilentGestures: SilentGestureEvent[];
+  buddyChallenges: BuddyChallenge[];
+  pendingRepairGifts: RepairCardGift[];
   connect: (userId: string, nickname: string) => void;
   disconnect: () => void;
   sendOnline: (userId: string, nickname: string, activity: OnlineUser['activity']) => void;
@@ -65,6 +74,18 @@ interface UsePartyKitReturn {
     kind: FriendEncouragement['kind'],
     text?: string
   ) => void;
+  sendSilentGesture: (userId: string, nickname: string, gesture: SilentGestureType) => void;
+  startBuddyChallenge: (
+    fromUserId: string,
+    fromNickname: string,
+    toUserId: string,
+    toNickname: string,
+    durationDays: 7 | 21,
+    startDate: string
+  ) => void;
+  lightBuddyLamp: (userId: string, partnerUserId: string, date: string) => void;
+  giftRepairCard: (fromUserId: string, fromNickname: string, toUserId: string) => void;
+  claimRepairCardGifts: (userId: string) => void;
 }
 
 export function usePartyKit(): UsePartyKitReturn {
@@ -84,6 +105,10 @@ export function usePartyKit(): UsePartyKitReturn {
   const [friendStatsMap, setFriendStatsMap] = useState<Record<string, SharedStats>>({});
   const [remoteFriends, setRemoteFriends] = useState<Friend[]>([]);
   const [totalParticipants, setTotalParticipants] = useState(0);
+  const [silentRoomCounts, setSilentRoomCounts] = useState<SilentRoomCounts>({ bow: 0, lamp: 0, bell: 0 });
+  const [recentSilentGestures, setRecentSilentGestures] = useState<SilentGestureEvent[]>([]);
+  const [buddyChallenges, setBuddyChallenges] = useState<BuddyChallenge[]>([]);
+  const [pendingRepairGifts, setPendingRepairGifts] = useState<RepairCardGift[]>([]);
 
   // Load cached leaderboard on mount
   useEffect(() => {
@@ -151,6 +176,7 @@ export function usePartyKit(): UsePartyKitReturn {
         ws.send(JSON.stringify({ type: 'getLeaderboard', category: 'meditation', period: 'yearly' }));
         ws.send(JSON.stringify({ type: 'getFriends', userId }));
         ws.send(JSON.stringify({ type: 'getFriendEncouragements', userId }));
+        ws.send(JSON.stringify({ type: 'getBuddyState', userId }));
       };
 
       ws.onmessage = (event) => {
@@ -166,6 +192,12 @@ export function usePartyKit(): UsePartyKitReturn {
                   ...prev,
                   fasting: { ...prev.fasting, weekly: data.leaderboard },
                 }));
+              }
+              if (data.silentRoomCounts) {
+                setSilentRoomCounts(data.silentRoomCounts);
+              }
+              if (Array.isArray(data.recentSilentGestures)) {
+                setRecentSilentGestures(data.recentSilentGestures);
               }
               break;
 
@@ -255,6 +287,36 @@ export function usePartyKit(): UsePartyKitReturn {
                     ...prev,
                   ];
                   return next.sort((a, b) => b.timestamp - a.timestamp).slice(0, 100);
+                });
+              }
+              break;
+
+            case 'silentRoomUpdate':
+              if (data.counts) {
+                setSilentRoomCounts(data.counts);
+              }
+              if (Array.isArray(data.recentEvents)) {
+                setRecentSilentGestures(data.recentEvents);
+              }
+              break;
+
+            case 'buddyChallengesUpdate':
+              if (Array.isArray(data.challenges)) {
+                setBuddyChallenges(data.challenges);
+              }
+              break;
+
+            case 'pendingRepairGifts':
+              if (Array.isArray(data.gifts)) {
+                setPendingRepairGifts(data.gifts);
+              }
+              break;
+
+            case 'repairCardGiftReceived':
+              if (data.gift && data.gift.toUserId === userIdRef.current) {
+                setPendingRepairGifts((prev) => {
+                  if (prev.some((g) => g.id === data.gift.id)) return prev;
+                  return [...prev, data.gift];
                 });
               }
               break;
@@ -364,6 +426,37 @@ export function usePartyKit(): UsePartyKitReturn {
     send({ type: 'friendEncouragement', payload: { fromUserId, fromNickname, toUserId, toNickname, kind, text } });
   }, [send]);
 
+  const sendSilentGesture = useCallback((userId: string, nickname: string, gesture: SilentGestureType) => {
+    send({ type: 'silentGesture', payload: { userId, nickname, gesture } });
+  }, [send]);
+
+  const startBuddyChallenge = useCallback((
+    fromUserId: string,
+    fromNickname: string,
+    toUserId: string,
+    toNickname: string,
+    durationDays: 7 | 21,
+    startDate: string
+  ) => {
+    send({
+      type: 'startBuddyChallenge',
+      payload: { fromUserId, fromNickname, toUserId, toNickname, durationDays, startDate },
+    });
+  }, [send]);
+
+  const lightBuddyLamp = useCallback((userId: string, partnerUserId: string, date: string) => {
+    send({ type: 'lightBuddyLamp', payload: { userId, partnerUserId, date } });
+  }, [send]);
+
+  const giftRepairCard = useCallback((fromUserId: string, fromNickname: string, toUserId: string) => {
+    send({ type: 'giftRepairCard', payload: { fromUserId, fromNickname, toUserId } });
+  }, [send]);
+
+  const claimRepairCardGifts = useCallback((userId: string) => {
+    send({ type: 'claimRepairCardGifts', userId });
+    setPendingRepairGifts([]);
+  }, [send]);
+
   useEffect(() => {
     const handleAppState = (nextState: string) => {
       if (nextState === 'background') {
@@ -411,7 +504,11 @@ export function usePartyKit(): UsePartyKitReturn {
     friendEncouragements,
     friendStatsMap,
     remoteFriends,
-	    totalParticipants,
+    totalParticipants,
+    silentRoomCounts,
+    recentSilentGestures,
+    buddyChallenges,
+    pendingRepairGifts,
     connect,
     disconnect,
     sendOnline,
@@ -419,11 +516,16 @@ export function usePartyKit(): UsePartyKitReturn {
     updateNickname,
     shareStats,
     getStats,
-	    sendFriendRequest,
-	    respondToFriendRequest,
-	    requestFriends,
+    sendFriendRequest,
+    respondToFriendRequest,
+    requestFriends,
     publishLeaderboardStats,
     requestLeaderboard,
     sendFriendEncouragement,
+    sendSilentGesture,
+    startBuddyChallenge,
+    lightBuddyLamp,
+    giftRepairCard,
+    claimRepairCardGifts,
   };
 }

@@ -64,6 +64,40 @@ interface FriendPair {
   addedAt: number;
 }
 
+type SilentGestureType = "bow" | "lamp" | "bell";
+
+interface SilentRoomCounts {
+  bow: number;
+  lamp: number;
+  bell: number;
+}
+
+interface SilentGestureEvent {
+  id: string;
+  userId: string;
+  nickname: string;
+  gesture: SilentGestureType;
+  timestamp: number;
+}
+
+interface BuddyChallenge {
+  id: string;
+  users: [string, string];
+  nicknames: Record<string, string>;
+  durationDays: 7 | 21;
+  startDate: string;
+  litDates: Record<string, string[]>;
+  createdAt: number;
+}
+
+interface RepairCardGift {
+  id: string;
+  fromUserId: string;
+  fromNickname: string;
+  toUserId: string;
+  timestamp: number;
+}
+
 interface ServerState {
   leaderboard: Record<string, LeaderboardEntry>;
   onlineUsers: Record<string, OnlineUser>;
@@ -73,6 +107,10 @@ interface ServerState {
   friendPairs: Record<string, FriendPair>;
   friendEncouragements: Record<string, FriendEncouragement[]>;
   connectionUsers: Record<string, string>;
+  silentRoomCounts: SilentRoomCounts;
+  recentSilentGestures: SilentGestureEvent[];
+  buddyChallenges: Record<string, BuddyChallenge>;
+  pendingRepairCardGifts: Record<string, RepairCardGift[]>;
 }
 
 type LeaderboardCategory = "fasting" | "meditation";
@@ -82,10 +120,17 @@ const FRIEND_PAIR_KEY_PREFIX = "friendPair:";
 const FRIEND_REQUEST_KEY_PREFIX = "friendRequest:";
 const FRIEND_ENCOURAGEMENT_KEY_PREFIX = "friendEncouragements:";
 const USER_STATS_KEY_PREFIX = "userStats:";
+const SILENT_ROOM_COUNTS_KEY = "silentRoom:counts";
+const BUDDY_CHALLENGE_KEY_PREFIX = "buddyChallenge:";
+const REPAIR_GIFT_KEY_PREFIX = "repairGift:";
 const MAX_FRIEND_ENCOURAGEMENTS_PER_USER = 100;
+const MAX_SILENT_EVENTS = 20;
+const MAX_REPAIR_GIFTS_PER_USER = 20;
+const SILENT_GESTURE_COOLDOWN_MS = 1000;
 const ONLINE_STALE_MS = 5 * 60 * 1000;
 const LEADERBOARD_BROADCAST_DELAY_MS = 1000;
 const ONLINE_BROADCAST_DELAY_MS = 500;
+const SILENT_ROOM_BROADCAST_DELAY_MS = 500;
 
 export default class FastingServer implements Party.Server {
   state: ServerState = {
@@ -97,10 +142,16 @@ export default class FastingServer implements Party.Server {
     friendPairs: {},
     friendEncouragements: {},
     connectionUsers: {},
+    silentRoomCounts: { bow: 0, lamp: 0, bell: 0 },
+    recentSilentGestures: [],
+    buddyChallenges: {},
+    pendingRepairCardGifts: {},
   };
 
   private leaderboardBroadcastTimer: ReturnType<typeof setTimeout> | null = null;
   private onlineBroadcastTimer: ReturnType<typeof setTimeout> | null = null;
+  private silentRoomBroadcastTimer: ReturnType<typeof setTimeout> | null = null;
+  private connectionLastGestureAt: Record<string, number> = {};
 
   constructor(readonly room: Party.Room) {}
 
@@ -151,6 +202,35 @@ export default class FastingServer implements Party.Server {
         if (stats && stats.userId) {
           this.state.userStats[stats.userId] = stats;
         }
+        continue;
+      }
+
+      if (key === SILENT_ROOM_COUNTS_KEY) {
+        const counts = value as Partial<SilentRoomCounts>;
+        if (counts && typeof counts === "object") {
+          this.state.silentRoomCounts = {
+            bow: this.toNumber(counts.bow, 0),
+            lamp: this.toNumber(counts.lamp, 0),
+            bell: this.toNumber(counts.bell, 0),
+          };
+        }
+        continue;
+      }
+
+      if (key.startsWith(BUDDY_CHALLENGE_KEY_PREFIX)) {
+        const challenge = value as BuddyChallenge;
+        if (challenge && Array.isArray(challenge.users) && challenge.users.length === 2) {
+          this.state.buddyChallenges[this.getPairKey(challenge.users[0], challenge.users[1])] = challenge;
+        }
+        continue;
+      }
+
+      if (key.startsWith(REPAIR_GIFT_KEY_PREFIX)) {
+        const gifts = value as RepairCardGift[];
+        if (Array.isArray(gifts)) {
+          const toUserId = key.substring(REPAIR_GIFT_KEY_PREFIX.length);
+          this.state.pendingRepairCardGifts[toUserId] = gifts.slice(-MAX_REPAIR_GIFTS_PER_USER);
+        }
       }
     }
   }
@@ -162,6 +242,8 @@ export default class FastingServer implements Party.Server {
         leaderboard: this.getLeaderboard("fasting", "weekly"),
         onlineCount: Object.keys(this.state.onlineUsers).length,
         onlineUsers: Object.values(this.state.onlineUsers),
+        silentRoomCounts: this.state.silentRoomCounts,
+        recentSilentGestures: this.state.recentSilentGestures,
       })
     );
   }
@@ -405,6 +487,147 @@ export default class FastingServer implements Party.Server {
           this.sendFriendEncouragementHistory(sender, userId);
           break;
         }
+
+        case "silentGesture": {
+          const userId = typeof data.payload?.userId === "string" ? data.payload.userId.trim() : "";
+          const rawGesture = data.payload?.gesture;
+          if (
+            !userId ||
+            (rawGesture !== "bow" && rawGesture !== "lamp" && rawGesture !== "bell") ||
+            !this.bindOrVerifySender(sender, userId)
+          ) {
+            break;
+          }
+          const gesture: SilentGestureType = rawGesture;
+          const now = Date.now();
+          const lastAt = this.connectionLastGestureAt[sender.id] || 0;
+          if (now - lastAt < SILENT_GESTURE_COOLDOWN_MS) {
+            break;
+          }
+          this.connectionLastGestureAt[sender.id] = now;
+
+          this.state.silentRoomCounts[gesture] += 1;
+          const event: SilentGestureEvent = {
+            id: now.toString(36) + Math.random().toString(36).substring(2, 6),
+            userId: userId.substring(0, 100),
+            nickname:
+              typeof data.payload?.nickname === "string" && data.payload.nickname.trim()
+                ? data.payload.nickname.substring(0, 40)
+                : "Anonymous",
+            gesture,
+            timestamp: now,
+          };
+          this.state.recentSilentGestures = [event, ...this.state.recentSilentGestures].slice(0, MAX_SILENT_EVENTS);
+          await this.room.storage.put(SILENT_ROOM_COUNTS_KEY, this.state.silentRoomCounts);
+          this.scheduleSilentRoomBroadcast();
+          break;
+        }
+
+        case "startBuddyChallenge": {
+          const fromUserId = typeof data.payload?.fromUserId === "string" ? data.payload.fromUserId.trim() : "";
+          const toUserId = typeof data.payload?.toUserId === "string" ? data.payload.toUserId.trim() : "";
+          if (!fromUserId || !toUserId || fromUserId === toUserId) break;
+          if (!this.bindOrVerifySender(sender, fromUserId)) break;
+
+          const durationDays: 7 | 21 = data.payload?.durationDays === 21 ? 21 : 7;
+          const startDate =
+            typeof data.payload?.startDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(data.payload.startDate)
+              ? data.payload.startDate
+              : new Date().toISOString().slice(0, 10);
+          const fromNickname =
+            typeof data.payload?.fromNickname === "string" ? data.payload.fromNickname.substring(0, 40) : "";
+          const toNickname =
+            typeof data.payload?.toNickname === "string" ? data.payload.toNickname.substring(0, 40) : "";
+
+          const pairKey = this.getPairKey(fromUserId, toUserId);
+          const users = [fromUserId, toUserId].sort() as [string, string];
+          const challenge: BuddyChallenge = {
+            id: `buddy_${pairKey}_${Date.now()}`,
+            users,
+            nicknames: {
+              [fromUserId]: fromNickname || this.state.userNicknames[fromUserId] || "",
+              [toUserId]: toNickname || this.state.userNicknames[toUserId] || "",
+            },
+            durationDays,
+            startDate,
+            litDates: { [fromUserId]: [startDate], [toUserId]: [] },
+            createdAt: Date.now(),
+          };
+
+          this.state.buddyChallenges[pairKey] = challenge;
+          await this.room.storage.put(`${BUDDY_CHALLENGE_KEY_PREFIX}${pairKey}`, challenge);
+          this.sendBuddyChallengesToUser(fromUserId);
+          this.sendBuddyChallengesToUser(toUserId);
+          break;
+        }
+
+        case "lightBuddyLamp": {
+          const userId = typeof data.payload?.userId === "string" ? data.payload.userId.trim() : "";
+          const partnerUserId =
+            typeof data.payload?.partnerUserId === "string" ? data.payload.partnerUserId.trim() : "";
+          const date = typeof data.payload?.date === "string" ? data.payload.date.trim() : "";
+          if (!userId || !partnerUserId || !/^\d{4}-\d{2}-\d{2}$/.test(date)) break;
+          if (!this.bindOrVerifySender(sender, userId)) break;
+
+          const pairKey = this.getPairKey(userId, partnerUserId);
+          const challenge = this.state.buddyChallenges[pairKey];
+          if (!challenge || !challenge.users.includes(userId)) break;
+
+          const currentDates = challenge.litDates[userId] || [];
+          if (!currentDates.includes(date)) {
+            challenge.litDates[userId] = [...currentDates, date].slice(-30);
+            await this.room.storage.put(`${BUDDY_CHALLENGE_KEY_PREFIX}${pairKey}`, challenge);
+          }
+          this.sendBuddyChallengesToUser(challenge.users[0]);
+          this.sendBuddyChallengesToUser(challenge.users[1]);
+          break;
+        }
+
+        case "getBuddyState": {
+          const userId = typeof data.userId === "string" ? data.userId : this.state.connectionUsers[sender.id];
+          if (!userId || !this.bindOrVerifySender(sender, userId)) break;
+          sender.send(
+            JSON.stringify({
+              type: "buddyChallengesUpdate",
+              challenges: this.getBuddyChallengesForUser(userId),
+            })
+          );
+          const pendingGifts = this.state.pendingRepairCardGifts[userId] || [];
+          if (pendingGifts.length > 0) {
+            sender.send(JSON.stringify({ type: "pendingRepairGifts", gifts: pendingGifts }));
+          }
+          break;
+        }
+
+        case "giftRepairCard": {
+          const fromUserId = typeof data.payload?.fromUserId === "string" ? data.payload.fromUserId.trim() : "";
+          const toUserId = typeof data.payload?.toUserId === "string" ? data.payload.toUserId.trim() : "";
+          if (!fromUserId || !toUserId || fromUserId === toUserId) break;
+          if (!this.bindOrVerifySender(sender, fromUserId)) break;
+
+          const gift: RepairCardGift = {
+            id: Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
+            fromUserId: fromUserId.substring(0, 100),
+            fromNickname:
+              typeof data.payload?.fromNickname === "string" ? data.payload.fromNickname.substring(0, 40) : "",
+            toUserId: toUserId.substring(0, 100),
+            timestamp: Date.now(),
+          };
+          const existing = this.state.pendingRepairCardGifts[toUserId] || [];
+          const next = [...existing, gift].slice(-MAX_REPAIR_GIFTS_PER_USER);
+          this.state.pendingRepairCardGifts[toUserId] = next;
+          await this.room.storage.put(`${REPAIR_GIFT_KEY_PREFIX}${toUserId}`, next);
+          this.sendToUser(toUserId, JSON.stringify({ type: "repairCardGiftReceived", gift }));
+          break;
+        }
+
+        case "claimRepairCardGifts": {
+          const userId = typeof data.userId === "string" ? data.userId.trim() : this.state.connectionUsers[sender.id];
+          if (!userId || !this.bindOrVerifySender(sender, userId)) break;
+          delete this.state.pendingRepairCardGifts[userId];
+          await this.room.storage.delete(`${REPAIR_GIFT_KEY_PREFIX}${userId}`);
+          break;
+        }
       }
     } catch (err) {
       console.error("[PartyKit] Message error:", err);
@@ -414,6 +637,7 @@ export default class FastingServer implements Party.Server {
   async onClose(connection: Party.Connection) {
     const userId = this.state.connectionUsers[connection.id];
     delete this.state.connectionUsers[connection.id];
+    delete this.connectionLastGestureAt[connection.id];
     if (userId && !this.hasActiveConnectionForUser(userId)) {
       delete this.state.onlineUsers[userId];
     }
@@ -428,6 +652,7 @@ export default class FastingServer implements Party.Server {
           status: "ok",
           onlineCount: Object.keys(this.state.onlineUsers).length,
           leaderboardSize: Object.keys(this.state.leaderboard).length,
+          silentRoomCounts: this.state.silentRoomCounts,
           roomId: this.room.id,
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
@@ -554,6 +779,44 @@ export default class FastingServer implements Party.Server {
       this.onlineBroadcastTimer = null;
       this.broadcastOnlineUsers();
     }
+    if (this.silentRoomBroadcastTimer) {
+      clearTimeout(this.silentRoomBroadcastTimer);
+      this.silentRoomBroadcastTimer = null;
+      this.broadcastSilentRoom();
+    }
+  }
+
+  scheduleSilentRoomBroadcast() {
+    if (this.silentRoomBroadcastTimer) return;
+    this.silentRoomBroadcastTimer = setTimeout(() => {
+      this.silentRoomBroadcastTimer = null;
+      this.broadcastSilentRoom();
+    }, SILENT_ROOM_BROADCAST_DELAY_MS);
+    (this.silentRoomBroadcastTimer as unknown as { unref?: () => void })?.unref?.();
+  }
+
+  broadcastSilentRoom() {
+    this.broadcastAll(
+      JSON.stringify({
+        type: "silentRoomUpdate",
+        counts: this.state.silentRoomCounts,
+        recentEvents: this.state.recentSilentGestures,
+      })
+    );
+  }
+
+  getBuddyChallengesForUser(userId: string): BuddyChallenge[] {
+    return Object.values(this.state.buddyChallenges).filter((c) => c.users.includes(userId));
+  }
+
+  sendBuddyChallengesToUser(userId: string) {
+    this.sendToUser(
+      userId,
+      JSON.stringify({
+        type: "buddyChallengesUpdate",
+        challenges: this.getBuddyChallengesForUser(userId),
+      })
+    );
   }
 
   broadcastLeaderboards() {

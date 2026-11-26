@@ -32,60 +32,60 @@ export interface Colors {
   tabBarInactive: string;
 }
 
-// 浅色主题
+// 浅色主题：宣纸米白 × 竹墨青 × 暖琥珀金
 export const lightColors: Colors = {
-  background: '#F5F5F5',
-  backgroundSecondary: '#FFFFFF',
-  card: '#FFFFFF',
+  background: '#F6F2E9',
+  backgroundSecondary: '#EFE9DC',
+  card: '#FFFDF8',
 
-  text: '#333333',
-  textSecondary: '#666666',
-  textLight: '#999999',
-  textTertiary: '#AAAAAA',
+  text: '#1F2A24',
+  textSecondary: '#5A675F',
+  textLight: '#85918A',
+  textTertiary: '#A3ADA7',
 
-  primary: '#FF5722',
-  primaryLight: '#FF8A65',
-  primaryDark: '#E64A19',
+  primary: '#265947',
+  primaryLight: '#3D7B65',
+  primaryDark: '#1A4032',
 
-  success: '#4CAF50',
-  warning: '#FF9800',
-  error: '#F44336',
-  info: '#2196F3',
+  success: '#3B7A57',
+  warning: '#C68B33',
+  error: '#B93A32',
+  info: '#3E6B89',
 
-  border: '#E0E0E0',
-  divider: '#EEEEEE',
+  border: '#E4DDD0',
+  divider: '#ECE6DA',
 
-  tabBar: '#FFFFFF',
-  tabBarActive: '#FF5722',
-  tabBarInactive: '#999999',
+  tabBar: '#FFFDF8',
+  tabBarActive: '#265947',
+  tabBarInactive: '#8B9690',
 };
 
-// 深色主题
+// 深色主题：深黛禅夜
 export const darkColors: Colors = {
-  background: '#121212',
-  backgroundSecondary: '#1E1E1E',
-  card: '#2C2C2C',
+  background: '#111715',
+  backgroundSecondary: '#18211E',
+  card: '#1E2925',
 
-  text: '#FFFFFF',
-  textSecondary: '#B0B0B0',
-  textLight: '#808080',
-  textTertiary: '#707070',
+  text: '#EEF2EE',
+  textSecondary: '#A8B5AE',
+  textLight: '#7A8881',
+  textTertiary: '#5C6963',
 
-  primary: '#FF6B3D',
-  primaryLight: '#FF8A65',
-  primaryDark: '#E64A19',
+  primary: '#52A382',
+  primaryLight: '#73BC9E',
+  primaryDark: '#367A5F',
 
-  success: '#66BB6A',
-  warning: '#FFB74D',
-  error: '#EF5350',
-  info: '#42A5F5',
+  success: '#5FB887',
+  warning: '#E0A84E',
+  error: '#D9665B',
+  info: '#6299BD',
 
-  border: '#3C3C3C',
-  divider: '#2A2A2A',
+  border: '#2B3A34',
+  divider: '#23302B',
 
-  tabBar: '#1E1E1E',
-  tabBarActive: '#FF6B3D',
-  tabBarInactive: '#808080',
+  tabBar: '#161F1C',
+  tabBarActive: '#52A382',
+  tabBarInactive: '#75847D',
 };
 
 // 获取当前主题颜色

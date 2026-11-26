@@ -1,3 +1,12 @@
+// 轻断食目标与阶梯类型
+export type FastingGoal =
+  | 'weight_loss'
+  | 'gut_sleep'
+  | 'mindful_discipline'
+  | 'traditional_practice';
+
+export type FastingTier = 'beginner' | 'intermediate' | 'classic';
+
 // 用户设置类型
 export interface UserSettings {
   reminderTime: string; // "21:00" - 每日提醒时间
@@ -7,6 +16,11 @@ export interface UserSettings {
   weightUnit: 'kg' | 'lb'; // 体重单位
   theme: 'light' | 'dark' | 'auto'; // 主题
   language: 'zh' | 'zh-Hant' | 'en' | 'es' | 'ja' | 'ko' | 'fr' | 'de' | 'pt' | 'ru' | 'ar' | 'it' | 'hi' | 'vi' | 'th'; // 语言
+  fastingGoal?: FastingGoal;
+  fastingTier?: FastingTier;
+  traditionalMode?: boolean;
+  selectedPilgrimageRouteId?: string;
+  selectedStampId?: string;
 }
 
 // 打坐类型
@@ -367,6 +381,41 @@ export interface LeaderboardEntry {
   sessionCountThisWeek: number;
 }
 
+// 无言共修互动与结伴挑战类型（无自由文本，100% 合规）
+export type SilentGestureType = 'bow' | 'lamp' | 'bell';
+
+export interface SilentRoomCounts {
+  bow: number;
+  lamp: number;
+  bell: number;
+}
+
+export interface SilentGestureEvent {
+  id: string;
+  userId: string;
+  nickname: string;
+  gesture: SilentGestureType;
+  timestamp: number;
+}
+
+export interface BuddyChallenge {
+  id: string;
+  users: [string, string];
+  nicknames: Record<string, string>;
+  durationDays: 7 | 21;
+  startDate: string; // YYYY-MM-DD
+  litDates: Record<string, string[]>;
+  createdAt: number;
+}
+
+export interface RepairCardGift {
+  id: string;
+  fromUserId: string;
+  fromNickname: string;
+  toUserId: string;
+  timestamp: number;
+}
+
 // 导航类型
 export type RootStackParamList = {
   Home: undefined;
@@ -381,12 +430,13 @@ export type RootStackParamList = {
   FriendDetail: { userId: string; nickname: string };
   Leaderboard: undefined;
   Retention: undefined;
+  Fasting: undefined;
+  TempleMapDetail: undefined;
 };
 
 export type TabParamList = {
   Home: undefined;
-  CheckIn: undefined;
-  Meals: undefined;
-  Stats: undefined;
+  Meditation: undefined;
+  Explore: undefined;
   Settings: undefined;
 };

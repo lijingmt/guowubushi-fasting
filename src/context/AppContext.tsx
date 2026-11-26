@@ -68,6 +68,7 @@ import {
 } from '../utils/retention';
 import { getTranslations, type Language, type TranslationStrings } from '../i18n/translations';
 import { Colors, lightColors, darkColors } from '../theme/colors';
+import { saveWidgetSnapshot } from '../utils/widgetSnapshot';
 
 const DAILY_REMINDER_NOTIFICATION_ID_KEY = '@guowu_daily_reminder_notification_id';
 const FASTING_NOTIFICATION_ID_KEY = '@guowu_fasting_notification_id';
@@ -213,6 +214,8 @@ interface AppContextType {
   recordShareAction: (kind?: 'daily' | 'weekly') => Promise<void>;
   recordFriendEncouragement: (toUserId: string) => Promise<void>;
   recordReceivedFriendEncouragement: (encouragement: FriendEncouragement) => Promise<void>;
+  consumeRepairCardForGift: () => Promise<boolean>;
+  receiveRepairCardGifts: (count: number) => Promise<void>;
 
   // 加载状态
   isLoading: boolean;
@@ -1151,6 +1154,34 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
   };
 
+  const consumeRepairCardForGift = async (): Promise<boolean> => {
+    if (retentionStateRef.current.repairCards <= 0) {
+      return false;
+    }
+    await updateRetentionState((current) => ({
+      ...current,
+      repairCards: Math.max(0, current.repairCards - 1),
+    }));
+    return true;
+  };
+
+  const receiveRepairCardGifts = async (count: number): Promise<void> => {
+    if (count <= 0) return;
+    await updateRetentionState((current) => ({
+      ...current,
+      repairCards: current.repairCards + count,
+    }));
+  };
+
+  useEffect(() => {
+    void saveWidgetSnapshot({
+      tier: settings.fastingTier || 'classic',
+      activeFasting,
+      currentStreak: stats.currentStreak,
+      hasCheckedToday,
+    });
+  }, [settings.fastingTier, activeFasting, stats.currentStreak, hasCheckedToday]);
+
   const t = getTranslations(language);
 
   return (
@@ -1202,6 +1233,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         recordShareAction,
         recordFriendEncouragement,
         recordReceivedFriendEncouragement,
+        consumeRepairCardForGift,
+        receiveRepairCardGifts,
         isLoading,
       }}
     >

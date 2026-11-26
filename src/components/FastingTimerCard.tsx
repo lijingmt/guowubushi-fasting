@@ -9,6 +9,7 @@ import {
   getLastFastingDuration,
   saveLastFastingDuration,
 } from '../services/storage';
+import { getPhysiologicalStage } from '../utils/fastingRhythm';
 import type { Language } from '../i18n/translations';
 
 interface FastingTimerCardProps {
@@ -208,14 +209,31 @@ export const FastingTimerCard: React.FC<FastingTimerCardProps> = ({ colors, lang
         )}
 
         {activeFasting && (
-          <TouchableOpacity
-            style={[styles.cancelButton, { backgroundColor: colors.backgroundSecondary }]}
-            onPress={handleCancel}
-          >
-            <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>
-              {getCancelLabel()}
-            </Text>
-          </TouchableOpacity>
+          <>
+            {(() => {
+              const elapsedHrs = Math.max(0, (Date.now() - activeFasting.startTime) / (1000 * 60 * 60));
+              const stage = getPhysiologicalStage(elapsedHrs);
+              const isZh = language === 'zh' || language === 'zh-Hant';
+              return (
+                <View style={{ backgroundColor: colors.backgroundSecondary, borderRadius: rs(12), padding: rs(10), marginBottom: vs(10) }}>
+                  <Text style={{ fontSize: fs(12), fontWeight: '700', color: colors.primary }}>
+                    {isZh ? `身体状态 · ${stage.titleZh} (${elapsedHrs.toFixed(1)}h)` : `Stage · ${stage.titleEn} (${elapsedHrs.toFixed(1)}h)`}
+                  </Text>
+                  <Text style={{ fontSize: fs(11), color: colors.textSecondary, marginTop: vs(2) }}>
+                    {isZh ? stage.detailZh : stage.detailEn}
+                  </Text>
+                </View>
+              );
+            })()}
+            <TouchableOpacity
+              style={[styles.cancelButton, { backgroundColor: colors.backgroundSecondary }]}
+              onPress={handleCancel}
+            >
+              <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>
+                {getCancelLabel()}
+              </Text>
+            </TouchableOpacity>
+          </>
         )}
       </View>
 

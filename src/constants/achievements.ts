@@ -270,6 +270,10 @@ export const DEFAULT_SETTINGS = {
   weightUnit: 'kg' as const,
   theme: 'auto' as const,
   language: 'zh' as const,
+  fastingGoal: 'mindful_discipline' as const,
+  fastingTier: 'classic' as const,
+  traditionalMode: false,
+  selectedPilgrimageRouteId: 'jiangnan-zen',
 };
 
 // 每天少吃晚饭节省的卡路里（约500卡）

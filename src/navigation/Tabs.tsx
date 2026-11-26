@@ -17,6 +17,8 @@ import { FriendDetailScreen } from '../screens/FriendDetailScreen';
 import { LeaderboardScreen } from '../screens/LeaderboardScreen';
 import { RetentionScreen } from '../screens/RetentionScreen';
 import { TempleMapScreen } from '../screens/TempleMapScreen';
+import { JourneyScreen } from '../screens/JourneyScreen';
+import { SundialTabIcon, LotusTabIcon, MountainTabIcon, SealTabIcon } from '../components/TabIcons';
 import { responsiveSize, fs, vs, rs, layout, responsive } from '../theme/responsive';
 
 const Tab = createBottomTabNavigator();
@@ -25,6 +27,7 @@ const Stack = createNativeStackNavigator();
 const TabNavigator = () => {
   const { t, colors, language } = useApp();
   const insets = useSafeAreaInsets();
+  const isZh = language === 'zh' || language === 'zh-Hant';
 
   return (
     <Tab.Navigator
@@ -34,18 +37,18 @@ const TabNavigator = () => {
           backgroundColor: colors.tabBar,
           borderTopWidth: 1,
           borderTopColor: colors.border,
-          height: 90,
-          paddingBottom: Platform.OS === 'ios' ? 20 : 45 + insets.bottom,
-          paddingTop: 10,
+          height: Platform.OS === 'ios' ? 84 : 68 + insets.bottom,
+          paddingBottom: Platform.OS === 'ios' ? 22 : Math.max(10, insets.bottom),
+          paddingTop: 8,
         },
         tabBarActiveTintColor: colors.tabBarActive,
         tabBarInactiveTintColor: colors.tabBarInactive,
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '500',
+          fontWeight: '600',
         },
         tabBarIconStyle: {
-          marginTop: 5,
+          marginTop: 2,
         },
       }}
     >
@@ -53,19 +56,9 @@ const TabNavigator = () => {
         name="Home"
         component={HomeScreen}
         options={{
-          tabBarLabel: t.tabHome,
-          tabBarIcon: ({ color }) => (
-            <TabIcon name="🏠" color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Fasting"
-        component={FastingScreen}
-        options={{
-          tabBarLabel: language === 'zh' ? '禁食' : language === 'es' ? 'Ayuno' : 'Fasting',
-          tabBarIcon: ({ color }) => (
-            <TabIcon name="⏰" color={color} />
+          tabBarLabel: isZh ? '今日' : language === 'es' ? 'Hoy' : 'Today',
+          tabBarIcon: ({ color, focused }) => (
+            <SundialTabIcon color={color} focused={focused} size={23} />
           ),
         }}
       />
@@ -73,29 +66,19 @@ const TabNavigator = () => {
         name="Meditation"
         component={MeditationScreen}
         options={{
-          tabBarLabel: language === 'zh' ? '打坐' : language === 'es' ? 'Meditación' : 'Meditation',
-          tabBarIcon: ({ color }) => (
-            <TabIcon name="🧘" color={color} />
+          tabBarLabel: isZh ? '静心' : language === 'es' ? 'Calma' : 'Zen',
+          tabBarIcon: ({ color, focused }) => (
+            <LotusTabIcon color={color} focused={focused} size={23} />
           ),
         }}
       />
       <Tab.Screen
-        name="TempleMap"
-        component={TempleMapScreen}
+        name="Explore"
+        component={JourneyScreen}
         options={{
-          tabBarLabel: language === 'zh' ? '地图' : language === 'es' ? 'Mapa' : 'Map',
-          tabBarIcon: ({ color }) => (
-            <TabIcon name="🗺️" color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="LeaderboardTab"
-        component={LeaderboardScreen}
-        options={{
-          tabBarLabel: language === 'zh' ? '排行' : language === 'es' ? 'Ranking' : 'Ranking',
-          tabBarIcon: ({ color }) => (
-            <TabIcon name="🏆" color={color} />
+          tabBarLabel: isZh ? '行脚' : language === 'es' ? 'Camino' : 'Journey',
+          tabBarIcon: ({ color, focused }) => (
+            <MountainTabIcon color={color} focused={focused} size={23} />
           ),
         }}
       />
@@ -103,9 +86,9 @@ const TabNavigator = () => {
         name="Settings"
         component={SettingsScreen}
         options={{
-          tabBarLabel: t.tabSettings,
-          tabBarIcon: ({ color }) => (
-            <TabIcon name="⚙️" color={color} />
+          tabBarLabel: isZh ? '我的' : language === 'es' ? 'Perfil' : 'Me',
+          tabBarIcon: ({ color, focused }) => (
+            <SealTabIcon color={color} focused={focused} size={23} />
           ),
         }}
       />
@@ -113,14 +96,9 @@ const TabNavigator = () => {
   );
 };
 
-const TabIcon = ({ name, color }: { name: string; color: string }) => {
-  return (
-    <Text style={{ fontSize: 24 }}>{name}</Text>
-  );
-};
-
 export const AppNavigator = () => {
   const { t, colors, language } = useApp();
+  const isZh = language === 'zh' || language === 'zh-Hant';
 
   return (
     <NavigationContainer>
@@ -176,7 +154,12 @@ export const AppNavigator = () => {
         <Stack.Screen
           name="TempleMapDetail"
           component={TempleMapScreen as any}
-          options={{ title: language === 'zh' ? '地图' : 'Map' }}
+          options={{ title: isZh ? '圣地行脚' : 'Pilgrimage Map' }}
+        />
+        <Stack.Screen
+          name="Fasting"
+          component={FastingScreen}
+          options={{ title: isZh ? '单次轻断食' : language === 'es' ? 'Ayuno' : 'Fasting Timer' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

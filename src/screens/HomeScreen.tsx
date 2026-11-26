@@ -4,8 +4,11 @@ import { useApp } from '../context/AppContext';
 import { Card } from '../components/Card';
 import { StatCard } from '../components/StatCard';
 import { CheckInCard } from '../components/CheckInCard';
+import { SundialCompassCard } from '../components/SundialCompassCard';
+import { DailyZenPoster } from '../components/DailyZenPoster';
 import * as Haptics from 'expo-haptics';
 import { responsiveSize, fs, rs, vs, layout, responsive } from '../theme/responsive';
+import { computePilgrimageProgress } from '../utils/pilgrimage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { captureRef } from 'react-native-view-shot';
 import * as FileSystem from 'expo-file-system';
@@ -293,83 +296,16 @@ export const HomeScreen: React.FC = () => {
     };
   };
 
-  const renderShareCard = () => {
-    const copy = getShareCopy();
-    const weeklyProgress = Math.min(stats.currentStreak > 0 ? ((stats.currentStreak - 1) % 7) + 1 : 0, 7);
+  const renderShareCard = () => (
+    <DailyZenPoster
+      stats={stats}
+      language={language}
+      selectedStampId={settings.selectedStampId}
+    />
+  );
 
-    return (
-      <LinearGradient
-        colors={['#1B3A33', '#2F6F4E', '#F2C14E']}
-        style={styles.shareCardBackground}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View style={styles.shareTopBand} />
-        <View style={styles.shareBottomBand} />
-
-        <View style={styles.shareCardContent}>
-          <View style={styles.shareBrandRow}>
-            <Image source={require('../../assets/brand_logo.jpg')} style={styles.shareLogo} resizeMode="contain" />
-            <View style={styles.shareBrandTextBlock}>
-              <Text style={styles.shareBrandTitle}>{copy.title}</Text>
-              <Text style={styles.shareBrandSubtitle}>Guowu Fasting</Text>
-            </View>
-          </View>
-
-          <View style={styles.shareBadge}>
-            <Text style={styles.shareBadgeText}>{copy.eyebrow}</Text>
-          </View>
-
-          <Text style={styles.shareHeadline}>{copy.headline}</Text>
-
-          <View style={styles.shareHeroMetric}>
-            <Text style={styles.shareHeroNumber}>{stats.currentStreak}</Text>
-            <Text style={styles.shareHeroLabel}>{copy.daysLabel}</Text>
-          </View>
-
-          <View style={styles.shareMetricGrid}>
-            <View style={styles.shareMetricCard}>
-              <Text style={styles.shareMetricValue}>{stats.completedDays}</Text>
-              <Text style={styles.shareMetricLabel}>{copy.completedLabel}</Text>
-            </View>
-            <View style={styles.shareMetricCard}>
-              <Text style={styles.shareMetricValue}>{stats.totalHoursSaved}h</Text>
-              <Text style={styles.shareMetricLabel}>{copy.hoursLabel}</Text>
-            </View>
-            <View style={styles.shareMetricCard}>
-              <Text style={styles.shareMetricValue}>{stats.totalCaloriesSaved}</Text>
-              <Text style={styles.shareMetricLabel}>{copy.caloriesLabel}</Text>
-            </View>
-          </View>
-
-          <View style={styles.shareProgressBlock}>
-            <View style={styles.shareProgressHeader}>
-              <Text style={styles.shareProgressLabel}>{copy.progressLabel}</Text>
-              <Text style={styles.shareProgressCount}>{weeklyProgress}/7</Text>
-            </View>
-            <View style={styles.shareProgressTrack}>
-              {Array.from({ length: 7 }).map((_, index) => (
-                <View
-                  key={index}
-                  style={[
-                    styles.shareProgressDot,
-                    index < weeklyProgress && styles.shareProgressDotActive,
-                  ]}
-                />
-              ))}
-            </View>
-          </View>
-
-          <Text style={styles.shareQuote}>{copy.quote}</Text>
-
-          <View style={styles.shareFooter}>
-            <Text style={styles.shareFooterText}>{copy.footer}</Text>
-            <Text style={styles.shareFooterLink}>{APP_STORE_URL.replace('https://', '')}</Text>
-          </View>
-        </View>
-      </LinearGradient>
-    );
-  };
+  const pilgrimage = computePilgrimageProgress(stats, settings.selectedPilgrimageRouteId);
+  const isZh = language === 'zh' || language === 'zh-Hant';
 
   // 响应式样式
   const styles = createResponsiveStyles();
@@ -382,8 +318,19 @@ export const HomeScreen: React.FC = () => {
       >
       <View style={styles.header}>
         <Text style={[styles.greeting, { color: colors.text }]}>{t.welcome}</Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t.appName}</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          {settings.traditionalMode
+            ? t.appName
+            : isZh
+            ? '东方节律轻断食 · 减负又静心'
+            : t.appName}
+        </Text>
       </View>
+
+      <SundialCompassCard
+        onOpenFastingTimer={() => navigation.navigate('Fasting')}
+        onOpenZenPoster={handleShare}
+      />
 
       <CheckInCard />
 
@@ -714,6 +661,40 @@ export const HomeScreen: React.FC = () => {
             >
               {renderShareCard()}
             </View>
+
+            {pilgrimage.unlockedStamps.length > 0 && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={{ maxHeight: vs(40), marginBottom: vs(10) }}
+                contentContainerStyle={{ gap: rs(6), paddingHorizontal: rs(4) }}
+              >
+                {pilgrimage.unlockedStamps.slice(0, 8).map((stamp) => {
+                  const selected = settings.selectedStampId === stamp.stampId;
+                  return (
+                    <TouchableOpacity
+                      key={stamp.stampId}
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        void updateSettings({ selectedStampId: selected ? undefined : stamp.stampId });
+                      }}
+                      style={{
+                        paddingHorizontal: rs(10),
+                        paddingVertical: vs(6),
+                        borderRadius: rs(10),
+                        borderWidth: 1,
+                        borderColor: selected ? '#B93A32' : colors.border,
+                        backgroundColor: selected ? '#B93A3222' : colors.backgroundSecondary,
+                      }}
+                    >
+                      <Text style={{ fontSize: fs(11), fontWeight: '700', color: selected ? '#B93A32' : colors.text }}>
+                        🏮 {isZh ? stamp.stampTextZh : stamp.stampTextEn}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            )}
 
             {/* Action buttons */}
             <View style={styles.shareCardModalActions}>

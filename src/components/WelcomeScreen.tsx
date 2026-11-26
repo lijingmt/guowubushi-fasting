@@ -5,242 +5,388 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Dimensions,
 } from 'react-native';
-import { responsiveSize, fs, rs, vs } from '../theme/responsive';
+import { fs, rs, vs } from '../theme/responsive';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import type { Language } from '../i18n/translations';
-
-const { height } = Dimensions.get('window');
+import type { FastingGoal, FastingTier } from '../types';
+import { FASTING_GOALS, FASTING_TIERS } from '../utils/fastingRhythm';
 
 const TERMS_AGREED_KEY = '@guowu_terms_agreed';
 
+export interface OnboardingResult {
+  fastingGoal: FastingGoal;
+  fastingTier: FastingTier;
+  traditionalMode: boolean;
+}
+
 interface WelcomeScreenProps {
   onDismiss: () => void;
+  onComplete?: (prefs: OnboardingResult) => Promise<void> | void;
   colors: any;
   language: Language;
 }
 
-export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onDismiss, colors, language }) => {
+export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
+  onDismiss,
+  onComplete,
+  colors,
+  language,
+}) => {
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [selectedGoal, setSelectedGoal] = useState<FastingGoal>('mindful_discipline');
+  const [selectedTier, setSelectedTier] = useState<FastingTier>('intermediate');
   const [agreed, setAgreed] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+
+  const isZh = language === 'zh' || language === 'zh-Hant';
+  const isEs = language === 'es';
+
+  const handleGoalSelect = (goalId: FastingGoal) => {
+    Haptics.selectionAsync();
+    setSelectedGoal(goalId);
+    const meta = FASTING_GOALS.find((g) => g.id === goalId);
+    if (meta) {
+      setSelectedTier(meta.recommendedTier);
+    }
+  };
 
   const handleGetStarted = async () => {
     if (!agreed) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    const goalMeta = FASTING_GOALS.find((g) => g.id === selectedGoal);
     await AsyncStorage.setItem(TERMS_AGREED_KEY, 'true');
+    if (onComplete) {
+      await onComplete({
+        fastingGoal: selectedGoal,
+        fastingTier: selectedTier,
+        traditionalMode: Boolean(goalMeta?.traditionalMode),
+      });
+    }
     onDismiss();
   };
 
-  const getContent = () => {
-    if (language === 'en') {
+  const getTermsCopy = () => {
+    if (isEs) {
       return {
-        title: 'Welcome',
-        appName: 'No Fasting After Noon',
-        subtitle: 'Your mindful fasting companion',
-        agreeText: 'I have read and agree to the ',
-        termsLink: 'Terms of Service',
-        getStarted: 'Get Started',
-        termsTitle: 'Terms of Service',
-        terms: {
-          section1: {
-            title: '⚠️ Health Disclaimer',
-            content: 'This app is for informational purposes only and is not intended to provide medical advice. Always consult with a qualified healthcare professional before starting any fasting program, especially if you are under 18, pregnant or breastfeeding, have diabetes, heart disease, eating disorders, or are taking prescription medications.',
-          },
-          section2: {
-            title: '🚨 Stop If Unwell',
-            content: 'If you experience dizziness, fainting, chest pain, palpitations, severe headache, nausea, or any other concerning symptoms during fasting, STOP immediately and eat. Seek medical attention if symptoms persist.',
-          },
-          section3: {
-            title: '⚖️ Limitation of Liability',
-            content: 'This app and its creators are not responsible for any injury, health issues, or damages resulting from the use of this app. Use at your own risk.',
-          },
-          section4: {
-            title: '🔒 Privacy & Data',
-            content: 'Your fasting, meal, water, and weight records are stored locally on your device. Optional leaderboard, nickname, and friend features sync anonymously with our server. We do not sell your personal information.',
-          },
-        },
-      };
-    }
-    if (language === 'es') {
-      return {
-        title: 'Bienvenido',
-        appName: 'No Ayuno Después del Mediodía',
-        subtitle: 'Tu compañero de ayuno consciente',
+        appName: 'Guowu · Ayuno Consciente',
         agreeText: 'He leído y acepto los ',
         termsLink: 'Términos de Servicio',
-        getStarted: 'Comenzar',
+        getStarted: 'Comenzar Mi Ritmo',
         termsTitle: 'Términos de Servicio',
-        terms: {
-          section1: {
+        terms: [
+          {
             title: '⚠️ Descargo de Responsabilidad de Salud',
-            content: 'Esta aplicación es solo para fines informativos y no tiene como objetivo proporcionar consejo médico. Siempre consulta con un profesional de la salud calificado antes de comenzar cualquier programa de ayuno, especialmente si eres menor de 18, estás embarazada o dando de lactar, tienes diabetes, enfermedades cardíacas, trastornos alimentarios o estás tomando medicamentos recetados.',
+            color: colors.warning,
+            content:
+              'Esta aplicación es solo para fines informativos y no sustituye el consejo médico. Consulta a un profesional de salud antes de iniciar cualquier programa de ayuno.',
           },
-          section2: {
+          {
             title: '🚨 Detente Si Te Sientes Mal',
-            content: 'Si experimentas mareos, desmayos, dolor en el pecho, palpitaciones, dolor de cabeza severo, náuseas o cualquier otro síntoma preocupante durante el ayuno, DETENTE inmediatamente y come. Busca atención médica si los síntomas persisten.',
+            color: colors.error,
+            content:
+              'Si sientes mareos, debilidad extrema o palpitaciones, detén el ayuno inmediatamente y aliméntate.',
           },
-          section3: {
-            title: '⚖️ Limitación de Responsabilidad',
-            content: 'Esta aplicación y sus creadores no son responsables de ninguna lesión, problema de salud o daños resultantes del uso de esta aplicación. Úsala bajo tu propia responsabilidad.',
-          },
-          section4: {
+          {
             title: '🔒 Privacidad y Datos',
-            content: 'Tus registros de ayuno, comidas, agua y peso se almacenan localmente en tu dispositivo. Las funciones opcionales de clasificación, apodo y amigos se sincronizan de forma anónima. No vendemos tu información personal.',
+            color: colors.text,
+            content:
+              'Tus registros de ayuno y salud se guardan localmente en tu dispositivo. Los rankings y funciones sociales opcionales son anónimos.',
           },
-        },
+        ],
+      };
+    }
+    if (!isZh) {
+      return {
+        appName: 'Guowu Mindful Fasting',
+        agreeText: 'I have read and agree to the ',
+        termsLink: 'Terms of Service',
+        getStarted: 'Begin My Rhythm',
+        termsTitle: 'Terms of Service',
+        terms: [
+          {
+            title: '⚠️ Health Disclaimer',
+            color: colors.warning,
+            content:
+              'This app is for informational purposes only and is not medical advice. Consult a qualified physician before fasting, especially if under 18, pregnant, diabetic, or on medication.',
+          },
+          {
+            title: '🚨 Stop If Unwell',
+            color: colors.error,
+            content:
+              'If you feel dizziness, fainting, chest pain, or severe discomfort, stop fasting immediately, eat, and seek medical care if needed.',
+          },
+          {
+            title: '🔒 Privacy & Data',
+            color: colors.text,
+            content:
+              'Your fasting, meal, water, and weight records remain locally on your device. Optional leaderboard and buddy features sync anonymously.',
+          },
+        ],
       };
     }
     return {
-      title: '欢迎',
       appName: '过午不食',
-      subtitle: '您的正念禁食伴侣',
       agreeText: '我已阅读并同意',
       termsLink: '《用户服务条款》',
-      getStarted: '开始使用',
-      termsTitle: '用户服务条款',
-      terms: {
-        section1: {
+      getStarted: '开启今日节律',
+      termsTitle: '用户服务条款与健康声明',
+      terms: [
+        {
           title: '⚠️ 健康免责声明',
-          content: '本应用仅供信息参考，不提供医疗建议。开始禁食前请咨询医生，特别是未满18岁、孕期哺乳期、患有糖尿病心脏病饮食失调或正在服药的人群。',
+          color: colors.warning,
+          content:
+            '本应用仅供生活节律参考，不构成医疗建议。开始轻断食前请评估自身状况；未满18岁、孕期哺乳期、低血糖、糖尿病或正在服药人群请先咨询医生。',
         },
-        section2: {
+        {
           title: '🚨 身体不适立即停止',
-          content: '如出现头晕、昏厥、胸痛、心慌、剧烈头痛、恶心等症状，请立即停止禁食并进食。症状持续请就医。',
+          color: colors.error,
+          content:
+            '若出现头晕、心慌、乏力、恶心等不适，请立即停止禁食并正常进食，必要时及时就医。',
         },
-        section3: {
-          title: '⚖️ 责任限制',
-          content: '本应用创作者不对因使用本应用导致的任何伤害、健康问题或损害承担责任。使用风险由您自行承担。',
+        {
+          title: '🔒 隐私与数据安全',
+          color: colors.text,
+          content:
+            '您的打卡、饮食、饮水与体重数据仅保存在本机设备；排行榜与结伴共修采用匿名 ID 同步，绝不出售任何个人信息。',
         },
-        section4: {
-          title: '🔒 隐私与数据',
-          content: '您的打卡、饮食、饮水和体重记录仅保存在本地设备；排行榜、昵称与好友等可选社交功能采用匿名同步。我们不会出售您的个人信息。',
-        },
-      },
+      ],
     };
   };
 
-  const content = getContent();
+  const termsCopy = getTermsCopy();
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Logo */}
-      <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20' }]}>
-        <Text style={styles.icon}>🏔️</Text>
-      </View>
-
-      {/* Title */}
-      <Text style={[styles.title, { color: colors.text }]}>{content.title}</Text>
-      <Text style={[styles.appName, { color: colors.primary }]}>{content.appName}</Text>
-      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{content.subtitle}</Text>
-
-      {/* Checkbox */}
-      <TouchableOpacity
-        style={styles.checkboxRow}
-        onPress={() => {
-          Haptics.selectionAsync();
-          setAgreed(!agreed);
-        }}
-        activeOpacity={0.7}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.checkbox, agreed && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
-          {agreed && <Text style={styles.checkmark}>✓</Text>}
+        {/* Step Indicator */}
+        <View style={styles.stepRow}>
+          {[1, 2, 3].map((num) => (
+            <View
+              key={num}
+              style={[
+                styles.stepDot,
+                {
+                  backgroundColor: step >= num ? colors.primary : colors.divider,
+                  width: step === num ? rs(28) : rs(10),
+                },
+              ]}
+            />
+          ))}
         </View>
-        <Text style={[styles.agreeText, { color: colors.text }]}>
-          {content.agreeText}
-          <TouchableOpacity onPress={() => setShowTerms(true)} activeOpacity={0.7}>
-            <Text style={[styles.termsLink, { color: colors.primary }]}> {content.termsLink}</Text>
-          </TouchableOpacity>
-        </Text>
-      </TouchableOpacity>
 
-      {/* Get Started Button */}
-      <TouchableOpacity
-        style={[
-          styles.getStartedButton,
-          { backgroundColor: agreed ? colors.primary : colors.divider },
-        ]}
-        onPress={handleGetStarted}
-        disabled={!agreed}
-      >
-        <Text style={styles.getStartedButtonText}>{content.getStarted}</Text>
-      </TouchableOpacity>
+        <View style={[styles.emblem, { backgroundColor: colors.primary + '16', borderColor: colors.primary + '44' }]}>
+          <Text style={styles.emblemIcon}>{step === 1 ? '🌿' : step === 2 ? '⏳' : '🪷'}</Text>
+        </View>
 
-      {/* Terms Modal */}
-      <TermsModal
-        visible={showTerms}
-        onClose={() => setShowTerms(false)}
-        colors={colors}
-        language={language}
-        content={content}
-      />
-    </View>
-  );
-};
+        <Text style={[styles.appName, { color: colors.primary }]}>{termsCopy.appName}</Text>
 
-// Terms Modal
-interface TermsModalProps {
-  visible: boolean;
-  onClose: () => void;
-  colors: any;
-  language: Language;
-  content: any;
-}
-
-const TermsModal: React.FC<TermsModalProps> = ({ visible, onClose, colors, language, content }) => {
-  if (!visible) return null;
-
-  return (
-    <View style={styles.modalOverlay}>
-      <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-        <Text style={[styles.modalTitle, { color: colors.text }]}>{content.termsTitle}</Text>
-
-        <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
-          <View style={[styles.termsSection, { backgroundColor: colors.backgroundSecondary }]}>
-            <Text style={[styles.termsSectionTitle, { color: colors.warning }]}>
-              {content.terms.section1.title}
+        {step === 1 && (
+          <>
+            <Text style={[styles.stepTitle, { color: colors.text }]}>
+              {isZh ? '第一步 · 选择你的核心目标' : isEs ? 'Paso 1 · Tu Objetivo' : 'Step 1 · Your Main Goal'}
             </Text>
-            <Text style={[styles.termsSectionText, { color: colors.textSecondary }]}>
-              {content.terms.section1.content}
+            <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
+              {isZh ? '30 秒为你定制顺应昼夜的东方轻断食节奏' : 'Personalize your daily rhythm in 30 seconds'}
             </Text>
+
+            <View style={styles.optionsList}>
+              {FASTING_GOALS.map((goal) => {
+                const active = selectedGoal === goal.id;
+                return (
+                  <TouchableOpacity
+                    key={goal.id}
+                    style={[
+                      styles.optionCard,
+                      {
+                        backgroundColor: active ? colors.primary + '14' : colors.card,
+                        borderColor: active ? colors.primary : colors.border,
+                      },
+                    ]}
+                    onPress={() => handleGoalSelect(goal.id)}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.optionIcon}>{goal.icon}</Text>
+                    <View style={styles.optionBody}>
+                      <Text style={[styles.optionTitle, { color: colors.text }]}>
+                        {isZh ? goal.titleZh : goal.titleEn}
+                      </Text>
+                      <Text style={[styles.optionSub, { color: colors.textSecondary }]}>
+                        {isZh ? goal.subtitleZh : goal.subtitleEn}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <TouchableOpacity
+              style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setStep(2);
+              }}
+            >
+              <Text style={styles.primaryBtnText}>{isZh ? '下一步：选择断食阶梯' : 'Next: Pick Rhythm'}</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {step === 2 && (
+          <>
+            <Text style={[styles.stepTitle, { color: colors.text }]}>
+              {isZh ? '第二步 · 选择过午阶梯' : isEs ? 'Paso 2 · Ritmo Diario' : 'Step 2 · Choose Starting Tier'}
+            </Text>
+            <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
+              {isZh ? '不必一刀切过午，顺应作息循序渐进更易坚持' : 'Start gently and advance whenever you feel ready'}
+            </Text>
+
+            <View style={styles.optionsList}>
+              {(['beginner', 'intermediate', 'classic'] as FastingTier[]).map((tierId) => {
+                const tier = FASTING_TIERS[tierId];
+                const active = selectedTier === tierId;
+                return (
+                  <TouchableOpacity
+                    key={tierId}
+                    style={[
+                      styles.tierCard,
+                      {
+                        backgroundColor: active ? colors.primary + '14' : colors.card,
+                        borderColor: active ? colors.primary : colors.border,
+                      },
+                    ]}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setSelectedTier(tierId);
+                    }}
+                    activeOpacity={0.85}
+                  >
+                    <View style={styles.tierHeader}>
+                      <Text style={[styles.optionTitle, { color: colors.text }]}>
+                        {isZh ? `${tier.nameZh} · ${tier.windowZh}` : `${tier.nameEn} · ${tier.windowEn}`}
+                      </Text>
+                      <View style={[styles.ratioBadge, { backgroundColor: colors.primary + '20' }]}>
+                        <Text style={[styles.ratioText, { color: colors.primary }]}>{tier.ratio}</Text>
+                      </View>
+                    </View>
+                    <Text style={[styles.optionSub, { color: colors.textSecondary }]}>
+                      {isZh ? tier.descZh : tier.descEn}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={styles.navRow}>
+              <TouchableOpacity
+                style={[styles.backBtn, { backgroundColor: colors.divider }]}
+                onPress={() => setStep(1)}
+              >
+                <Text style={[styles.backBtnText, { color: colors.text }]}>{isZh ? '上一步' : 'Back'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.nextBtn, { backgroundColor: colors.primary }]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setStep(3);
+                }}
+              >
+                <Text style={styles.primaryBtnText}>{isZh ? '下一步：安全确认' : 'Next: Terms'}</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+
+        {step === 3 && (
+          <>
+            <Text style={[styles.stepTitle, { color: colors.text }]}>
+              {isZh ? '第三步 · 科学安心开始' : isEs ? 'Paso 3 · Seguridad' : 'Step 3 · Mindful Safety'}
+            </Text>
+            <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
+              {isZh
+                ? `已为你配置：${FASTING_TIERS[selectedTier].nameZh} (${FASTING_TIERS[selectedTier].windowZh})`
+                : `Selected: ${FASTING_TIERS[selectedTier].nameEn} (${FASTING_TIERS[selectedTier].ratio})`}
+            </Text>
+
+            <View style={[styles.summaryBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[styles.summaryText, { color: colors.textSecondary }]}>
+                {isZh
+                  ? '· 身体感到头晕心慌时请随时进食\n· 断食期间注意饮用足量温开水\n· 在设置中可随时切换方案与传统修行模式'
+                  : '· Stop and eat anytime if dizzy or unwell\n· Hydrate well during fasting hours\n· Customize tier & mode anytime in Settings'}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.checkboxRow}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setAgreed(!agreed);
+              }}
+              activeOpacity={0.7}
+            >
+              <View
+                style={[
+                  styles.checkbox,
+                  agreed && { backgroundColor: colors.primary, borderColor: colors.primary },
+                ]}
+              >
+                {agreed && <Text style={styles.checkmark}>✓</Text>}
+              </View>
+              <Text style={[styles.agreeText, { color: colors.text }]}>
+                {termsCopy.agreeText}
+                <Text
+                  style={[styles.termsLink, { color: colors.primary }]}
+                  onPress={() => setShowTerms(true)}
+                >
+                  {termsCopy.termsLink}
+                </Text>
+              </Text>
+            </TouchableOpacity>
+
+            <View style={styles.navRow}>
+              <TouchableOpacity
+                style={[styles.backBtn, { backgroundColor: colors.divider }]}
+                onPress={() => setStep(2)}
+              >
+                <Text style={[styles.backBtnText, { color: colors.text }]}>{isZh ? '上一步' : 'Back'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.nextBtn, { backgroundColor: agreed ? colors.primary : colors.divider }]}
+                onPress={handleGetStarted}
+                disabled={!agreed}
+              >
+                <Text style={styles.primaryBtnText}>{termsCopy.getStarted}</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+      </ScrollView>
+
+      {showTerms && (
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{termsCopy.termsTitle}</Text>
+            <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+              {termsCopy.terms.map((section) => (
+                <View key={section.title} style={[styles.termsSection, { backgroundColor: colors.backgroundSecondary }]}>
+                  <Text style={[styles.termsSectionTitle, { color: section.color }]}>{section.title}</Text>
+                  <Text style={[styles.termsSectionText, { color: colors.textSecondary }]}>{section.content}</Text>
+                </View>
+              ))}
+            </ScrollView>
+            <TouchableOpacity
+              style={[styles.modalCloseButton, { backgroundColor: colors.primary }]}
+              onPress={() => setShowTerms(false)}
+            >
+              <Text style={styles.modalCloseButtonText}>{isZh ? '关闭' : 'Close'}</Text>
+            </TouchableOpacity>
           </View>
-
-          <View style={[styles.termsSection, { backgroundColor: colors.backgroundSecondary }]}>
-            <Text style={[styles.termsSectionTitle, { color: colors.error }]}>
-              {content.terms.section2.title}
-            </Text>
-            <Text style={[styles.termsSectionText, { color: colors.textSecondary }]}>
-              {content.terms.section2.content}
-            </Text>
-          </View>
-
-          <View style={[styles.termsSection, { backgroundColor: colors.backgroundSecondary }]}>
-            <Text style={[styles.termsSectionTitle, { color: colors.text }]}>
-              {content.terms.section3.title}
-            </Text>
-            <Text style={[styles.termsSectionText, { color: colors.textSecondary }]}>
-              {content.terms.section3.content}
-            </Text>
-          </View>
-
-          <View style={[styles.termsSection, { backgroundColor: colors.backgroundSecondary }]}>
-            <Text style={[styles.termsSectionTitle, { color: colors.text }]}>
-              {content.terms.section4.title}
-            </Text>
-            <Text style={[styles.termsSectionText, { color: colors.textSecondary }]}>
-              {content.terms.section4.content}
-            </Text>
-          </View>
-        </ScrollView>
-
-        <TouchableOpacity
-          style={[styles.modalCloseButton, { backgroundColor: colors.primary }]}
-          onPress={onClose}
-        >
-          <Text style={styles.modalCloseButtonText}>{language === 'zh' ? '关闭' : language === 'es' ? 'Cerrar' : 'Close'}</Text>
-        </TouchableOpacity>
-      </View>
+        </View>
+      )}
     </View>
   );
 };
@@ -248,75 +394,170 @@ const TermsModal: React.FC<TermsModalProps> = ({ visible, onClose, colors, langu
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: rs(24),
+    padding: rs(22),
   },
-  iconContainer: {
-    width: rs(80),
-    height: rs(80),
-    borderRadius: rs(40),
-    justifyContent: 'center',
+  stepRow: {
+    flexDirection: 'row',
+    gap: rs(8),
+    marginBottom: vs(18),
+  },
+  stepDot: {
+    height: vs(8),
+    borderRadius: rs(4),
+  },
+  emblem: {
+    width: rs(66),
+    height: rs(66),
+    borderRadius: rs(33),
+    borderWidth: 1,
     alignItems: 'center',
-    marginBottom: vs(24),
+    justifyContent: 'center',
+    marginBottom: vs(10),
   },
-  icon: {
-    fontSize: fs(40),
-  },
-  title: {
-    fontSize: fs(28),
-    fontWeight: '600',
-    marginBottom: vs(4),
+  emblemIcon: {
+    fontSize: fs(30),
   },
   appName: {
-    fontSize: fs(36),
-    fontWeight: 'bold',
-    marginBottom: vs(8),
+    fontSize: fs(26),
+    fontWeight: '800',
+    marginBottom: vs(6),
   },
-  subtitle: {
-    fontSize: fs(14),
-    marginBottom: vs(48),
+  stepTitle: {
+    fontSize: fs(18),
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  stepSubtitle: {
+    fontSize: fs(13),
+    textAlign: 'center',
+    marginTop: vs(4),
+    marginBottom: vs(18),
+  },
+  optionsList: {
+    width: '100%',
+    gap: vs(10),
+    marginBottom: vs(18),
+  },
+  optionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderRadius: rs(14),
+    padding: rs(13),
+    gap: rs(12),
+  },
+  optionIcon: {
+    fontSize: fs(24),
+  },
+  optionBody: {
+    flex: 1,
+  },
+  optionTitle: {
+    fontSize: fs(15),
+    fontWeight: '700',
+  },
+  optionSub: {
+    fontSize: fs(12),
+    marginTop: vs(2),
+    lineHeight: fs(17),
+  },
+  tierCard: {
+    borderWidth: 1.5,
+    borderRadius: rs(14),
+    padding: rs(13),
+  },
+  tierHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: vs(4),
+  },
+  ratioBadge: {
+    borderRadius: rs(8),
+    paddingHorizontal: rs(8),
+    paddingVertical: vs(2),
+  },
+  ratioText: {
+    fontSize: fs(11),
+    fontWeight: '800',
+  },
+  summaryBox: {
+    width: '100%',
+    borderRadius: rs(14),
+    borderWidth: 1,
+    padding: rs(14),
+    marginBottom: vs(18),
+  },
+  summaryText: {
+    fontSize: fs(13),
+    lineHeight: fs(21),
+  },
+  primaryBtn: {
+    width: '100%',
+    paddingVertical: vs(15),
+    borderRadius: rs(14),
+    alignItems: 'center',
+  },
+  primaryBtnText: {
+    color: '#FFFFFF',
+    fontSize: fs(16),
+    fontWeight: '700',
+  },
+  navRow: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: rs(10),
+  },
+  backBtn: {
+    flex: 0.9,
+    paddingVertical: vs(15),
+    borderRadius: rs(14),
+    alignItems: 'center',
+  },
+  backBtnText: {
+    fontSize: fs(15),
+    fontWeight: '700',
+  },
+  nextBtn: {
+    flex: 1.6,
+    paddingVertical: vs(15),
+    borderRadius: rs(14),
+    alignItems: 'center',
   },
   checkboxRow: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    marginBottom: vs(32),
+    marginBottom: vs(20),
   },
   checkbox: {
-    width: rs(28),
-    height: rs(28),
+    width: rs(26),
+    height: rs(26),
     borderRadius: rs(8),
     borderWidth: 2,
-    borderColor: '#ccc',
+    borderColor: '#B8C0BA',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: rs(12),
+    marginRight: rs(10),
   },
   checkmark: {
     color: '#fff',
-    fontSize: fs(18),
+    fontSize: fs(16),
     fontWeight: 'bold',
   },
   agreeText: {
-    fontSize: fs(15),
+    fontSize: fs(14),
     flex: 1,
   },
   termsLink: {
     textDecorationLine: 'underline',
-  },
-  getStartedButton: {
-    width: '100%',
-    paddingVertical: vs(18),
-    borderRadius: rs(16),
-    alignItems: 'center',
-  },
-  getStartedButtonText: {
-    color: '#fff',
-    fontSize: fs(18),
     fontWeight: '700',
   },
-  // Modal styles
   modalOverlay: {
     position: 'absolute',
     top: 0,
@@ -331,42 +572,42 @@ const styles = StyleSheet.create({
   modalContent: {
     width: '100%',
     maxWidth: rs(380),
-    borderRadius: rs(24),
-    padding: rs(24),
-    maxHeight: '70%',
+    borderRadius: rs(22),
+    padding: rs(22),
+    maxHeight: '72%',
   },
   modalTitle: {
-    fontSize: fs(22),
+    fontSize: fs(19),
     fontWeight: 'bold',
-    marginBottom: vs(16),
+    marginBottom: vs(14),
     textAlign: 'center',
   },
   modalScroll: {
-    maxHeight: vs(350),
+    maxHeight: vs(340),
   },
   termsSection: {
     borderRadius: rs(12),
-    padding: rs(16),
-    marginBottom: vs(12),
+    padding: rs(14),
+    marginBottom: vs(10),
   },
   termsSectionTitle: {
-    fontSize: fs(15),
+    fontSize: fs(14),
     fontWeight: '700',
-    marginBottom: vs(8),
+    marginBottom: vs(6),
   },
   termsSectionText: {
     fontSize: fs(13),
-    lineHeight: vs(22),
+    lineHeight: vs(20),
   },
   modalCloseButton: {
-    marginTop: vs(16),
-    paddingVertical: vs(14),
+    marginTop: vs(12),
+    paddingVertical: vs(13),
     borderRadius: rs(12),
     alignItems: 'center',
   },
   modalCloseButtonText: {
     color: '#fff',
-    fontSize: fs(16),
+    fontSize: fs(15),
     fontWeight: '600',
   },
 });

@@ -30,7 +30,12 @@ export const FriendsScreen: React.FC = () => {
     removeFriend,
     sendFriendEncouragement,
     onlineUsers,
+    buddyChallenges,
+    startBuddyChallenge,
+    lightBuddyLamp,
+    giftRepairCard,
   } = useSocial();
+  const isZh = language === 'zh' || language === 'zh-Hant';
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
 
@@ -83,6 +88,23 @@ export const FriendsScreen: React.FC = () => {
       t.success,
       language === 'zh' ? `已鼓励 ${friendNickname || '好友'}，今日社交任务已记录。` : 'Encouragement sent.'
     );
+  };
+
+  const handleGiftRepairCard = async (friendUserId: string, friendNickname: string) => {
+    if (retentionState.repairCards <= 0) {
+      Alert.alert(
+        isZh ? '护航补签卡不足' : 'No Repair Cards',
+        isZh ? '完成今日满星或里程碑即可获得护航补签卡。' : 'Earn repair cards from daily milestones first.'
+      );
+      return;
+    }
+    const ok = await giftRepairCard(friendUserId);
+    if (ok) {
+      Alert.alert(
+        t.success,
+        isZh ? `已向 ${friendNickname || '同修'} 赠送 1 张护航补签卡！` : `Gifted 1 repair card to ${friendNickname || 'Buddy'}!`
+      );
+    }
   };
 
   return (
@@ -156,6 +178,60 @@ export const FriendsScreen: React.FC = () => {
         </Card>
       )}
 
+      {/* 7天/21天双人结伴挑战 */}
+      <Card variant="compact" style={styles.sectionGap}>
+        <View style={styles.buddyHeader}>
+          <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>
+            🏮 {isZh ? '双人结伴过午挑战' : '7-Day / 21-Day Buddy Pact'}
+          </Text>
+          <Text style={[styles.buddyCardBadge, { color: colors.primary }]}>
+            {isZh ? `护航卡 ${retentionState.repairCards} 张` : `${retentionState.repairCards} Cards`}
+          </Text>
+        </View>
+        {buddyChallenges.length === 0 ? (
+          <Text style={[styles.emptyText, { color: colors.textSecondary, paddingVertical: vs(10) }]}>
+            {isZh
+              ? '在下方好友列表中点击“7天结伴”，互相点亮今日过午心灯！'
+              : 'Tap "7d Pact" on any friend below to co-light your daily fasting lamp!'}
+          </Text>
+        ) : (
+          buddyChallenges.map((challenge) => {
+            const partnerId = challenge.users.find((id) => id !== userId) || challenge.users[0];
+            const partnerName =
+              challenge.nicknames?.[partnerId] ||
+              friends.find((f) => f.userId === partnerId)?.nickname ||
+              t.anonymous;
+            const myDates = challenge.litDates?.[userId] || [];
+            const partnerDates = challenge.litDates?.[partnerId] || [];
+            const myLitToday = myDates.includes(today);
+            const partnerLitToday = partnerDates.includes(today);
+            return (
+              <View key={challenge.id} style={[styles.buddyRow, { borderColor: colors.border, backgroundColor: colors.backgroundSecondary }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.friendName, { color: colors.text }]}>
+                    {isZh ? `${challenge.durationDays}天过午搭子 · ${partnerName}` : `${challenge.durationDays}d Pact · ${partnerName}`}
+                  </Text>
+                  <Text style={[styles.friendStatus, { color: colors.textSecondary }]}>
+                    {isZh
+                      ? `你 ${myDates.length}/${challenge.durationDays} 天 ${myLitToday ? '🏮' : '·'} | 对方 ${partnerDates.length}/${challenge.durationDays} 天 ${partnerLitToday ? '🏮' : '·'}`
+                      : `You ${myDates.length}/${challenge.durationDays}d ${myLitToday ? '🏮' : ''} | Partner ${partnerDates.length}/${challenge.durationDays}d ${partnerLitToday ? '🏮' : ''}`}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.encourageBtn, { backgroundColor: myLitToday ? colors.divider : colors.primary }]}
+                  disabled={myLitToday}
+                  onPress={() => lightBuddyLamp(partnerId, today)}
+                >
+                  <Text style={[styles.encourageBtnText, { color: myLitToday ? colors.textSecondary : '#fff' }]}>
+                    {myLitToday ? (isZh ? '已点灯' : 'Lit') : (isZh ? '点今日灯' : 'Light')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            );
+          })
+        )}
+      </Card>
+
       {/* Friends list */}
       <Card variant="compact" style={styles.sectionGap}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -193,6 +269,28 @@ export const FriendsScreen: React.FC = () => {
                   >
                     <Text style={[styles.encourageBtnText, { color: encouraged ? colors.textSecondary : '#fff' }]}>
                       {encouraged ? (language === 'zh' ? '已鼓励' : 'Sent') : (language === 'zh' ? '鼓励' : 'Cheer')}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.removeMiniBtn, { borderColor: colors.primary }]}
+                    onPress={() => {
+                      startBuddyChallenge(friend.userId, friend.nickname, 7);
+                      Alert.alert(
+                        t.success,
+                        isZh ? `已和 ${friend.nickname || '好友'} 开启 7 天结伴过午挑战！` : 'Started 7-day buddy pact!'
+                      );
+                    }}
+                  >
+                    <Text style={[styles.removeMiniText, { color: colors.primary }]}>
+                      {isZh ? '7天结伴' : '7d Pact'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.removeMiniBtn, { borderColor: colors.warning }]}
+                    onPress={() => handleGiftRepairCard(friend.userId, friend.nickname)}
+                  >
+                    <Text style={[styles.removeMiniText, { color: colors.warning }]}>
+                      {isZh ? '赠卡' : 'Gift'}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -371,5 +469,24 @@ const styles = StyleSheet.create({
   removeMiniText: {
     fontSize: fs(11),
     fontWeight: '700',
+  },
+  buddyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: vs(8),
+  },
+  buddyCardBadge: {
+    fontSize: fs(12),
+    fontWeight: '700',
+  },
+  buddyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: rs(12),
+    padding: rs(10),
+    marginTop: vs(8),
+    gap: rs(8),
   },
 });

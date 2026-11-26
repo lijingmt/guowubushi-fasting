@@ -22,6 +22,7 @@ import { MeditationShareCard } from '../components/MeditationShareCard';
 import { MeditationAnimation } from '../components/MeditationAnimation';
 import { OnlineMeditatorsList } from '../components/OnlineMeditatorsList';
 import { NicknameEditField } from '../components/NicknameEditField';
+import { HeartLampPool } from '../components/HeartLampPool';
 import { getLocalDateString } from '../utils/date';
 import type { Language } from '../i18n/translations';
 
@@ -645,6 +646,11 @@ export const MeditationScreen = () => {
         <Text style={[styles.todayStatsValue, { color: colors.primary }]}>
           {getTodayMinutes()} {getMinutesLabel()}
         </Text>
+      </View>
+
+      {/* 无言同频共修心灯池（零自由文本，100%合规） */}
+      <View style={{ marginHorizontal: layout.contentPadding }}>
+        <HeartLampPool />
       </View>
 
       {/* Social panel */}

@@ -16,7 +16,7 @@ if (__DEV__) {
 
 // 内部组件：处理欢迎页面的显示逻辑
 const AppContent: React.FC = () => {
-  const { colors, language, isLoading } = useApp();
+  const { colors, language, isLoading, updateSettings } = useApp();
   const [showSplash, setShowSplash] = useState(true);
   const [showWelcome, setShowWelcome] = useState<boolean | null>(null);
 
@@ -47,7 +47,16 @@ const AppContent: React.FC = () => {
 
   // 显示欢迎页面
   if (showWelcome) {
-    return <WelcomeScreen colors={colors} language={language} onDismiss={() => setShowWelcome(false)} />;
+    return (
+      <WelcomeScreen
+        colors={colors}
+        language={language}
+        onComplete={async (prefs) => {
+          await updateSettings(prefs);
+        }}
+        onDismiss={() => setShowWelcome(false)}
+      />
+    );
   }
 
   // 显示主应用

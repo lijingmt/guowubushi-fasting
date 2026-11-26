@@ -34,6 +34,7 @@ import {
 import { getSacredSiteCheckIns, saveSacredSiteCheckIn } from '../services/storage';
 import { useApp } from '../context/AppContext';
 import { getLocalDateString } from '../utils/date';
+import { PILGRIMAGE_ROUTES, computePilgrimageProgress } from '../utils/pilgrimage';
 import { fs, layout, responsiveSize, rs, vs } from '../theme/responsive';
 import { SacredRegion, SacredRite, SacredSite, SacredSiteCheckIn, SacredTradition } from '../types';
 
@@ -209,10 +210,21 @@ const spreadMapPoints = (sites: SacredSite[]): Record<string, { x: number; y: nu
 };
 
 export const TempleMapScreen: React.FC = () => {
-  const { colors, language, recordShareAction } = useApp();
+  const { colors, language, recordShareAction, stats, settings, updateSettings } = useApp();
   const isZh = language === 'zh' || language === 'zh-Hant';
   const [region, setRegion] = useState<SacredRegion>('china');
   const [tradition, setTradition] = useState<FilterTradition>('all');
+  const pilgrimage = useMemo(
+    () => computePilgrimageProgress(stats, settings.selectedPilgrimageRouteId),
+    [stats, settings.selectedPilgrimageRouteId]
+  );
+  const routePolylinePath = useMemo(() => {
+    const coords = pilgrimage.stops
+      .filter((s) => s.site.region === region)
+      .map((s) => clampPoint(projectWorld(s.site), 22));
+    if (coords.length < 2) return '';
+    return coords.map((p, idx) => `${idx === 0 ? 'M' : 'L'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+  }, [pilgrimage.stops, region]);
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState(SACRED_SITES[0]?.id || '');
   const [selectedRite, setSelectedRite] = useState<SacredRite>('bow');
@@ -539,6 +551,16 @@ export const TempleMapScreen: React.FC = () => {
                           <Path key={path} d={path} fill="#D6E2CC" stroke="#8DA883" strokeWidth="2.2" />
                         ))}
                         <Path d="M0 254 C92 282 184 266 276 288 C386 312 495 285 720 322" stroke="#87A8C7" strokeWidth="4" fill="none" opacity="0.16" />
+                        {routePolylinePath ? (
+                          <Path
+                            d={routePolylinePath}
+                            stroke="#C68B33"
+                            strokeWidth="2.4"
+                            strokeDasharray="6 4"
+                            fill="none"
+                            opacity="0.9"
+                          />
+                        ) : null}
                       </G>
                       {sitesForCurrentMap.map((site) => {
                         const point = mapPointsById[site.id] || clampPoint(projectWorld(site));
@@ -856,6 +878,112 @@ export const TempleMapScreen: React.FC = () => {
     );
   };
 
+  const renderPilgrimageCard = () => (
+    <Card style={styles.pilgrimageCard} variant="compact">
+      <View style={styles.pilgrimageTopRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {isZh ? '云行脚 · 圣地集印' : 'Cloud Pilgrimage'}
+          </Text>
+          <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>
+            {isZh
+              ? `已行脚 ${pilgrimage.totalKm} km · 当前：${pilgrimage.currentStop.site.name}`
+              : `${pilgrimage.totalKm} km walked · At ${pilgrimage.currentStop.site.name}`}
+          </Text>
+        </View>
+        <View style={[styles.pill, { backgroundColor: colors.warning + '22' }]}>
+          <Text style={[styles.pillText, { color: colors.warning }]}>
+            {pilgrimage.unlockedStamps.length} {isZh ? '印章' : 'stamps'}
+          </Text>
+        </View>
+      </View>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+        {PILGRIMAGE_ROUTES.map((route) => {
+          const active = route.id === pilgrimage.route.id;
+          return (
+            <TouchableOpacity
+              key={route.id}
+              style={[
+                styles.filterChip,
+                {
+                  backgroundColor: active ? route.accentColor : colors.backgroundSecondary,
+                  borderColor: active ? route.accentColor : colors.border,
+                },
+              ]}
+              onPress={() => {
+                void updateSettings({ selectedPilgrimageRouteId: route.id });
+                const firstSite = route.stops[0]?.siteId;
+                if (firstSite) {
+                  setSelectedId(firstSite);
+                  const found = getSacredSiteById(firstSite);
+                  if (found) setRegion(found.region);
+                }
+              }}
+            >
+              <Text style={[styles.filterChipText, { color: active ? '#FFFFFF' : colors.text }]}>
+                {isZh ? route.nameZh : route.nameEn}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      <View style={[styles.pilgrimageTrack, { backgroundColor: colors.divider }]}>
+        <View
+          style={[
+            styles.pilgrimageFill,
+            { backgroundColor: pilgrimage.route.accentColor, width: `${Math.round(pilgrimage.progress * 100)}%` },
+          ]}
+        />
+      </View>
+
+      <Text style={[styles.pilgrimageGoalText, { color: colors.textSecondary }]}>
+        {pilgrimage.nextStop
+          ? isZh
+            ? `距下一站「${pilgrimage.nextStop.site.name}」还差 ${pilgrimage.kmToNextStop} km（再坚持约 ${pilgrimage.daysToNextStop} 天过午即可抵达盖印）`
+            : `${pilgrimage.kmToNextStop} km (~${pilgrimage.daysToNextStop} days) to unlock ${pilgrimage.nextStop.site.name}`
+          : isZh
+          ? `本线圆满！已集齐 ${pilgrimage.route.nameZh} 全部圣地印章`
+          : `Trail complete! All seals collected on ${pilgrimage.route.nameEn}`}
+      </Text>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+        {pilgrimage.stops.map((stop) => {
+          const isPinned = settings.selectedStampId === stop.stampId;
+          return (
+            <TouchableOpacity
+              key={stop.stampId}
+              style={[
+                styles.stampPill,
+                {
+                  backgroundColor: stop.unlocked
+                    ? isPinned
+                      ? '#B93A3222'
+                      : colors.backgroundSecondary
+                    : colors.backgroundSecondary,
+                  borderColor: stop.unlocked ? (isPinned ? '#B93A32' : colors.primary) : colors.border,
+                  opacity: stop.unlocked ? 1 : 0.5,
+                },
+              ]}
+              onPress={() => {
+                setSelectedId(stop.site.id);
+                setRegion(stop.site.region);
+                if (stop.unlocked) {
+                  void updateSettings({ selectedStampId: isPinned ? undefined : stop.stampId });
+                }
+              }}
+            >
+              <Text style={[styles.stampPillText, { color: stop.unlocked ? (isPinned ? '#B93A32' : colors.text) : colors.textLight }]}>
+                {stop.unlocked ? '🏮' : '🔒'} {isZh ? stop.stampTextZh : stop.stampTextEn} ({stop.distanceKm}km)
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </Card>
+  );
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
@@ -869,6 +997,7 @@ export const TempleMapScreen: React.FC = () => {
           </Text>
         </View>
 
+        {renderPilgrimageCard()}
         {renderFilters()}
         {renderMap()}
         {renderSelectedSite()}
@@ -1316,6 +1445,38 @@ const styles = StyleSheet.create({
     borderRadius: rs(18),
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  pilgrimageCard: {
+    gap: vs(10),
+  },
+  pilgrimageTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: rs(8),
+  },
+  pilgrimageTrack: {
+    height: vs(7),
+    borderRadius: rs(999),
+    overflow: 'hidden',
+  },
+  pilgrimageFill: {
+    height: '100%',
+    borderRadius: rs(999),
+  },
+  pilgrimageGoalText: {
+    fontSize: fs(12),
+    lineHeight: fs(17),
+  },
+  stampPill: {
+    borderWidth: 1,
+    borderRadius: rs(12),
+    paddingHorizontal: rs(10),
+    paddingVertical: vs(6),
+  },
+  stampPillText: {
+    fontSize: fs(11),
+    fontWeight: '700',
   },
   closeText: {
     fontSize: fs(26),

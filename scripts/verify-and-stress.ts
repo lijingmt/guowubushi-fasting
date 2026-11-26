@@ -17,6 +17,16 @@ import {
   canRepairYesterday,
 } from '../src/utils/retention';
 import { calculatePeriodStats } from '../src/utils/leaderboardStats';
+import {
+  FASTING_TIERS,
+  getChineseShichen,
+  getPhysiologicalStage,
+  getRecommendedTier,
+  getSundialRhythmState,
+} from '../src/utils/fastingRhythm';
+import { SOLAR_TERMS, getSolarTermInfo } from '../src/utils/solarTerm';
+import { PILGRIMAGE_ROUTES, calculatePilgrimageKm, computePilgrimageProgress } from '../src/utils/pilgrimage';
+import { SACRED_SITES } from '../src/data/sacredSites';
 import FastingServer from '../partykit/server';
 import type {
   DailyCheckIn,
@@ -519,6 +529,178 @@ async function main() {
     assert.equal(leakedToBystander.length, 0, 'Bystander leaked private friend events');
 
     console.log(`   -> PartyKit 500-user blast (${totalOps} ops): ${elapsedMs.toFixed(2)} ms (${opsPerSec} ops/sec) | burstBroadcasts=${burstBroadcastCalls} | totalBroadcasts=${room.broadcastCalls} | leaderboard=500 | leaks=0`);
+  });
+
+  await runSection('9. Fasting rhythm tiers, 4 physiological stages, 12 shichen & sundial state', () => {
+    assert.equal(FASTING_TIERS.beginner.cutoffHour, 18);
+    assert.equal(FASTING_TIERS.intermediate.cutoffHour, 15);
+    assert.equal(FASTING_TIERS.classic.cutoffHour, 13);
+
+    assert.equal(getRecommendedTier(0), 'beginner');
+    assert.equal(getRecommendedTier(7), 'intermediate');
+    assert.equal(getRecommendedTier(14), 'classic');
+
+    assert.equal(getPhysiologicalStage(0).id, 'digestion');
+    assert.equal(getPhysiologicalStage(2).id, 'digestion');
+    assert.equal(getPhysiologicalStage(4).id, 'steady_glucose');
+    assert.equal(getPhysiologicalStage(11.9).id, 'steady_glucose');
+    assert.equal(getPhysiologicalStage(12).id, 'fat_burn');
+    assert.equal(getPhysiologicalStage(15.9).id, 'fat_burn');
+    assert.equal(getPhysiologicalStage(16).id, 'autophagy');
+    assert.equal(getPhysiologicalStage(20).id, 'autophagy');
+
+    const shichens = new Set<number>();
+    for (let h = 0; h < 24; h++) {
+      const sc = getChineseShichen(h);
+      assert.ok(sc.nameZh && sc.nameEn);
+      shichens.add(sc.index);
+    }
+    assert.equal(shichens.size, 12);
+
+    const eatingNow = new Date(2026, 10, 26, 11, 30, 0);
+    const eatState = getSundialRhythmState(eatingNow, 'classic', null);
+    assert.equal(eatState.mode, 'eating');
+    assert.equal(eatState.countdownMinutes, 90);
+
+    const fastingNow = new Date(2026, 10, 26, 20, 0, 0);
+    const fastState = getSundialRhythmState(fastingNow, 'classic', null);
+    assert.equal(fastState.mode, 'fasting');
+    assert.equal(fastState.fastingElapsedMinutes, 7 * 60);
+    assert.equal(fastState.stage.id, 'steady_glucose');
+  });
+
+  await runSection('10. Solar terms 24-term full-year calendar resolution', () => {
+    assert.equal(SOLAR_TERMS.length, 24);
+    const seen = new Set<number>();
+    for (let d = 0; d < 365; d++) {
+      const dt = new Date(2026, 0, 1 + d);
+      const info = getSolarTermInfo(dt);
+      assert.ok(info.nameZh.length > 0 && info.quoteZh.length > 0 && info.sealText.length > 0);
+      seen.add(info.index);
+    }
+    assert.equal(seen.size, 24);
+  });
+
+  await runSection('11. Cloud pilgrimage routes, valid sacredSites mapping & km milestones', () => {
+    const validSiteIds = new Set(SACRED_SITES.map((s) => s.id));
+    for (const route of PILGRIMAGE_ROUTES) {
+      assert.ok(route.stops.length >= 5);
+      for (const stop of route.stops) {
+        assert.ok(validSiteIds.has(stop.siteId), `Missing SACRED_SITE id: ${stop.siteId}`);
+      }
+      const prog = computePilgrimageProgress(
+        { completedDays: 5, totalMeditationMinutes: 150, totalSingleFastingSessions: 2 },
+        route.id
+      );
+      assert.equal(prog.totalKm, calculatePilgrimageKm({ completedDays: 5, totalMeditationMinutes: 150, totalSingleFastingSessions: 2 }));
+      assert.equal(prog.totalKm, 5 * 12 + 10 * 3 + 2 * 5);
+      assert.ok(prog.unlockedStamps.length >= PILGRIMAGE_ROUTES.length);
+      if (prog.nextStop) {
+        assert.equal(prog.daysToNextStop, Math.ceil(prog.kmToNextStop / 12));
+      }
+    }
+  });
+
+  await runSection('12. PartyKit 500-user concurrency & security for Silent Room, Buddy Pact & Repair Gifts', async () => {
+    const room = new MockRoom();
+    const server = new FastingServer(room as any);
+    await server.onStart();
+
+    const aliceConn = new MockConnection('aliceConn');
+    const bobConn = new MockConnection('bobConn');
+    const eveConn = new MockConnection('eveConn');
+    room.addConnection(aliceConn);
+    room.addConnection(bobConn);
+    room.addConnection(eveConn);
+
+    await server.onMessage(
+      JSON.stringify({ type: 'online', payload: { id: 'alice', nickname: 'Alice', activity: 'meditation', startedAt: Date.now() } }),
+      aliceConn as any
+    );
+    await server.onMessage(
+      JSON.stringify({ type: 'online', payload: { id: 'bob', nickname: 'Bob', activity: 'meditation', startedAt: Date.now() } }),
+      bobConn as any
+    );
+    await server.onMessage(
+      JSON.stringify({ type: 'online', payload: { id: 'eve', nickname: 'Eve', activity: 'meditation', startedAt: Date.now() } }),
+      eveConn as any
+    );
+
+    aliceConn.sent.length = 0;
+    bobConn.sent.length = 0;
+    eveConn.sent.length = 0;
+
+    // Arbitrary / free-text gesture must be rejected cleanly
+    await server.onMessage(
+      JSON.stringify({ type: 'silentGesture', payload: { userId: 'alice', nickname: 'Alice', gesture: 'free_text_chat' } }),
+      aliceConn as any
+    );
+    assert.deepEqual(server.state.silentRoomCounts, { bow: 0, lamp: 0, bell: 0 });
+
+    // Start 7-day buddy challenge + light lamp + gift repair card (must stay private to Alice/Bob)
+    await server.onMessage(
+      JSON.stringify({
+        type: 'startBuddyChallenge',
+        payload: { fromUserId: 'alice', fromNickname: 'Alice', toUserId: 'bob', toNickname: 'Bob', durationDays: 7, startDate: '2026-11-26' },
+      }),
+      aliceConn as any
+    );
+    await server.onMessage(
+      JSON.stringify({ type: 'lightBuddyLamp', payload: { userId: 'bob', partnerUserId: 'alice', date: '2026-11-26' } }),
+      bobConn as any
+    );
+    await server.onMessage(
+      JSON.stringify({ type: 'giftRepairCard', payload: { fromUserId: 'alice', fromNickname: 'Alice', toUserId: 'bob' } }),
+      aliceConn as any
+    );
+    // Spoofed gift pretending to be from alice sent on eveConn must be dropped
+    await server.onMessage(
+      JSON.stringify({ type: 'giftRepairCard', payload: { fromUserId: 'alice', fromNickname: 'Fake', toUserId: 'eve' } }),
+      eveConn as any
+    );
+
+    assert.equal(bobConn.sent.some((m) => m.type === 'buddyChallengesUpdate'), true);
+    assert.equal(bobConn.sent.some((m) => m.type === 'repairCardGiftReceived'), true);
+    assert.equal(eveConn.sent.some((m) => m.type === 'buddyChallengesUpdate' || m.type === 'repairCardGiftReceived'), false);
+
+    // Claim repair gifts by bob
+    await server.onMessage(JSON.stringify({ type: 'claimRepairCardGifts', userId: 'bob' }), bobConn as any);
+    assert.equal(server.state.pendingRepairCardGifts['bob'], undefined);
+
+    // 500 concurrent silent gestures across 500 connections -> throttled broadcast + exact counter
+    const blastConns: MockConnection[] = [];
+    for (let i = 0; i < 500; i++) {
+      const c = new MockConnection(`sg_${i}`, false);
+      room.addConnection(c);
+      blastConns.push(c);
+    }
+    const gestures = ['bow', 'lamp', 'bell'] as const;
+    const t0 = performance.now();
+    for (let i = 0; i < 500; i++) {
+      await server.onMessage(
+        JSON.stringify({
+          type: 'silentGesture',
+          payload: { userId: `suser_${i}`, nickname: `Zen${i}`, gesture: gestures[i % 3] },
+        }),
+        blastConns[i] as any
+      );
+      // Duplicate rapid click inside cooldown must be throttled per connection
+      await server.onMessage(
+        JSON.stringify({
+          type: 'silentGesture',
+          payload: { userId: `suser_${i}`, nickname: `Zen${i}`, gesture: gestures[i % 3] },
+        }),
+        blastConns[i] as any
+      );
+    }
+    server.flushPendingBroadcasts();
+    const elapsedMs = performance.now() - t0;
+    const totalCounted =
+      server.state.silentRoomCounts.bow +
+      server.state.silentRoomCounts.lamp +
+      server.state.silentRoomCounts.bell;
+    assert.equal(totalCounted, 500, `Expected 500 after per-connection cooldown, got ${totalCounted}`);
+    console.log(`   -> Silent Room 500-user burst + cooldown (${elapsedMs.toFixed(2)} ms): total=${totalCounted}, recentEvents=${server.state.recentSilentGestures.length}`);
   });
 
   console.log('\nALL VERIFICATION & STRESS TESTS PASSED');
