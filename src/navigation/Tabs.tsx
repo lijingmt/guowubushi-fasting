@@ -1,8 +1,8 @@
 import React from 'react';
-import { Text, View, Platform } from 'react-native';
+import { Text, View, Platform, TouchableOpacity, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createNativeStackNavigator, type NativeStackHeaderProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../context/AppContext';
 import { HomeScreen } from '../screens/HomeScreen';
@@ -101,6 +101,86 @@ const TabNavigator = () => {
   );
 };
 
+const CustomStackHeader: React.FC<NativeStackHeaderProps> = ({
+  navigation,
+  route,
+  options,
+  back,
+}) => {
+  const { colors, language } = useApp();
+  const insets = useSafeAreaInsets();
+  const rl = useResponsiveLayout();
+  const isZh = language === 'zh' || language === 'zh-Hant';
+  const backLabel = isZh ? '‹ 返回' : language === 'es' ? '‹ Atrás' : '‹ Back';
+  const titleText =
+    typeof options.headerTitle === 'string'
+      ? options.headerTitle
+      : options.title ?? route.name;
+  const barHeight = rl.isCompactHeight ? 44 : 48;
+  const canReturn = Boolean(back) || navigation.canGoBack();
+
+  return (
+    <View
+      style={{
+        paddingTop: insets.top,
+        backgroundColor: colors.card,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: colors.divider,
+      }}
+    >
+      <View
+        style={{
+          height: barHeight,
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 8,
+        }}
+      >
+        <View style={{ width: 82, alignItems: 'flex-start', justifyContent: 'center' }}>
+          {canReturn && (
+            <TouchableOpacity
+              onPress={() => {
+                if (navigation.canGoBack()) {
+                  navigation.goBack();
+                } else {
+                  navigation.navigate('Main' as never);
+                }
+              }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 16 }}
+              activeOpacity={0.65}
+              style={{
+                height: 40,
+                paddingHorizontal: 8,
+                justifyContent: 'center',
+                alignItems: 'flex-start',
+              }}
+            >
+              <Text style={{ fontSize: 16, fontWeight: '600', color: colors.primary }}>
+                {backLabel}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <Text
+          numberOfLines={1}
+          style={{
+            flex: 1,
+            textAlign: 'center',
+            fontSize: 17,
+            fontWeight: '700',
+            color: colors.text,
+          }}
+        >
+          {titleText}
+        </Text>
+
+        <View style={{ width: 82 }} />
+      </View>
+    </View>
+  );
+};
+
 export const AppNavigator = () => {
   const { t, colors, language } = useApp();
   const isZh = language === 'zh' || language === 'zh-Hant';
@@ -110,11 +190,10 @@ export const AppNavigator = () => {
       <Stack.Navigator
         screenOptions={{
           headerShown: true,
-          headerShadowVisible: false,
-          headerStyle: { backgroundColor: colors.card },
+          gestureEnabled: true,
+          fullScreenGestureEnabled: true,
+          header: (props) => <CustomStackHeader {...props} />,
           contentStyle: { backgroundColor: colors.background },
-          headerTitleStyle: { fontSize: 18, fontWeight: '600', color: colors.text },
-          headerTintColor: colors.primary,
         }}
       >
         <Stack.Screen
