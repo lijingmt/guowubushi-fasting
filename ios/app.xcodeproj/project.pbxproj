@@ -13,6 +13,7 @@
 		AE66213A3E92EAC8B54BFEAB /* libPods-app.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 0F1A708BADA63F8550DAD7DD /* libPods-app.a */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
+		B2C3D4E52F02000100223344 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E52F02000200223344 /* SceneDelegate.swift */; };
 		FAA641F568907E4B10B3D6D4 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1332D14891951E0B7F6D2FE7 /* ExpoModulesProvider.swift */; };
 /* End PBXBuildFile section */
 
@@ -28,6 +29,7 @@
 		E2D2F75AB5B99A766078D9FC /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = app/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = app/AppDelegate.swift; sourceTree = "<group>"; };
+		B2C3D4E52F02000200223344 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SceneDelegate.swift; path = app/SceneDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* app-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "app-Bridging-Header.h"; path = "app/app-Bridging-Header.h"; sourceTree = "<group>"; };
 		FB5E22F8BDD4A4AF52A8C181 /* Pods-app.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-app.debug.xcconfig"; path = "Target Support Files/Pods-app/Pods-app.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -48,6 +50,7 @@
 			isa = PBXGroup;
 			children = (
 				F11748412D0307B40044C1D9 /* AppDelegate.swift */,
+				B2C3D4E52F02000200223344 /* SceneDelegate.swift */,
 				F11748442D0722820044C1D9 /* app-Bridging-Header.h */,
 				BB2F792B24A3F905000567C9 /* Supporting */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
@@ -337,6 +340,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
+				B2C3D4E52F02000100223344 /* SceneDelegate.swift in Sources */,
 				FAA641F568907E4B10B3D6D4 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -351,7 +355,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = app/app.entitlements;
-				CURRENT_PROJECT_VERSION = 24;
+				CURRENT_PROJECT_VERSION = 25;
 				DEVELOPMENT_TEAM = JDNC3D9869;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -364,7 +368,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.40;
+				MARKETING_VERSION = 1.0.41;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -388,7 +392,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = app/app.entitlements;
-				CURRENT_PROJECT_VERSION = 24;
+				CURRENT_PROJECT_VERSION = 25;
 				DEVELOPMENT_TEAM = JDNC3D9869;
 				INFOPLIST_FILE = app/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
@@ -396,7 +400,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.40;
+				MARKETING_VERSION = 1.0.41;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
