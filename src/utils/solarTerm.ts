@@ -95,7 +95,7 @@ const SEASONAL_PROFILES = [
     ],
     mealCombosEn: [
       'Breakfast: Unsweetened soy milk + egg wrap + cucumber & tomato salad.',
-      'Lunch: Steamed fish or edamame tofu + sweet potato + Crisp seasonal greens.',
+      'Lunch: Steamed fish or edamame tofu + sweet potato + crisp seasonal greens.',
     ],
     refeedFirstBiteZh: '复食第一口：先饮半杯常温温水或冬瓜海带清汤，避免冰饮冷食直接激惹空胃。',
     refeedFirstBiteEn: 'First bite: Room-temp water or light melon soup; avoid iced sugary drinks on an empty stomach.',

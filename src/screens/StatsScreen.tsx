@@ -36,9 +36,19 @@ function colorWithOpacity(color: string, opacity: number): string {
 }
 
 export const StatsScreen: React.FC = () => {
-  const { t, stats, checkInRecords, weightRecords, wellnessRecords, hungerRescueCount, colors, language } = useApp();
+  const { t, stats, settings, checkInRecords, weightRecords, wellnessRecords, hungerRescueCount, colors, language } = useApp();
   const rl = useResponsiveLayout();
   const isZh = isChineseLanguage(language);
+  const isEs = language === 'es';
+  const useInches = !isZh && settings.weightUnit === 'lb';
+  const formatWaist = (cm: number) => (useInches ? `${(cm / 2.54).toFixed(1)} in` : `${cm.toFixed(1)} cm`);
+  const formatWaistDelta = (deltaCm: number) => {
+    const val = useInches ? Math.abs(deltaCm) / 2.54 : Math.abs(deltaCm);
+    const unit = useInches ? 'in' : 'cm';
+    if (deltaCm > 0) return `-${val.toFixed(1)} ${unit}`;
+    if (deltaCm < 0) return `+${val.toFixed(1)} ${unit}`;
+    return `0.0 ${unit}`;
+  };
   const [viewMode, setViewMode] = useState<'overview' | 'weight' | 'wellness' | 'achievements'>('overview');
   const [showShareModal, setShowShareModal] = useState(false);
 
@@ -159,7 +169,7 @@ export const StatsScreen: React.FC = () => {
               viewMode === 'wellness' && styles.tabTextActive,
             ]}
           >
-            {isZh ? '身心状态' : 'Wellness'}
+            {isZh ? '身心状态' : isEs ? 'Bienestar' : 'Wellness'}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -290,7 +300,7 @@ export const StatsScreen: React.FC = () => {
           ))}
 
           <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>
-            {isZh ? '📏 腰围变化 (首页「身心体感」录入)' : '📏 Waist Tracker'}
+            {isZh ? '📏 腰围变化 (首页「身心体感」录入)' : isEs ? '📏 Registro de Cintura' : '📏 Waist Tracker'}
           </Text>
           {wellnessSummary.latestWaistCm !== null ? (
             <>
@@ -298,24 +308,20 @@ export const StatsScreen: React.FC = () => {
                 <View style={{ flexDirection: 'row', justifyContent: 'space-around', width: '100%' }}>
                   <View style={{ alignItems: 'center' }}>
                     <Text style={[styles.statValue, { color: colors.primary }]}>
-                      {wellnessSummary.latestWaistCm} cm
+                      {formatWaist(wellnessSummary.latestWaistCm)}
                     </Text>
                     <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                      {isZh ? '最近腰围' : 'Latest Waist'}
+                      {isZh ? '最近腰围' : isEs ? 'Última Cintura' : 'Latest Waist'}
                     </Text>
                   </View>
                   <View style={{ alignItems: 'center' }}>
                     <Text style={[styles.statValue, { color: (wellnessSummary.waistDeltaCm ?? 0) >= 0 ? colors.success : colors.primary }]}>
                       {wellnessSummary.waistDeltaCm === null
                         ? '--'
-                        : wellnessSummary.waistDeltaCm > 0
-                        ? `-${wellnessSummary.waistDeltaCm} cm`
-                        : wellnessSummary.waistDeltaCm < 0
-                        ? `+${Math.abs(wellnessSummary.waistDeltaCm)} cm`
-                        : '0.0 cm'}
+                        : formatWaistDelta(wellnessSummary.waistDeltaCm)}
                     </Text>
                     <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                      {isZh ? '累计变化' : 'Total Change'}
+                      {isZh ? '累计变化' : isEs ? 'Cambio Total' : 'Total Change'}
                     </Text>
                   </View>
                 </View>
@@ -324,7 +330,9 @@ export const StatsScreen: React.FC = () => {
                 <Card key={`waist-${record.id}`} style={styles.weightRecordCard}>
                   <View style={styles.weightRecordRow}>
                     <Text style={[styles.weightDate, { color: colors.textSecondary }]}>{record.date}</Text>
-                    <Text style={[styles.weightValue, { color: colors.text }]}>{record.waistCm?.toFixed(1)} cm</Text>
+                    <Text style={[styles.weightValue, { color: colors.text }]}>
+                      {typeof record.waistCm === 'number' ? formatWaist(record.waistCm) : '--'}
+                    </Text>
                   </View>
                 </Card>
               ))}
@@ -332,7 +340,11 @@ export const StatsScreen: React.FC = () => {
           ) : (
             <Card style={styles.emptyCard}>
               <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                {isZh ? '暂无腰围记录，可在首页「今日身心体感」卡片一并记录腰围。' : 'No waist entries yet. Log waist cm in the Home wellness card.'}
+                {isZh
+                  ? '暂无腰围记录，可在首页「今日身心体感」卡片一并记录腰围。'
+                  : isEs
+                  ? 'Sin registros de cintura. Anótala en la tarjeta de Bienestar en Inicio.'
+                  : 'No waist entries yet. Log waist in the Home wellness card.'}
               </Text>
             </Card>
           )}
@@ -450,7 +462,7 @@ export const StatsScreen: React.FC = () => {
                     <Text style={[styles.weightDate, { color: colors.textSecondary }]}>{rec.date}</Text>
                     <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>
                       ⚡{rec.energy} · 🌙{rec.sleep} · 🪷{rec.mood} · 🍃{rec.hunger}
-                      {typeof rec.waistCm === 'number' ? ` · 📏${rec.waistCm}cm` : ''}
+                      {typeof rec.waistCm === 'number' ? ` · 📏${formatWaist(rec.waistCm)}` : ''}
                     </Text>
                   </View>
                   {rec.note && (

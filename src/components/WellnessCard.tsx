@@ -11,17 +11,25 @@ const SCORE_LEVELS = [1, 2, 3, 4, 5];
  * 今日身心体感（精力 / 饥饿 / 心情 / 睡眠）+ 腰围快速打点卡
  */
 export const WellnessCard: React.FC = () => {
-  const { colors, language, todayWellness, saveDailyWellness } = useApp();
+  const { colors, language, settings, todayWellness, saveDailyWellness } = useApp();
   const isZh = isChineseLanguage(language);
+  const isEs = language === 'es';
+  const useInches = !isZh && settings.weightUnit === 'lb';
+  const formatWaistDisplay = (waistCm?: number) => {
+    if (typeof waistCm !== 'number' || !Number.isFinite(waistCm)) return '';
+    return useInches ? `${(waistCm / 2.54).toFixed(1)} in` : `${waistCm.toFixed(1)} cm`;
+  };
+  const formatWaistInput = (waistCm?: number) => {
+    if (typeof waistCm !== 'number' || !Number.isFinite(waistCm)) return '';
+    return useInches ? (waistCm / 2.54).toFixed(1) : String(waistCm);
+  };
 
   const [expanded, setExpanded] = useState(false);
   const [energy, setEnergy] = useState(todayWellness?.energy ?? 4);
   const [hunger, setHunger] = useState(todayWellness?.hunger ?? 2);
   const [mood, setMood] = useState(todayWellness?.mood ?? 4);
   const [sleep, setSleep] = useState(todayWellness?.sleep ?? 4);
-  const [waistText, setWaistText] = useState(
-    todayWellness?.waistCm ? String(todayWellness.waistCm) : ''
-  );
+  const [waistText, setWaistText] = useState(formatWaistInput(todayWellness?.waistCm));
 
   useEffect(() => {
     if (todayWellness) {
@@ -29,24 +37,29 @@ export const WellnessCard: React.FC = () => {
       setHunger(todayWellness.hunger);
       setMood(todayWellness.mood);
       setSleep(todayWellness.sleep);
-      setWaistText(todayWellness.waistCm ? String(todayWellness.waistCm) : '');
+      setWaistText(formatWaistInput(todayWellness.waistCm));
     }
-  }, [todayWellness]);
+  }, [todayWellness, useInches]);
 
   const handleSave = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const parsedWaist = parseFloat(waistText.replace(',', '.'));
+    const parsedInput = parseFloat(waistText.replace(',', '.'));
+    const waistCm = useInches ? Math.round(parsedInput * 2.54 * 10) / 10 : parsedInput;
     await saveDailyWellness({
       energy,
       hunger,
       mood,
       sleep,
-      waistCm: Number.isFinite(parsedWaist) && parsedWaist > 20 && parsedWaist < 250 ? parsedWaist : undefined,
+      waistCm: Number.isFinite(parsedInput) && waistCm > 20 && waistCm < 250 ? waistCm : undefined,
     });
     setExpanded(false);
     Alert.alert(
-      isZh ? '已记录今日体感' : 'Saved',
-      isZh ? '可在“我的 → 统计 → 身心”查看断食前后状态对比。' : 'View your trends under Me → Stats → Wellness.'
+      isZh ? '已记录今日体感' : isEs ? 'Registro Guardado' : 'Saved',
+      isZh
+        ? '可在“我的 → 统计 → 身心”查看断食前后状态对比。'
+        : isEs
+        ? 'Consulta tus tendencias en Perfil → Estadísticas → Bienestar.'
+        : 'View your trends under Me → Stats → Wellness.'
     );
   };
 
@@ -60,35 +73,35 @@ export const WellnessCard: React.FC = () => {
   }[] = [
     {
       key: 'energy',
-      label: isZh ? '⚡ 精力清醒' : '⚡ Energy',
+      label: isZh ? '⚡ 精力清醒' : isEs ? '⚡ Energía' : '⚡ Energy',
       val: energy,
       set: setEnergy,
-      lowHint: isZh ? '疲倦' : 'Low',
-      highHint: isZh ? '清明' : 'High',
+      lowHint: isZh ? '疲倦' : isEs ? 'Baja' : 'Low',
+      highHint: isZh ? '清明' : isEs ? 'Alta' : 'High',
     },
     {
       key: 'sleep',
-      label: isZh ? '🌙 昨夜睡眠' : '🌙 Sleep',
+      label: isZh ? '🌙 昨夜睡眠' : isEs ? '🌙 Sueño' : '🌙 Sleep',
       val: sleep,
       set: setSleep,
-      lowHint: isZh ? '浅眠' : 'Poor',
-      highHint: isZh ? '深沉' : 'Deep',
+      lowHint: isZh ? '浅眠' : isEs ? 'Ligero' : 'Poor',
+      highHint: isZh ? '深沉' : isEs ? 'Profundo' : 'Deep',
     },
     {
       key: 'mood',
-      label: isZh ? '🫧 心境平和' : '🫧 Mood',
+      label: isZh ? '🫧 心境平和' : isEs ? '🫧 Ánimo' : '🫧 Mood',
       val: mood,
       set: setMood,
-      lowHint: isZh ? '浮躁' : 'Tense',
-      highHint: isZh ? '安稳' : 'Calm',
+      lowHint: isZh ? '浮躁' : isEs ? 'Tenso' : 'Tense',
+      highHint: isZh ? '安稳' : isEs ? 'Sereno' : 'Calm',
     },
     {
       key: 'hunger',
-      label: isZh ? '🍃 饥饿强度' : '🍃 Hunger',
+      label: isZh ? '🍃 饥饿强度' : isEs ? '🍃 Hambre' : '🍃 Hunger',
       val: hunger,
       set: setHunger,
-      lowHint: isZh ? '无感' : 'None',
-      highHint: isZh ? '较强' : 'Strong',
+      lowHint: isZh ? '无感' : isEs ? 'Nula' : 'None',
+      highHint: isZh ? '较强' : isEs ? 'Fuerte' : 'Strong',
     },
   ];
 
@@ -104,20 +117,28 @@ export const WellnessCard: React.FC = () => {
       >
         <View style={{ flex: 1 }}>
           <Text style={[styles.eyebrow, { color: colors.primary }]}>
-            {isZh ? '身心体感与腰围' : 'Mind-Body & Waist'}
+            {isZh ? '身心体感与腰围' : isEs ? 'Cuerpo-Mente y Cintura' : 'Mind-Body & Waist'}
           </Text>
           <Text style={[styles.title, { color: colors.text }]}>
             {todayWellness
               ? isZh
                 ? `精力 ${todayWellness.energy}/5 · 睡眠 ${todayWellness.sleep}/5${todayWellness.waistCm ? ` · 腰围 ${todayWellness.waistCm}cm` : ''}`
-                : `Energy ${todayWellness.energy}/5 · Sleep ${todayWellness.sleep}/5${todayWellness.waistCm ? ` · ${todayWellness.waistCm}cm` : ''}`
+                : isEs
+                ? `Energía ${todayWellness.energy}/5 · Sueño ${todayWellness.sleep}/5${todayWellness.waistCm ? ` · ${formatWaistDisplay(todayWellness.waistCm)}` : ''}`
+                : `Energy ${todayWellness.energy}/5 · Sleep ${todayWellness.sleep}/5${todayWellness.waistCm ? ` · ${formatWaistDisplay(todayWellness.waistCm)}` : ''}`
               : isZh
               ? '点此记录今日精力、睡眠、饥饿与腰围'
+              : isEs
+              ? 'Toca para registrar energía, sueño, hambre y cintura'
               : 'Tap to log energy, sleep, hunger & waist'}
           </Text>
         </View>
         <Text style={[styles.chevron, { color: colors.primary }]}>
-          {expanded ? '收起 ▴' : todayWellness ? '修改 ▾' : '打卡 ▾'}
+          {expanded
+            ? isZh ? '收起 ▴' : isEs ? 'Ocultar ▴' : 'Hide ▴'
+            : todayWellness
+            ? isZh ? '修改 ▾' : isEs ? 'Editar ▾' : 'Edit ▾'
+            : isZh ? '打卡 ▾' : isEs ? 'Registrar ▾' : 'Log ▾'}
         </Text>
       </TouchableOpacity>
 
@@ -161,7 +182,7 @@ export const WellnessCard: React.FC = () => {
 
           <View style={styles.waistRow}>
             <Text style={[styles.metricLabel, { color: colors.text }]}>
-              {isZh ? '📏 今日腰围 (cm，选填)' : '📏 Waist cm (optional)'}
+              {isZh ? '📏 今日腰围 (cm，选填)' : useInches ? (isEs ? '📏 Cintura in (opcional)' : '📏 Waist in (optional)') : (isEs ? '📏 Cintura cm (opcional)' : '📏 Waist cm (optional)')}
             </Text>
             <TextInput
               style={[
@@ -174,7 +195,7 @@ export const WellnessCard: React.FC = () => {
               ]}
               value={waistText}
               onChangeText={setWaistText}
-              placeholder="e.g. 74.5"
+              placeholder={useInches ? 'e.g. 30.5' : 'e.g. 74.5'}
               placeholderTextColor={colors.textLight}
               keyboardType="decimal-pad"
             />
@@ -184,7 +205,9 @@ export const WellnessCard: React.FC = () => {
             style={[styles.saveBtn, { backgroundColor: colors.primary }]}
             onPress={handleSave}
           >
-            <Text style={styles.saveBtnText}>{isZh ? '保存今日体感' : 'Save Daily Log'}</Text>
+            <Text style={styles.saveBtnText}>
+              {isZh ? '保存今日体感' : isEs ? 'Guardar Registro' : 'Save Daily Log'}
+            </Text>
           </TouchableOpacity>
         </View>
       )}

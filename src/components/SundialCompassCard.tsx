@@ -12,7 +12,7 @@ import {
   getRecommendedTier,
   getSundialRhythmState,
 } from '../utils/fastingRhythm';
-import { addLocalDays, getLocalDateString, isChineseLanguage } from '../utils/date';
+import { addLocalDays, formatClockHour, getLocalDateString, isChineseLanguage } from '../utils/date';
 import { getSolarTermInfo } from '../utils/solarTerm';
 import { getQiZhengHourSnapshot } from '../utils/qizheng';
 import { fs, rs, vs } from '../theme/responsive';
@@ -25,20 +25,20 @@ interface SundialCompassCardProps {
 }
 
 const STAGE_ORDER = [
-  { id: 'digestion', zh: '0-4h 消化', en: '0-4h Digest' },
-  { id: 'steady_glucose', zh: '4-12h 稳糖', en: '4-12h Steady' },
-  { id: 'fat_burn', zh: '12-16h 燃脂', en: '12-16h Burn' },
-  { id: 'autophagy', zh: '16h+ 清明', en: '16h+ Clear' },
+  { id: 'digestion', zh: '0-4h 消化', en: '0-4h Digest', es: '0-4h Digestión' },
+  { id: 'steady_glucose', zh: '4-12h 稳糖', en: '4-12h Steady', es: '4-12h Estable' },
+  { id: 'fat_burn', zh: '12-16h 燃脂', en: '12-16h Burn', es: '12-16h Quema' },
+  { id: 'autophagy', zh: '16h+ 清明', en: '16h+ Clear', es: '16h+ Claridad' },
 ];
 
 const WEEKDAYS = [
-  { day: 1, zh: '一', en: 'M' },
-  { day: 2, zh: '二', en: 'T' },
-  { day: 3, zh: '三', en: 'W' },
-  { day: 4, zh: '四', en: 'T' },
-  { day: 5, zh: '五', en: 'F' },
-  { day: 6, zh: '六', en: 'S' },
-  { day: 0, zh: '日', en: 'S' },
+  { day: 1, zh: '一', en: 'M', es: 'L' },
+  { day: 2, zh: '二', en: 'T', es: 'M' },
+  { day: 3, zh: '三', en: 'W', es: 'X' },
+  { day: 4, zh: '四', en: 'T', es: 'J' },
+  { day: 5, zh: '五', en: 'F', es: 'V' },
+  { day: 6, zh: '六', en: 'S', es: 'S' },
+  { day: 0, zh: '日', en: 'S', es: 'D' },
 ];
 
 export const SundialCompassCard: React.FC<SundialCompassCardProps> = ({
@@ -60,6 +60,7 @@ export const SundialCompassCard: React.FC<SundialCompassCardProps> = ({
   }, []);
 
   const isZh = isChineseLanguage(language);
+  const isEs = language === 'es';
   const daySchedule = getEffectiveDaySchedule(now, settings);
   const currentTierId: FastingTier = daySchedule.tierId;
   const rhythm = getSundialRhythmState(now, currentTierId, activeFasting);
@@ -130,11 +131,13 @@ export const SundialCompassCard: React.FC<SundialCompassCardProps> = ({
           >
             <Text style={[styles.tierPillText, { color: colors.primary }]}>
               {daySchedule.status === 'paused'
-                ? isZh ? '护航暂停中 ▾' : 'Paused ▾'
+                ? isZh ? '护航暂停中 ▾' : isEs ? 'En Pausa ▾' : 'Paused ▾'
                 : daySchedule.status === 'rest'
-                ? isZh ? '弹性休养日 ▾' : 'Rest Day ▾'
+                ? isZh ? '弹性休养日 ▾' : isEs ? 'Día Libre ▾' : 'Rest Day ▾'
                 : isZh
                 ? `${rhythm.tier.nameZh} (${rhythm.tier.ratio}) ▾`
+                : isEs
+                ? `${rhythm.tier.nameEs} (${rhythm.tier.ratio}) ▾`
                 : `${rhythm.tier.nameEn} (${rhythm.tier.ratio}) ▾`}
             </Text>
           </TouchableOpacity>
@@ -146,9 +149,13 @@ export const SundialCompassCard: React.FC<SundialCompassCardProps> = ({
               {daySchedule.status === 'paused'
                 ? isZh
                   ? `${pauseMeta?.icon || '🛡️'} 护航暂停中（${pauseMeta?.labelZh || '调养'} · 至 ${settings.pausePass?.endDate}）：连胜安全保留`
+                  : isEs
+                  ? `Pausa Activa hasta ${settings.pausePass?.endDate} · Racha Protegida`
                   : `Pause Pass Active until ${settings.pausePass?.endDate} · Streak Protected`
                 : isZh
                 ? '🍃 今日为预设弹性休养日：安心饮食，不断连胜'
+                : isEs
+                ? '🍃 Día de Descanso Programado · Racha Protegida'
                 : '🍃 Scheduled Flexible Rest Day · Streak Protected'}
             </Text>
           </View>
@@ -181,8 +188,8 @@ export const SundialCompassCard: React.FC<SundialCompassCardProps> = ({
             <View style={styles.dialCenter}>
               <Text style={[styles.dialTag, { color: colors.textSecondary }]}>
                 {rhythm.mode === 'eating'
-                  ? isZh ? '进食窗口' : 'Eating'
-                  : isZh ? '净空轻断' : 'Fasting'}
+                  ? isZh ? '进食窗口' : isEs ? 'Comiendo' : 'Eating'
+                  : isZh ? '净空轻断' : isEs ? 'Ayunando' : 'Fasting'}
               </Text>
               <Text style={[styles.dialValue, { color: colors.text }]}>
                 {rhythm.mode === 'eating'
@@ -191,17 +198,27 @@ export const SundialCompassCard: React.FC<SundialCompassCardProps> = ({
               </Text>
               <Text style={[styles.dialSub, { color: colors.textLight }]}>
                 {rhythm.mode === 'eating'
-                  ? isZh ? `距 ${rhythm.tier.cutoffHour}:00 止食` : `until ${rhythm.tier.cutoffHour}:00`
+                  ? isZh
+                    ? `距 ${rhythm.tier.cutoffHour}:00 止食`
+                    : isEs
+                    ? `hasta las ${rhythm.tier.cutoffHour}:00`
+                    : `until ${formatClockHour(rhythm.tier.cutoffHour, false)}`
                   : rhythm.hasActiveTimer
-                  ? isZh ? `余 ${formatMinutesHm(rhythm.countdownMinutes, true)}` : `${formatMinutesHm(rhythm.countdownMinutes, false)} left`
-                  : isZh ? rhythm.stage.shortZh : rhythm.stage.shortEn}
+                  ? isZh
+                    ? `余 ${formatMinutesHm(rhythm.countdownMinutes, true)}`
+                    : isEs
+                    ? `quedan ${formatMinutesHm(rhythm.countdownMinutes, false)}`
+                    : `${formatMinutesHm(rhythm.countdownMinutes, false)} left`
+                  : isZh
+                  ? rhythm.stage.shortZh
+                  : rhythm.stage.shortEn}
               </Text>
             </View>
           </View>
 
           <View style={styles.infoCol}>
             <Text style={[styles.stageLabel, { color: colors.primary }]}>
-              {isZh ? `当前节律 · ${rhythm.stage.titleZh}` : `Phase · ${rhythm.stage.titleEn}`}
+              {isZh ? `当前节律 · ${rhythm.stage.titleZh}` : isEs ? `Fase · ${rhythm.stage.titleEn}` : `Phase · ${rhythm.stage.titleEn}`}
             </Text>
             <Text style={[styles.stageDetail, { color: colors.textSecondary }]} numberOfLines={3}>
               {rhythm.mode === 'eating'
@@ -218,7 +235,9 @@ export const SundialCompassCard: React.FC<SundialCompassCardProps> = ({
                 }}
               >
                 <Text style={styles.actionBtnText} numberOfLines={1}>
-                  {rhythm.hasActiveTimer ? (isZh ? '计时中' : 'Timer') : isZh ? '单次断食' : 'Timer'}
+                  {rhythm.hasActiveTimer
+                    ? isZh ? '计时中' : isEs ? 'Activo' : 'Timer'
+                    : isZh ? '单次断食' : isEs ? 'Temporizador' : 'Timer'}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -229,7 +248,7 @@ export const SundialCompassCard: React.FC<SundialCompassCardProps> = ({
                 }}
               >
                 <Text style={[styles.posterBtnText, { color: colors.warning }]} numberOfLines={1}>
-                  {isZh ? '节气日签' : 'Poster'}
+                  {isZh ? '节气日签' : isEs ? 'Tarjeta Zen' : 'Zen Card'}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -240,7 +259,7 @@ export const SundialCompassCard: React.FC<SundialCompassCardProps> = ({
                 }}
               >
                 <Text style={[styles.rescueBtnText, { color: colors.error }]} numberOfLines={1}>
-                  {isZh ? '抗饿急救' : 'Craving?'}
+                  {isZh ? '抗饿急救' : isEs ? '¿Antojo?' : 'Craving?'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -273,7 +292,7 @@ export const SundialCompassCard: React.FC<SundialCompassCardProps> = ({
                   ]}
                   numberOfLines={1}
                 >
-                  {isZh ? item.zh : item.en}
+                  {isZh ? item.zh : isEs ? item.es : item.en}
                 </Text>
               </View>
             );
@@ -303,10 +322,12 @@ export const SundialCompassCard: React.FC<SundialCompassCardProps> = ({
             <Text style={{ fontSize: fs(11.5), fontWeight: '700', color: colors.text, flex: 1 }} numberOfLines={1}>
               {isZh
                 ? `🪐 七政值时：${qiZheng.luminary.shortZh}（${qiZheng.wangXiang.labelZh}） · ${qiZheng.meridian.shichenZh}${qiZheng.meridian.organShortZh}`
-                : `🪐 ${qiZheng.luminary.shortEn} (${qiZheng.wangXiang.labelEn}) · ${qiZheng.meridian.organEn}`}
+                : isEs
+                ? `🧭 Reloj Corporal: ${qiZheng.luminary.shortEn} (${qiZheng.wangXiang.shortEn}) · ${qiZheng.meridian.organEn}`
+                : `🧭 Body Clock: ${qiZheng.luminary.shortEn} (${qiZheng.wangXiang.shortEn}) · ${qiZheng.meridian.organEn}`}
             </Text>
             <Text style={{ fontSize: fs(11), fontWeight: '800', color: qiZheng.luminary.color, marginLeft: rs(6) }}>
-              {isZh ? '24h流注 ›' : '24h ›'}
+              {isZh ? '24h流注 ›' : isEs ? 'Reloj 24h ›' : '24h Dial ›'}
             </Text>
           </TouchableOpacity>
         )}
@@ -326,7 +347,7 @@ export const SundialCompassCard: React.FC<SundialCompassCardProps> = ({
                 onPress={() => setModalTab('tier')}
               >
                 <Text style={[styles.modalSwitchText, { color: modalTab === 'tier' ? '#FFF' : colors.textSecondary }]}>
-                  {isZh ? '过午阶梯' : 'Tiers'}
+                  {isZh ? '过午阶梯' : isEs ? 'Niveles' : 'Tiers'}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -334,7 +355,7 @@ export const SundialCompassCard: React.FC<SundialCompassCardProps> = ({
                 onPress={() => setModalTab('flex')}
               >
                 <Text style={[styles.modalSwitchText, { color: modalTab === 'flex' ? '#FFF' : colors.textSecondary }]}>
-                  {isZh ? '弹性排班 & 护航暂停' : 'Flex & Pause'}
+                  {isZh ? '弹性排班 & 护航暂停' : isEs ? 'Horario y Pausa' : 'Flex & Pause'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -345,6 +366,8 @@ export const SundialCompassCard: React.FC<SundialCompassCardProps> = ({
                   <Text style={[styles.modalSub, { color: colors.textSecondary }]}>
                     {isZh
                       ? `已完成 ${stats.completedDays} 天 · 推荐：${FASTING_TIERS[recommendedTier].nameZh}`
+                      : isEs
+                      ? `${stats.completedDays} días completados · Sugerido: ${FASTING_TIERS[recommendedTier].nameEs}`
                       : `${stats.completedDays} days done · Recommended: ${FASTING_TIERS[recommendedTier].nameEn}`}
                   </Text>
                   {(['beginner', 'intermediate', 'classic'] as FastingTier[]).map((tierId) => {
@@ -365,7 +388,7 @@ export const SundialCompassCard: React.FC<SundialCompassCardProps> = ({
                       >
                         <View style={styles.tierOptionTop}>
                           <Text style={[styles.tierOptionTitle, { color: colors.text }]}>
-                            {isZh ? `${tier.nameZh} · ${tier.windowZh}` : `${tier.nameEn} · ${tier.windowEn}`}
+                            {isZh ? `${tier.nameZh} · ${tier.windowZh}` : isEs ? `${tier.nameEs} · ${tier.windowEs}` : `${tier.nameEn} · ${tier.windowEn}`}
                           </Text>
                           <View
                             style={[
@@ -374,12 +397,12 @@ export const SundialCompassCard: React.FC<SundialCompassCardProps> = ({
                             ]}
                           >
                             <Text style={[styles.unlockTagText, { color: unlocked ? colors.success : colors.warning }]}>
-                              {unlocked ? (isZh ? '已解锁' : 'Unlocked') : isZh ? `建议${tier.unlockDays}天` : `${tier.unlockDays}d goal`}
+                              {unlocked ? (isZh ? '已解锁' : isEs ? 'Activo' : 'Unlocked') : isZh ? `建议${tier.unlockDays}天` : isEs ? `Meta ${tier.unlockDays}d` : `${tier.unlockDays}d goal`}
                             </Text>
                           </View>
                         </View>
                         <Text style={[styles.tierOptionDesc, { color: colors.textSecondary }]}>
-                          {isZh ? tier.descZh : tier.descEn}
+                          {isZh ? tier.descZh : isEs ? tier.descEs : tier.descEn}
                         </Text>
                       </TouchableOpacity>
                     );
@@ -388,15 +411,17 @@ export const SundialCompassCard: React.FC<SundialCompassCardProps> = ({
               ) : (
                 <>
                   <Text style={[styles.flexTitle, { color: colors.text }]}>
-                    {isZh ? '每周弹性排班（点击切换）' : 'Weekly Schedule (Tap to cycle)'}
+                    {isZh ? '每周弹性排班（点击切换）' : isEs ? 'Horario Semanal (Toca para cambiar)' : 'Weekly Schedule (Tap to cycle)'}
                   </Text>
                   <View style={styles.weekdayGrid}>
                     {WEEKDAYS.map((w) => {
                       const val = settings.weeklySchedule?.[w.day] || (settings.fastingTier || 'classic');
                       const shortVal =
                         val === 'rest'
-                          ? isZh ? '休' : 'Rest'
-                          : `${FASTING_TIERS[val].cutoffHour}:00`;
+                          ? isZh ? '休' : isEs ? 'Libre' : 'Rest'
+                          : isEs
+                          ? `${FASTING_TIERS[val].cutoffHour}h`
+                          : formatClockHour(FASTING_TIERS[val].cutoffHour, isZh, true);
                       return (
                         <TouchableOpacity
                           key={w.day}
@@ -409,7 +434,7 @@ export const SundialCompassCard: React.FC<SundialCompassCardProps> = ({
                           ]}
                           onPress={() => cycleWeekday(w.day)}
                         >
-                          <Text style={[styles.weekdayName, { color: colors.text }]}>{isZh ? w.zh : w.en}</Text>
+                          <Text style={[styles.weekdayName, { color: colors.text }]}>{isZh ? w.zh : isEs ? w.es : w.en}</Text>
                           <Text style={[styles.weekdayVal, { color: val === 'rest' ? colors.info : colors.primary }]}>
                             {shortVal}
                           </Text>
@@ -419,7 +444,7 @@ export const SundialCompassCard: React.FC<SundialCompassCardProps> = ({
                   </View>
 
                   <Text style={[styles.flexTitle, { color: colors.text, marginTop: vs(12) }]}>
-                    {isZh ? '护航请假暂停（保留连胜记录）' : 'Pause Pass (Protect Streak)'}
+                    {isZh ? '护航请假暂停（保留连胜记录）' : isEs ? 'Pausa Protectora (Conserva tu Racha)' : 'Pause Pass (Protect Streak)'}
                   </Text>
                   <View style={styles.reasonWrap}>
                     {PAUSE_REASONS.map((r) => {
@@ -437,7 +462,7 @@ export const SundialCompassCard: React.FC<SundialCompassCardProps> = ({
                           onPress={() => setPauseReason(r.id)}
                         >
                           <Text style={[styles.reasonText, { color: active ? colors.primary : colors.text }]}>
-                            {r.icon} {isZh ? r.labelZh : r.labelEn}
+                            {r.icon} {isZh ? r.labelZh : isEs ? r.labelEs : r.labelEn}
                           </Text>
                         </TouchableOpacity>
                       );
@@ -469,12 +494,14 @@ export const SundialCompassCard: React.FC<SundialCompassCardProps> = ({
 
                   {settings.pausePass?.active ? (
                     <TouchableOpacity style={[styles.pauseActionBtn, { backgroundColor: colors.error }]} onPress={cancelPause}>
-                      <Text style={styles.pauseActionText}>{isZh ? '提前结束护航暂停' : 'End Pause Early'}</Text>
+                      <Text style={styles.pauseActionText}>
+                        {isZh ? '提前结束护航暂停' : isEs ? 'Finalizar Pausa Antes' : 'End Pause Early'}
+                      </Text>
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity style={[styles.pauseActionBtn, { backgroundColor: colors.info }]} onPress={activatePause}>
                       <Text style={styles.pauseActionText}>
-                        {isZh ? `开启 ${pauseDays} 天护航暂停` : `Activate ${pauseDays}-Day Pause`}
+                        {isZh ? `开启 ${pauseDays} 天护航暂停` : isEs ? `Activar Pausa de ${pauseDays} días` : `Activate ${pauseDays}-Day Pause`}
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -486,7 +513,9 @@ export const SundialCompassCard: React.FC<SundialCompassCardProps> = ({
               style={[styles.modalClose, { backgroundColor: colors.divider }]}
               onPress={() => setShowTierModal(false)}
             >
-              <Text style={[styles.modalCloseText, { color: colors.text }]}>{isZh ? '关闭' : 'Close'}</Text>
+              <Text style={[styles.modalCloseText, { color: colors.text }]}>
+                {isZh ? '关闭' : isEs ? 'Cerrar' : 'Close'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>

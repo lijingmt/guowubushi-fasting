@@ -22,6 +22,7 @@ export const QiZhengScreen: React.FC = () => {
   const { colors, language } = useApp();
   const rl = useResponsiveLayout();
   const isZh = isChineseLanguage(language);
+  const isEs = language === 'es';
 
   const [now, setNow] = useState(() => new Date());
   const [origin, setOrigin] = useState<QiZhengCycleOrigin>('sunrise_6');
@@ -48,8 +49,19 @@ export const QiZhengScreen: React.FC = () => {
   const handX = cx + Math.cos(selectedAngle) * (outerR - 14);
   const handY = cy + Math.sin(selectedAngle) * (outerR - 14);
 
+  const innerClockLabels = ['12a', '2a', '4a', '6a', '8a', '10a', '12p', '2p', '4p', '6p', '8p', '10p'];
+
   const dialColumn = (
     <Card style={styles.dialCard}>
+      {!isZh && (
+        <View style={[styles.bridgeBanner, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}>
+          <Text style={[styles.bridgeBannerText, { color: colors.textSecondary }]}>
+            {isEs
+              ? 'Une el Reloj Corporal de la MTC (2,000 años) y los Cinco Elementos con el Ayuno Circadiano 24h.'
+              : 'Combines the 2,000-year-old TCM Organ Clock (Zi-Wu Liu-Zhu) & Five-Element cycles with modern 24h Circadian Fasting.'}
+          </Text>
+        </View>
+      )}
       {/* 起算制式切换 */}
       <View style={[styles.originToggle, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}>
         <TouchableOpacity
@@ -60,7 +72,7 @@ export const QiZhengScreen: React.FC = () => {
           }}
         >
           <Text style={[styles.originBtnText, { color: origin === 'sunrise_6' ? '#FFF' : colors.textSecondary }]}>
-            {isZh ? '卯正日出 06:00 起算' : 'Sunrise 06:00'}
+            {isZh ? '卯正日出 06:00 起算' : isEs ? 'Amanecer · 06:00' : 'Sunrise · 6:00 AM'}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -71,7 +83,7 @@ export const QiZhengScreen: React.FC = () => {
           }}
         >
           <Text style={[styles.originBtnText, { color: origin === 'midnight_0' ? '#FFF' : colors.textSecondary }]}>
-            {isZh ? '子正零点 00:00 起算' : 'Midnight 00:00'}
+            {isZh ? '子正零点 00:00 起算' : isEs ? 'Medianoche · 00:00' : 'Midnight · 12:00 AM'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -80,7 +92,11 @@ export const QiZhengScreen: React.FC = () => {
       <View style={styles.metaRow}>
         <View style={[styles.metaChip, { backgroundColor: colors.primary + '16' }]}>
           <Text style={[styles.metaChipText, { color: colors.primary }]}>
-            {isZh ? `${selected.seasonLabelZh} · 今日主曜：${selected.dayRuler.shortZh}` : `${selected.seasonLabelEn} · Day Ruler: ${selected.dayRuler.shortEn}`}
+            {isZh
+              ? `${selected.seasonLabelZh} · 今日主曜：${selected.dayRuler.shortZh}`
+              : isEs
+              ? `${selected.seasonLabelEn} · Regente: ${selected.dayRuler.shortEn}`
+              : `${selected.seasonLabelEn} · Day Ruler: ${selected.dayRuler.shortEn}`}
           </Text>
         </View>
         {selectedHour !== currentHour && (
@@ -92,7 +108,7 @@ export const QiZhengScreen: React.FC = () => {
             }}
           >
             <Text style={[styles.nowBtnText, { color: colors.primary }]}>
-              {isZh ? '回此刻' : 'Now'}
+              {isZh ? '回此刻' : isEs ? 'Ahora' : 'Now'}
             </Text>
           </TouchableOpacity>
         )}
@@ -127,12 +143,12 @@ export const QiZhengScreen: React.FC = () => {
                 <SvgText
                   x={x}
                   y={y + 3.5}
-                  fontSize={isSlotActive ? 11 : 9.5}
+                  fontSize={isSlotActive ? (isZh ? 11 : 9.5) : (isZh ? 9.5 : 8.5)}
                   fontWeight={isSlotActive ? '700' : '500'}
                   fill={isSlotActive ? colors.primary : colors.textLight}
                   textAnchor="middle"
                 >
-                  {slot.branchZh}
+                  {isZh ? slot.branchZh : innerClockLabels[idx]}
                 </SvgText>
               </G>
             );
@@ -176,14 +192,14 @@ export const QiZhengScreen: React.FC = () => {
             stroke={selected.luminary.color}
             strokeWidth={1.8}
           />
-          <SvgText x={cx} y={cy - 10} fontSize={10} fontWeight="700" fill={colors.textSecondary} textAnchor="middle">
-            {selected.hourLabel}
+          <SvgText x={cx} y={cy - 10} fontSize={isZh ? 10 : 9.5} fontWeight="700" fill={colors.textSecondary} textAnchor="middle">
+            {isZh ? selected.hourLabel : selected.hourLabelEn}
           </SvgText>
-          <SvgText x={cx} y={cy + 6} fontSize={14} fontWeight="800" fill={selected.luminary.color} textAnchor="middle">
-            {selected.luminary.glyph}·{selected.wangXiang.labelZh}
+          <SvgText x={cx} y={cy + 6} fontSize={isZh ? 14 : 11} fontWeight="800" fill={selected.luminary.color} textAnchor="middle">
+            {isZh ? `${selected.luminary.glyph}·${selected.wangXiang.labelZh}` : `${selected.luminary.shortEn}·${selected.wangXiang.shortEn}`}
           </SvgText>
-          <SvgText x={cx} y={cy + 21} fontSize={9.5} fontWeight="600" fill={colors.textLight} textAnchor="middle">
-            {selected.meridian.organShortZh}
+          <SvgText x={cx} y={cy + 21} fontSize={isZh ? 9.5 : 8.5} fontWeight="600" fill={colors.textLight} textAnchor="middle">
+            {isZh ? selected.meridian.organShortZh : selected.meridian.organShortEn}
           </SvgText>
         </Svg>
 
@@ -213,8 +229,19 @@ export const QiZhengScreen: React.FC = () => {
       </View>
 
       <Text style={[styles.dialHint, { color: colors.textLight }]}>
-        {isZh ? '点击外环任一星曜（日/月/木/火/土/金/水）查看该小时值班与内脏真气' : 'Tap any outer planetary hour node to preview Qi & meridian flow'}
+        {isZh
+          ? '点击外环任一星曜（日/月/木/火/土/金/水）查看该小时值班与内脏真气'
+          : isEs
+          ? 'Toca cualquier sello exterior para ver el flujo de Qi y meridianos de cada hora'
+          : 'Tap any outer elemental seal to explore hourly Qi & organ clock flow'}
       </Text>
+      {!isZh && (
+        <Text style={[styles.glyphLegend, { color: colors.textSecondary }]}>
+          {isEs
+            ? '日 Sol · 月 Luna · 木 Madera · 火 Fuego · 土 Tierra · 金 Metal · 水 Agua'
+            : '日 Sun · 月 Moon · 木 Wood · 火 Fire · 土 Earth · 金 Metal · 水 Water'}
+        </Text>
+      )}
     </Card>
   );
 
@@ -228,10 +255,10 @@ export const QiZhengScreen: React.FC = () => {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.detailTitle, { color: colors.text }]}>
-                {selected.hourLabel} · {isZh ? selected.luminary.nameZh : selected.luminary.nameEn}
+                {isZh ? `${selected.hourLabel} · ${selected.luminary.nameZh}` : `${selected.hourLabelEn} · ${selected.luminary.nameEn}`}
               </Text>
               <Text style={[styles.detailSub, { color: colors.textSecondary }]}>
-                {isZh ? `${selected.meridian.shichenZh}（${selected.meridian.hourRangeZh}）· ${selected.meridian.organZh}` : `${selected.meridian.shichenEn} · ${selected.meridian.organEn}`}
+                {isZh ? `${selected.meridian.shichenZh}（${selected.meridian.hourRangeZh}）· ${selected.meridian.organZh}` : `${selected.meridian.hourRangeEn} · ${selected.meridian.organEn}`}
               </Text>
             </View>
           </View>
@@ -244,7 +271,7 @@ export const QiZhengScreen: React.FC = () => {
 
         <View style={[styles.box, { backgroundColor: colors.backgroundSecondary }]}>
           <Text style={[styles.boxTitle, { color: selected.wangXiang.color }]}>
-            {isZh ? `🔥 四季旺相（${selected.seasonLabelZh}）` : '🔥 Seasonal State'}
+            {isZh ? `🔥 四季旺相（${selected.seasonLabelZh}）` : isEs ? '🔥 Estado Estacional' : '🔥 Seasonal State'}
           </Text>
           <Text style={[styles.boxBody, { color: colors.textSecondary }]}>
             {isZh ? selected.wangXiang.guidanceZh : selected.wangXiang.guidanceEn}
@@ -253,7 +280,7 @@ export const QiZhengScreen: React.FC = () => {
 
         <View style={[styles.box, { backgroundColor: colors.backgroundSecondary }]}>
           <Text style={[styles.boxTitle, { color: colors.primary }]}>
-            {isZh ? `🫀 通内脏真气：${selected.luminary.organZh} × ${selected.meridian.organShortZh}` : '🫀 Qi & Organ Resonance'}
+            {isZh ? `🫀 通内脏真气：${selected.luminary.organZh} × ${selected.meridian.organShortZh}` : isEs ? '🫀 Resonancia Qi y Órganos' : '🫀 Qi & Organ Resonance'}
           </Text>
           <Text style={[styles.boxBody, { color: colors.text }]}>
             {isZh ? selected.resonanceZh : selected.resonanceEn}
@@ -265,7 +292,7 @@ export const QiZhengScreen: React.FC = () => {
 
         <View style={[styles.box, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '30', borderWidth: 1 }]}>
           <Text style={[styles.boxTitle, { color: colors.primary }]}>
-            {isZh ? '🪷 此时顺时吐纳与过午调养' : '🪷 Breath & Fasting Guidance'}
+            {isZh ? '🪷 此时顺时吐纳与过午调养' : isEs ? '🪷 Respiración y Ritmo de Ayuno' : '🪷 Breath & Fasting Guidance'}
           </Text>
           <Text style={[styles.boxBody, { color: colors.text }]}>
             • {isZh ? selected.luminary.breathCueZh : selected.luminary.breathCueEn}
@@ -278,7 +305,7 @@ export const QiZhengScreen: React.FC = () => {
 
       <Card style={styles.timelineCard}>
         <Text style={[styles.timelineTitle, { color: colors.text }]}>
-          {isZh ? '⏳ 今日 24 小时值班与脏腑循环表' : '⏳ 24-Hour Seven Luminaries & Meridians'}
+          {isZh ? '⏳ 今日 24 小时值班与脏腑循环表' : isEs ? '⏳ Ciclo 24h · Siete Luminarias y Meridianos' : '⏳ 24-Hour Seven Luminaries & Meridians'}
         </Text>
         {schedule.map((slot) => {
           const isSel = slot.hour === selectedHour;
@@ -300,11 +327,11 @@ export const QiZhengScreen: React.FC = () => {
             >
               <View style={styles.timelineLeft}>
                 <Text style={[styles.timelineHour, { color: isCur ? colors.primary : colors.text }]}>
-                  {slot.hourLabel}
+                  {isZh ? slot.hourLabel : slot.hourLabelEn}
                 </Text>
                 {isCur && (
                   <Text style={[styles.nowDot, { color: colors.primary }]}>
-                    {isZh ? '此刻' : 'NOW'}
+                    {isZh ? '此刻' : isEs ? 'AHORA' : 'NOW'}
                   </Text>
                 )}
               </View>
@@ -313,7 +340,7 @@ export const QiZhengScreen: React.FC = () => {
               </View>
               <View style={styles.timelineCenter}>
                 <Text style={[styles.timelineLuminary, { color: colors.text }]}>
-                  {isZh ? `${slot.luminary.shortZh}（${slot.wangXiang.labelZh}）· ${slot.meridian.shichenZh}${slot.meridian.organShortZh}` : `${slot.luminary.shortEn} (${slot.wangXiang.labelZh}) · ${slot.meridian.organEn}`}
+                  {isZh ? `${slot.luminary.shortZh}（${slot.wangXiang.labelZh}）· ${slot.meridian.shichenZh}${slot.meridian.organShortZh}` : `${slot.luminary.shortEn} · ${slot.wangXiang.shortEn} · ${slot.meridian.organEn}`}
                 </Text>
                 <Text style={[styles.timelineTip, { color: colors.textLight }]} numberOfLines={1}>
                   {isZh ? slot.meridian.fastingActionZh : slot.meridian.fastingActionEn}
@@ -327,7 +354,9 @@ export const QiZhengScreen: React.FC = () => {
       <Text style={[styles.disclaimer, { color: colors.textLight }]}>
         {isZh
           ? '说明：本页面融合传统七政值时天文周期与中医子午流注经络节律，仅作起居、饮水与呼吸引导参考，非占卜或医疗诊疗建议。'
-          : 'Note: Combines classical 7-Luminary planetary cycles and meridian clock theory for daily rhythm & breath guidance only; not medical or fortune advice.'}
+          : isEs
+          ? 'Nota: Guía cultural de bienestar que combina el Reloj Corporal de la MTC y los Cinco Elementos para hidratación, respiración y ritmo circadiano. No es consejo médico.'
+          : 'Cultural wellness guide combining traditional TCM Organ Clock & Five-Element cycles for hydration, breathwork, and circadian rhythm only. Not medical advice.'}
       </Text>
     </>
   );
@@ -368,6 +397,18 @@ const styles = StyleSheet.create({
   dialCard: {
     padding: rs(14),
     marginBottom: vs(12),
+  },
+  bridgeBanner: {
+    borderRadius: rs(10),
+    borderWidth: 1,
+    paddingHorizontal: rs(10),
+    paddingVertical: vs(7),
+    marginBottom: vs(10),
+  },
+  bridgeBannerText: {
+    fontSize: fs(11.5),
+    lineHeight: fs(16),
+    textAlign: 'center',
   },
   originToggle: {
     flexDirection: 'row',
@@ -416,6 +457,12 @@ const styles = StyleSheet.create({
     fontSize: fs(11),
     textAlign: 'center',
     marginTop: vs(4),
+  },
+  glyphLegend: {
+    fontSize: fs(10.5),
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: vs(5),
   },
   detailCard: {
     padding: rs(16),
@@ -497,7 +544,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   timelineLeft: {
-    width: rs(46),
+    width: rs(64),
     alignItems: 'flex-start',
   },
   timelineHour: {

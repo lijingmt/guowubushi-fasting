@@ -3,11 +3,15 @@ import { performance } from 'node:perf_hooks';
 import {
   addLocalDays,
   diffLocalDays,
+  formatClockHour,
   getLocalDateString,
   getLocalWeekKey,
   parseLocalDate,
 } from '../src/utils/date';
 import { computeUserStats, isAbstinenceCompleted } from '../src/utils/stats';
+import { CALORIE_REFERENCES_EN, CALORIE_REFERENCES_ES } from '../src/constants/achievements';
+import { translations } from '../src/i18n/translations';
+import { resolveDeviceLocale } from '../src/utils/locale';
 import {
   DEFAULT_RETENTION_STATE,
   buildDailyTasks,
@@ -18,6 +22,7 @@ import {
 } from '../src/utils/retention';
 import { calculatePeriodStats } from '../src/utils/leaderboardStats';
 import {
+  FASTING_GOALS,
   FASTING_TIERS,
   PAUSE_REASONS,
   getChineseShichen,
@@ -972,6 +977,114 @@ async function main() {
     assert.equal(schedule24.length, 24);
     const uniqueMeridians = new Set(schedule24.map((s) => s.meridian.organZh));
     assert.equal(uniqueMeridians.size, 12, '24h schedule must traverse all 12 meridian organs');
+  });
+
+  await runSection('19. English & Western localization parity, 12h clock, QiZheng clean EN, and zero leaks', () => {
+    const cjkRegex = /[\u4e00-\u9fff]/;
+
+    assert.equal(formatClockHour(0, false), '12:00 AM');
+    assert.equal(formatClockHour(13, false), '1:00 PM');
+    assert.equal(formatClockHour(18, false, true), '6 PM');
+    assert.equal(formatClockHour(18, true), '18:00');
+
+    const schedule = getQiZheng24HourSchedule(new Date(2026, 10, 27), 'sunrise_6');
+    for (const slot of schedule) {
+      const enFields = [
+        slot.hourLabelEn,
+        slot.luminary.shortEn,
+        slot.luminary.nameEn,
+        slot.luminary.organEn,
+        slot.luminary.breathCueEn,
+        slot.wangXiang.shortEn,
+        slot.wangXiang.labelEn,
+        slot.wangXiang.guidanceEn,
+        slot.meridian.organEn,
+        slot.meridian.organShortEn,
+        slot.meridian.hourRangeEn,
+        slot.meridian.qiFlowEn,
+        slot.meridian.fastingActionEn,
+        slot.resonanceEn,
+      ];
+      for (const val of enFields) {
+        assert.ok(val && val.length > 0, 'All English QiZheng fields must be non-empty');
+        assert.equal(cjkRegex.test(val), false, `Unexpected CJK character in EN field: "${val}"`);
+      }
+    }
+
+    assert.equal(isAbstinenceCompleted('🙏 Mindful Restraint Completed'), true);
+    assert.equal(isAbstinenceCompleted('Abstinence Completed'), true);
+
+    const foodEntries = Object.entries(CALORIE_REFERENCES_EN);
+    assert.ok(foodEntries.length >= 10, `Expected >= 10 EN food presets, got ${foodEntries.length}`);
+    for (const [name, kcal] of foodEntries) {
+      assert.equal(cjkRegex.test(name), false, `Unexpected CJK in CALORIE_REFERENCES_EN key: "${name}"`);
+      assert.ok(Number.isFinite(kcal) && kcal >= 0, `Invalid kcal for "${name}": ${kcal}`);
+    }
+
+    const enValues = Object.values(translations.en).join('\n');
+    assert.equal(/WeChat/i.test(enValues), false, 'translations.en must not mention WeChat');
+    assert.equal(/\bMoments\b/.test(enValues), false, 'translations.en must not mention WeChat Moments');
+  });
+
+  await runSection('20. OS locale auto-detection (EN/ES/ZH-Hans/ZH-Hant) & Spanish localization parity', () => {
+    const cjkRegex = /[\u4e00-\u9fff]/;
+
+    assert.deepEqual(
+      resolveDeviceLocale([{ languageCode: 'en', languageTag: 'en-US', regionCode: 'US', measurementSystem: 'us' }]),
+      { language: 'en', weightUnit: 'lb' }
+    );
+    assert.deepEqual(
+      resolveDeviceLocale([{ languageCode: 'en', languageTag: 'en-GB', regionCode: 'GB', measurementSystem: 'uk' }]),
+      { language: 'en', weightUnit: 'kg' }
+    );
+    assert.deepEqual(
+      resolveDeviceLocale([{ languageCode: 'es', languageTag: 'es-ES', regionCode: 'ES', measurementSystem: 'metric' }]),
+      { language: 'es', weightUnit: 'kg' }
+    );
+    assert.deepEqual(
+      resolveDeviceLocale([{ languageCode: 'es', languageTag: 'es-MX', regionCode: 'MX', measurementSystem: 'metric' }]),
+      { language: 'es', weightUnit: 'kg' }
+    );
+    assert.deepEqual(
+      resolveDeviceLocale([{ languageCode: 'es', languageTag: 'es-US', regionCode: 'US', measurementSystem: 'us' }]),
+      { language: 'es', weightUnit: 'lb' }
+    );
+    assert.deepEqual(
+      resolveDeviceLocale([{ languageCode: 'zh', languageTag: 'zh-Hans-CN', languageScriptCode: 'Hans', regionCode: 'CN', measurementSystem: 'metric' }]),
+      { language: 'zh', weightUnit: 'kg' }
+    );
+    assert.deepEqual(
+      resolveDeviceLocale([{ languageCode: 'zh', languageTag: 'zh-Hant-TW', languageScriptCode: 'Hant', regionCode: 'TW', measurementSystem: 'metric' }]),
+      { language: 'zh-Hant', weightUnit: 'kg' }
+    );
+    assert.deepEqual(
+      resolveDeviceLocale([{ languageCode: 'zh', languageTag: 'zh-HK', regionCode: 'HK' }]),
+      { language: 'zh-Hant', weightUnit: 'kg' }
+    );
+    assert.equal(resolveDeviceLocale([{ languageCode: 'fr', languageTag: 'fr-FR' }]).language, 'fr');
+    assert.equal(resolveDeviceLocale([{ languageCode: 'de', languageTag: 'de-DE' }]).language, 'de');
+    assert.deepEqual(resolveDeviceLocale([{ languageCode: 'xx', languageTag: 'xx-ZZ' }]), { language: 'en', weightUnit: 'kg' });
+    assert.deepEqual(resolveDeviceLocale([]), { language: 'en', weightUnit: 'lb' });
+
+    const esFoodEntries = Object.entries(CALORIE_REFERENCES_ES);
+    assert.ok(esFoodEntries.length >= 12, `Expected >= 12 ES food presets, got ${esFoodEntries.length}`);
+    for (const [name, kcal] of esFoodEntries) {
+      assert.equal(cjkRegex.test(name), false, `Unexpected CJK in CALORIE_REFERENCES_ES key: "${name}"`);
+      assert.ok(Number.isFinite(kcal) && kcal >= 0);
+    }
+
+    const esValues = Object.values(translations.es).join('\n');
+    assert.equal(/WeChat/i.test(esValues), false, 'translations.es must not mention WeChat');
+    assert.equal(/\bDharma\b/i.test(esValues), false, 'translations.es must not use raw Dharma jargon');
+
+    assert.equal(isAbstinenceCompleted('🙏 Autocontrol Consciente'), true);
+
+    for (const g of FASTING_GOALS) {
+      assert.ok(g.titleEs && g.titleEs.length > 0 && g.subtitleEs && g.subtitleEs.length > 0);
+    }
+    for (const tier of Object.values(FASTING_TIERS)) {
+      assert.ok(tier.nameEs && tier.windowEs && tier.descEs);
+    }
   });
 
   console.log('\nALL VERIFICATION & STRESS TESTS PASSED');

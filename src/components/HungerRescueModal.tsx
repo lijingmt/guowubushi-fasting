@@ -23,10 +23,10 @@ interface HungerRescueModalProps {
 const TOTAL_SECONDS = 15 * 60;
 const CYCLE_SECONDS = 14; // 4s inhale + 4s hold + 6s exhale
 
-function getBreathPhase(secInCycle: number, isZh: boolean): string {
-  if (secInCycle < 4) return isZh ? '缓吸 · 4秒' : 'Inhale · 4s';
-  if (secInCycle < 8) return isZh ? '屏息 · 4秒' : 'Hold · 4s';
-  return isZh ? '慢呼 · 6秒' : 'Exhale · 6s';
+function getBreathPhase(secInCycle: number, isZh: boolean, isEs: boolean): string {
+  if (secInCycle < 4) return isZh ? '缓吸 · 4秒' : isEs ? 'Inhala · 4s' : 'Inhale · 4s';
+  if (secInCycle < 8) return isZh ? '屏息 · 4秒' : isEs ? 'Mantén · 4s' : 'Hold · 4s';
+  return isZh ? '慢呼 · 6秒' : isEs ? 'Exhala · 6s' : 'Exhale · 6s';
 }
 
 /**
@@ -36,6 +36,7 @@ function getBreathPhase(secInCycle: number, isZh: boolean): string {
 export const HungerRescueModal: React.FC<HungerRescueModalProps> = ({ visible, onClose }) => {
   const { language, addWater, recordHungerRescue, hungerRescueCount, addPractice } = useApp();
   const isZh = isChineseLanguage(language);
+  const isEs = language === 'es';
 
   const [secondsLeft, setSecondsLeft] = useState(TOTAL_SECONDS);
   const [breathTick, setBreathTick] = useState(0);
@@ -145,9 +146,11 @@ export const HungerRescueModal: React.FC<HungerRescueModalProps> = ({ visible, o
     await stopAllAudio();
     onClose();
     Alert.alert(
-      isZh ? '🪷 念起即觉 · 成功稳住' : 'Craving Surfed!',
+      isZh ? '🪷 念起即觉 · 成功稳住' : isEs ? '🪷 ¡Antojo Superado!' : 'Craving Surfed!',
       isZh
         ? `你又熬过了一轮饥饿波峰！已累计成功抗饿 ${nextCount} 次。`
+        : isEs
+        ? `¡Pasaste otra ola de hambre! Total superadas: ${nextCount}.`
         : `Another hunger wave passed! Total rescues: ${nextCount}.`
     );
   };
@@ -160,7 +163,7 @@ export const HungerRescueModal: React.FC<HungerRescueModalProps> = ({ visible, o
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const dashOffset = circumference * (1 - progress);
-  const phaseLabel = getBreathPhase(breathTick % CYCLE_SECONDS, isZh);
+  const phaseLabel = getBreathPhase(breathTick % CYCLE_SECONDS, isZh, isEs);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -168,17 +171,25 @@ export const HungerRescueModal: React.FC<HungerRescueModalProps> = ({ visible, o
         <View style={styles.card}>
           <View style={styles.topRow}>
             <Text style={styles.badge}>
-              {isZh ? `饥饿波峰急救 · 已成功 ${hungerRescueCount} 次` : `Craving Rescue · ${hungerRescueCount} won`}
+              {isZh
+                ? `饥饿波峰急救 · 已成功 ${hungerRescueCount} 次`
+                : isEs
+                ? `Rescate de Antojo · ${hungerRescueCount} logrados`
+                : `Craving Rescue · ${hungerRescueCount} won`}
             </Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Text style={styles.closeText}>✕</Text>
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.title}>{isZh ? '先停 15 分钟，欲望会自动退潮' : 'Pause 15 Min · Urges Naturally Fade'}</Text>
+          <Text style={styles.title}>
+            {isZh ? '先停 15 分钟，欲望会自动退潮' : isEs ? 'Pausa 15 Min · El Antojo Pasa Solo' : 'Pause 15 Min · Urges Naturally Fade'}
+          </Text>
           <Text style={styles.subtitle}>
             {isZh
               ? '饥饿素（Ghrelin）峰值通常只持续 10–15 分钟，喝一杯温水、跟呼吸 4-4-6 走几轮，渴望就会消散。'
+              : isEs
+              ? 'Las olas de grelina suelen bajar en 10–15 minutos. Bebe agua tibia y sigue la respiración 4-4-6.'
               : 'Hunger hormone waves peak and fade within 10–15 minutes. Sip warm water and follow the 4-4-6 breath.'}
           </Text>
 
@@ -220,11 +231,15 @@ export const HungerRescueModal: React.FC<HungerRescueModalProps> = ({ visible, o
               onPress={toggleRainSound}
             >
               <Text style={styles.toolBtnText}>
-                {rainPlaying ? (isZh ? '🌧️ 停止雨声' : '🌧️ Stop Rain') : isZh ? '🌧️ 播放无缝雨声' : '🌧️ Play Rain'}
+                {rainPlaying
+                  ? isZh ? '🌧️ 停止雨声' : isEs ? '🌧️ Parar Lluvia' : '🌧️ Stop Rain'
+                  : isZh ? '🌧️ 播放无缝雨声' : isEs ? '🌧️ Oír Lluvia' : '🌧️ Play Rain'}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.toolBtn} onPress={playBell}>
-              <Text style={styles.toolBtnText}>{isZh ? '🔔 轻敲一磬' : '🔔 Ring Bell'}</Text>
+              <Text style={styles.toolBtnText}>
+                {isZh ? '🔔 轻敲一磬' : isEs ? '🔔 Campana Zen' : '🔔 Ring Bell'}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -235,14 +250,14 @@ export const HungerRescueModal: React.FC<HungerRescueModalProps> = ({ visible, o
           >
             <Text style={styles.waterBtnText}>
               {waterAdded
-                ? isZh ? '✓ 已记录 +250ml 温水' : '✓ Logged +250ml Water'
-                : isZh ? '💧 先喝一杯温水 (+250ml)' : '💧 Drink Warm Water (+250ml)'}
+                ? isZh ? '✓ 已记录 +250ml 温水' : isEs ? '✓ +250 ml Registrados' : '✓ Logged +250ml Water'
+                : isZh ? '💧 先喝一杯温水 (+250ml)' : isEs ? '💧 Beber Agua Tibia (+250 ml)' : '💧 Drink Warm Water (+250ml)'}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.winBtn} onPress={handleOvercameCraving}>
             <Text style={styles.winBtnText}>
-              {isZh ? '🪷 我稳住了！（完成本轮急救）' : '🪷 Craving Passed! (Log Win)'}
+              {isZh ? '🪷 我稳住了！（完成本轮急救）' : isEs ? '🪷 ¡Antojo Superado! (Registrar)' : '🪷 Craving Passed! (Log Win)'}
             </Text>
           </TouchableOpacity>
         </View>

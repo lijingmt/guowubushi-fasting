@@ -121,8 +121,8 @@ export const MeditationShareCard: React.FC<MeditationShareCardProps> = ({
         message: (language === 'zh' || language === 'zh-Hant')
           ? `我在"过午不食"App中累计打坐${totalMinutes}分钟，最长时间${longestSession}分钟！下载体验：https://apps.apple.com/app/id6762360504`
           : language === 'es'
-          ? `He meditado ${totalMinutes} minutos en "过午不食", ¡descárgalo! https://apps.apple.com/app/id6762360504`
-          : `I've meditated ${totalMinutes} minutes in "Fasting Until Morning"! Download: https://apps.apple.com/app/id6762360504`,
+          ? `He meditado ${totalMinutes} minutos en "Guowu Fasting", ¡descárgalo! https://apps.apple.com/app/id6762360504`
+          : `I've meditated ${totalMinutes} minutes with "Guowu · Circadian Fasting"! Download: https://apps.apple.com/app/id6762360504`,
       });
     }
   };
@@ -195,7 +195,9 @@ export const MeditationShareCard: React.FC<MeditationShareCardProps> = ({
           <View style={styles.footerLine} />
           <Text style={styles.footerText}>{getDownloadText()}</Text>
           <Text style={styles.footerLink}>apps.apple.com/app/id6762360504</Text>
-          <Text style={styles.footerBrand}>"过午不食" Fasting App</Text>
+          <Text style={styles.footerBrand}>
+            {language === 'zh' || language === 'zh-Hant' ? '「过午不食」东方节律轻断食' : 'Guowu · Circadian Zen Fasting'}
+          </Text>
         </View>
       </View>
     </View>

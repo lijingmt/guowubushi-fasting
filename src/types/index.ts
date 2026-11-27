@@ -38,6 +38,7 @@ export interface UserSettings {
   weightUnit: 'kg' | 'lb'; // 体重单位
   theme: 'light' | 'dark' | 'auto'; // 主题
   language: 'zh' | 'zh-Hant' | 'en' | 'es' | 'ja' | 'ko' | 'fr' | 'de' | 'pt' | 'ru' | 'ar' | 'it' | 'hi' | 'vi' | 'th'; // 语言
+  languageManuallySelected?: boolean;
   fastingGoal?: FastingGoal;
   fastingTier?: FastingTier;
   traditionalMode?: boolean;

@@ -28,6 +28,7 @@ import {
 import Constants from 'expo-constants';
 import { DEFAULT_SETTINGS } from '../constants/achievements';
 import { getLocalDateString, isChineseLanguage } from '../utils/date';
+import { resolveDeviceLocale, type DeviceLocaleInput } from '../utils/locale';
 import { FASTING_TIERS, getProtectedDates } from '../utils/fastingRhythm';
 import { computeUserStats } from '../utils/stats';
 import { parseAndValidateBackupPayload, type BackupSummary } from '../utils/backup';
@@ -100,47 +101,13 @@ const isDailyReminderRequest = (request: Notifications.NotificationRequest) => {
   return LEGACY_DAILY_REMINDER_TITLES.includes(title);
 };
 
-// 检测设备语言并返回对应的应用语言
-const detectDeviceLanguage = (): Language => {
-  const deviceLocales = getLocales();
-  if (deviceLocales && deviceLocales.length > 0) {
-    const deviceLanguage = deviceLocales[0].languageCode?.toLowerCase() || '';
-
-    // 支持的语言映射
-    const supportedLanguages: Record<string, Language> = {
-      'zh': 'zh',  // 中文
-      'en': 'en',  // 英文
-      'es': 'es',  // 西班牙语
-      'ja': 'ja',  // 日语
-      'ko': 'ko',  // 韩语
-      'fr': 'fr',  // 法语
-      'de': 'de',  // 德语
-      'pt': 'pt',  // 葡萄牙语
-      'ru': 'ru',  // 俄语
-      'ar': 'ar',  // 阿拉伯语
-      'it': 'it',  // 意大利语
-      'hi': 'hi',  // 印地语
-      'vi': 'vi',  // 越南语
-      'th': 'th',  // 泰语
-    };
-
-    // 检查是否支持设备语言
-    if (deviceLanguage in supportedLanguages) {
-      return supportedLanguages[deviceLanguage];
-    }
-
-    // 中文设备（包括 zh-CN, zh-TW, zh-HK 等）→ 简体/繁体中文
-    if (deviceLanguage.startsWith('zh')) {
-      // zh-TW, zh-HK, zh-MO → 繁体中文
-      if (deviceLanguage.includes('tw') || deviceLanguage.includes('hk') || deviceLanguage.includes('mo')) {
-        return 'zh-Hant';
-      }
-      // zh-CN, zh-SG → 简体中文
-      return 'zh';
-    }
+// 检测设备语言与单位并返回对应的应用设置
+const detectDeviceLocale = () => {
+  try {
+    return resolveDeviceLocale(getLocales() as readonly DeviceLocaleInput[]);
+  } catch {
+    return resolveDeviceLocale(null);
   }
-  // 默认英文
-  return 'en';
 };
 
 // 配置通知行为
@@ -251,9 +218,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const systemColorScheme = useColorScheme();
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  // 设置
-  const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
-  const [language, setLanguage] = useState<Language>('zh');
+  // 设置（首帧即按系统语言初始化，避免英文/西语设备闪现中文）
+  const [initialDeviceLocale] = useState(() => detectDeviceLocale());
+  const [settings, setSettings] = useState<UserSettings>(() => ({
+    ...DEFAULT_SETTINGS,
+    language: initialDeviceLocale.language,
+    weightUnit: initialDeviceLocale.weightUnit,
+    languageManuallySelected: false,
+  }));
+  const [language, setLanguage] = useState<Language>(initialDeviceLocale.language);
   const dailyReminderScheduleTokenRef = useRef(0);
 
   // 根据主题设置确定颜色
@@ -441,11 +414,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       // 加载设置
       let savedSettings = await getSettings();
+      const detected = detectDeviceLocale();
 
-      // 首次启动时自动检测设备语言
+      // 首次启动按设备系统语言+计量单位初始化；非手动切换时跟随系统语言变更
       if (isFirstLaunch) {
-        const detectedLanguage = detectDeviceLanguage();
-        savedSettings.language = detectedLanguage;
+        savedSettings = {
+          ...savedSettings,
+          language: detected.language,
+          weightUnit: detected.weightUnit,
+          languageManuallySelected: false,
+        };
+        await saveSettings(savedSettings);
+      } else if (savedSettings.languageManuallySelected === false && savedSettings.language !== detected.language) {
+        savedSettings = {
+          ...savedSettings,
+          language: detected.language,
+        };
         await saveSettings(savedSettings);
       }
 

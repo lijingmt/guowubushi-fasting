@@ -1,9 +1,22 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Image, Animated } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { getLocales } from 'expo-localization';
+import { resolveDeviceLocale, type DeviceLocaleInput } from '../utils/locale';
+
+function detectSplashLocale() {
+  try {
+    return resolveDeviceLocale(getLocales() as readonly DeviceLocaleInput[]);
+  } catch {
+    return resolveDeviceLocale(null);
+  }
+}
 
 export const SplashScreen: React.FC<{ onFinished: () => void }> = ({ onFinished }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const { language } = detectSplashLocale();
+  const isZh = language === 'zh' || language === 'zh-Hant';
+  const isEs = language === 'es';
 
   useEffect(() => {
     // Fade in animation
@@ -32,7 +45,14 @@ export const SplashScreen: React.FC<{ onFinished: () => void }> = ({ onFinished 
           style={styles.logo}
           resizeMode="contain"
         />
-        <Text style={styles.title}>过午不食</Text>
+        <Text style={styles.title}>
+          {language === 'zh-Hant' ? '過午不食' : isZh ? '过午不食' : isEs ? 'Guowu Ayuno' : 'Guowu Fasting'}
+        </Text>
+        {!isZh && (
+          <Text style={styles.subtitle}>
+            {isEs ? '过午不食 · Ayuno Circadiano Zen' : '过午不食 · Circadian Zen'}
+          </Text>
+        )}
       </Animated.View>
     </View>
   );

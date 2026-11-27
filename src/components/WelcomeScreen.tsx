@@ -105,10 +105,10 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     }
     if (!isZh) {
       return {
-        appName: 'Guowu Mindful Fasting',
+        appName: 'Guowu · Circadian Fasting',
         agreeText: 'I have read and agree to the ',
         termsLink: 'Terms of Service',
-        getStarted: 'Begin My Rhythm',
+        getStarted: 'Start My Rhythm',
         termsTitle: 'Terms of Service',
         terms: [
           {
@@ -209,7 +209,11 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               {isZh ? '第一步 · 选择你的核心目标' : isEs ? 'Paso 1 · Tu Objetivo' : 'Step 1 · Your Main Goal'}
             </Text>
             <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
-              {isZh ? '30 秒为你定制顺应昼夜的东方轻断食节奏' : 'Personalize your daily rhythm in 30 seconds'}
+              {isZh
+                ? '30 秒为你定制顺应昼夜的东方轻断食节奏'
+                : isEs
+                ? 'Ayuno circadiano con raíces orientales de 2,500 años — listo en 30 s'
+                : 'Modern circadian fasting rooted in 2,500-year-old Eastern rhythm — personalized in 30s'}
             </Text>
 
             <View style={styles.optionsList}>
@@ -231,10 +235,10 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                     <Text style={styles.optionIcon}>{goal.icon}</Text>
                     <View style={styles.optionBody}>
                       <Text style={[styles.optionTitle, { color: colors.text }]}>
-                        {isZh ? goal.titleZh : goal.titleEn}
+                        {isZh ? goal.titleZh : isEs ? goal.titleEs : goal.titleEn}
                       </Text>
                       <Text style={[styles.optionSub, { color: colors.textSecondary }]}>
-                        {isZh ? goal.subtitleZh : goal.subtitleEn}
+                        {isZh ? goal.subtitleZh : isEs ? goal.subtitleEs : goal.subtitleEn}
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -249,7 +253,9 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 setStep(2);
               }}
             >
-              <Text style={styles.primaryBtnText}>{isZh ? '下一步：选择断食阶梯' : 'Next: Pick Rhythm'}</Text>
+              <Text style={styles.primaryBtnText}>
+                {isZh ? '下一步：选择断食阶梯' : isEs ? 'Siguiente: Elegir Ritmo' : 'Next: Pick Rhythm'}
+              </Text>
             </TouchableOpacity>
           </>
         )}
@@ -257,10 +263,14 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         {step === 2 && (
           <>
             <Text style={[styles.stepTitle, { color: colors.text }]}>
-              {isZh ? '第二步 · 选择过午阶梯' : isEs ? 'Paso 2 · Ritmo Diario' : 'Step 2 · Choose Starting Tier'}
+              {isZh ? '第二步 · 选择过午阶梯' : isEs ? 'Paso 2 · Elige Tu Nivel' : 'Step 2 · Choose Starting Tier'}
             </Text>
             <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
-              {isZh ? '不必一刀切过午，顺应作息循序渐进更易坚持' : 'Start gently and advance whenever you feel ready'}
+              {isZh
+                ? '不必一刀切过午，顺应作息循序渐进更易坚持'
+                : isEs
+                ? 'Empieza suave y avanza cuando te sientas listo'
+                : 'Start gently and advance whenever you feel ready'}
             </Text>
 
             <View style={styles.optionsList}>
@@ -285,14 +295,14 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                   >
                     <View style={styles.tierHeader}>
                       <Text style={[styles.optionTitle, { color: colors.text }]}>
-                        {isZh ? `${tier.nameZh} · ${tier.windowZh}` : `${tier.nameEn} · ${tier.windowEn}`}
+                        {isZh ? `${tier.nameZh} · ${tier.windowZh}` : isEs ? `${tier.nameEs} · ${tier.windowEs}` : `${tier.nameEn} · ${tier.windowEn}`}
                       </Text>
                       <View style={[styles.ratioBadge, { backgroundColor: colors.primary + '20' }]}>
                         <Text style={[styles.ratioText, { color: colors.primary }]}>{tier.ratio}</Text>
                       </View>
                     </View>
                     <Text style={[styles.optionSub, { color: colors.textSecondary }]}>
-                      {isZh ? tier.descZh : tier.descEn}
+                      {isZh ? tier.descZh : isEs ? tier.descEs : tier.descEn}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -304,7 +314,9 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 style={[styles.backBtn, { backgroundColor: colors.divider }]}
                 onPress={() => setStep(1)}
               >
-                <Text style={[styles.backBtnText, { color: colors.text }]}>{isZh ? '上一步' : 'Back'}</Text>
+                <Text style={[styles.backBtnText, { color: colors.text }]}>
+                  {isZh ? '上一步' : isEs ? 'Atrás' : 'Back'}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.nextBtn, { backgroundColor: colors.primary }]}
@@ -313,7 +325,9 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                   setStep(3);
                 }}
               >
-                <Text style={styles.primaryBtnText}>{isZh ? '下一步：安全确认' : 'Next: Terms'}</Text>
+                <Text style={styles.primaryBtnText}>
+                  {isZh ? '下一步：安全确认' : isEs ? 'Siguiente: Seguridad' : 'Next: Terms'}
+                </Text>
               </TouchableOpacity>
             </View>
           </>
@@ -322,18 +336,22 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         {step === 3 && (
           <>
             <Text style={[styles.stepTitle, { color: colors.text }]}>
-              {isZh ? '第三步 · 科学安心开始' : isEs ? 'Paso 3 · Seguridad' : 'Step 3 · Mindful Safety'}
+              {isZh ? '第三步 · 科学安心开始' : isEs ? 'Paso 3 · Seguridad Consciente' : 'Step 3 · Mindful Safety'}
             </Text>
             <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
               {isZh
                 ? `已为你配置：${FASTING_TIERS[selectedTier].nameZh} (${FASTING_TIERS[selectedTier].windowZh})`
-                : `Selected: ${FASTING_TIERS[selectedTier].nameEn} (${FASTING_TIERS[selectedTier].ratio})`}
+                : isEs
+                ? `Elegido: ${FASTING_TIERS[selectedTier].nameEs} · ${FASTING_TIERS[selectedTier].windowEs} (${FASTING_TIERS[selectedTier].ratio})`
+                : `Selected: ${FASTING_TIERS[selectedTier].nameEn} · ${FASTING_TIERS[selectedTier].windowEn} (${FASTING_TIERS[selectedTier].ratio})`}
             </Text>
 
             <View style={[styles.summaryBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Text style={[styles.summaryText, { color: colors.textSecondary }]}>
                 {isZh
                   ? '· 本应用仅供节律参考，不构成医疗建议，使用风险由您自行承担\n· 未满18岁、孕期/哺乳期、糖尿病/低血糖、心脏病、饮食失调或服药人群请先遵医嘱\n· 若出现头晕、胸痛、心慌、昏厥等不适，请立即停止禁食并进食，必要时就医\n· 断食期间请足量饮水，可在设置中随时切换方案或开启护航暂停券'
+                  : isEs
+                  ? '· Solo fines informativos y de estilo de vida, no consejo médico; úsala bajo tu responsabilidad\n· Menores de 18, embarazo/lactancia, diabetes, hipoglucemia o trastornos alimentarios: consulta a tu médico\n· Detente y aliméntate de inmediato si sientes mareo, dolor en el pecho o palpitaciones\n· Mantente hidratado y ajusta el nivel o la Pausa Protectora cuando quieras en Ajustes'
                   : '· Informational lifestyle tool only, not medical advice; use at your own risk\n· Under 18, pregnant/nursing, diabetes/hypoglycemia, heart disease, eating disorders, or on Rx meds: consult a doctor first\n· Stop & eat immediately if dizzy, faint, chest pain, or palpitations occur\n· Hydrate well and adjust tier or Pause Pass anytime in Settings'}
               </Text>
             </View>
@@ -370,7 +388,9 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 style={[styles.backBtn, { backgroundColor: colors.divider }]}
                 onPress={() => setStep(2)}
               >
-                <Text style={[styles.backBtnText, { color: colors.text }]}>{isZh ? '上一步' : 'Back'}</Text>
+                <Text style={[styles.backBtnText, { color: colors.text }]}>
+                  {isZh ? '上一步' : isEs ? 'Atrás' : 'Back'}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.nextBtn, { backgroundColor: agreed ? colors.primary : colors.divider }]}
@@ -400,7 +420,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               style={[styles.modalCloseButton, { backgroundColor: colors.primary }]}
               onPress={() => setShowTerms(false)}
             >
-              <Text style={styles.modalCloseButtonText}>{isZh ? '关闭' : 'Close'}</Text>
+              <Text style={styles.modalCloseButtonText}>{isZh ? '关闭' : isEs ? 'Cerrar' : 'Close'}</Text>
             </TouchableOpacity>
           </View>
         </View>

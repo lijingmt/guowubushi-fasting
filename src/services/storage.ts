@@ -52,10 +52,10 @@ export const getSettings = async (): Promise<UserSettings> => {
     }
 
     // 合并默认设置，处理新增字段
-    const merged = { ...DEFAULT_SETTINGS, ...saved };
+    const merged: UserSettings = { ...DEFAULT_SETTINGS, ...saved };
 
-    // 如果没有设置体重单位，根据语言设置默认值
-    if (!saved || !saved.weightUnit) {
+    // 仅当已有存档缺少 weightUnit 时兜底，避免覆盖首次启动的系统地区单位识别
+    if (saved && !saved.weightUnit) {
       merged.weightUnit = merged.language === 'en' ? 'lb' : 'kg';
     }
 

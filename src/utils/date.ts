@@ -80,3 +80,16 @@ export function getLocalWeekKey(dateStr: string = getLocalDateString()): string 
 export function isChineseLanguage(lang?: string): boolean {
   return lang === 'zh' || lang === 'zh-Hant';
 }
+
+/**
+ * Formats an integer 0..23 clock hour into 24h ("18:00") for Chinese or 12h AM/PM ("6:00 PM" / "6 PM") for English.
+ */
+export function formatClockHour(hour: number, isZh: boolean, compact = false): string {
+  const normalized = ((Math.floor(hour) % 24) + 24) % 24;
+  if (isZh) {
+    return `${String(normalized).padStart(2, '0')}:00`;
+  }
+  const period = normalized >= 12 ? 'PM' : 'AM';
+  const h12 = normalized % 12 === 0 ? 12 : normalized % 12;
+  return compact ? `${h12} ${period}` : `${h12}:00 ${period}`;
+}

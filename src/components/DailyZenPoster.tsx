@@ -26,12 +26,15 @@ export const DailyZenPoster: React.FC<DailyZenPosterProps> = ({
   const solarTerm = getSolarTermInfo(now);
   const stamp = getStampById(selectedStampId);
   const isZh = language === 'zh' || language === 'zh-Hant';
+  const isEs = language === 'es';
   const sealText = stamp
     ? isZh
       ? stamp.stampTextZh
       : stamp.stampTextEn
     : isZh
     ? solarTerm.sealText
+    : isEs
+    ? 'SERENO'
     : 'MINDFUL';
 
   const dateStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
@@ -41,7 +44,9 @@ export const DailyZenPoster: React.FC<DailyZenPosterProps> = ({
       <View style={styles.innerFrame}>
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.brandTitle}>{isZh ? '过午不食 · 日签' : 'Guowu Fasting · Zen Note'}</Text>
+            <Text style={styles.brandTitle}>
+              {isZh ? '过午不食 · 日签' : isEs ? 'Guowu · Nota Zen' : 'Guowu · Daily Zen Note'}
+            </Text>
             <Text style={styles.dateText}>{dateStr}</Text>
           </View>
           <View style={[styles.termPill, { borderColor: solarTerm.seasonColor }]}>
@@ -53,10 +58,12 @@ export const DailyZenPoster: React.FC<DailyZenPosterProps> = ({
 
         <View style={styles.heroRow}>
           <View style={styles.heroLeft}>
-            <Text style={styles.heroLabel}>{isZh ? '连续节律打卡' : 'Current Streak'}</Text>
+            <Text style={styles.heroLabel}>
+              {isZh ? '连续节律打卡' : isEs ? 'Racha Actual' : 'Current Streak'}
+            </Text>
             <View style={styles.streakLine}>
               <Text style={styles.streakNum}>{stats.currentStreak}</Text>
-              <Text style={styles.streakUnit}>{isZh ? '天' : 'days'}</Text>
+              <Text style={styles.streakUnit}>{isZh ? '天' : isEs ? 'días' : 'days'}</Text>
             </View>
           </View>
           <View style={styles.sealBox}>
@@ -67,15 +74,15 @@ export const DailyZenPoster: React.FC<DailyZenPosterProps> = ({
         <View style={styles.metricsRow}>
           <View style={styles.metricTile}>
             <Text style={styles.metricVal}>{stats.completedDays}</Text>
-            <Text style={styles.metricLbl}>{isZh ? '累计完成' : 'Days'}</Text>
+            <Text style={styles.metricLbl}>{isZh ? '累计完成' : isEs ? 'Días' : 'Days'}</Text>
           </View>
           <View style={styles.metricTile}>
             <Text style={styles.metricVal}>{stats.totalMeditationMinutes}</Text>
-            <Text style={styles.metricLbl}>{isZh ? '静坐分钟' : 'Zen Min'}</Text>
+            <Text style={styles.metricLbl}>{isZh ? '静坐分钟' : isEs ? 'Min Zen' : 'Zen Min'}</Text>
           </View>
           <View style={styles.metricTile}>
             <Text style={styles.metricVal}>{stats.totalCaloriesSaved}</Text>
-            <Text style={styles.metricLbl}>{isZh ? '节省大卡' : 'kcal Saved'}</Text>
+            <Text style={styles.metricLbl}>{isZh ? '节省大卡' : isEs ? 'kcal Ahorr.' : 'kcal Saved'}</Text>
           </View>
         </View>
 
@@ -86,7 +93,9 @@ export const DailyZenPoster: React.FC<DailyZenPosterProps> = ({
 
         <View style={styles.footerRow}>
           <View style={styles.footerLeft}>
-            <Text style={styles.footerHeading}>{isZh ? '少食知足 · 静坐观心' : 'Eat Light · Sit Still'}</Text>
+            <Text style={styles.footerHeading}>
+              {isZh ? '少食知足 · 静坐观心' : isEs ? 'Come Ligero · Quieta Mente' : 'Eat Light · Sit Still'}
+            </Text>
             <Text style={styles.footerSub}>guowubushi.net</Text>
           </View>
           <View style={styles.qrFrame}>

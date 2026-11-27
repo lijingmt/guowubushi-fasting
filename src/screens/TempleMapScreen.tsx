@@ -214,6 +214,7 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
   const insets = useSafeAreaInsets();
   const { colors, language, recordShareAction, stats, settings, updateSettings } = useApp();
   const isZh = language === 'zh' || language === 'zh-Hant';
+  const getSiteDisplayName = (site: SacredSite) => (isZh ? site.name : site.localName || site.name);
   const [region, setRegion] = useState<SacredRegion>('china');
   const [tradition, setTradition] = useState<FilterTradition>('all');
   const pilgrimage = useMemo(
@@ -610,7 +611,8 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
                         }
 
                         const traditionMeta = TRADITION_LABELS[site.tradition];
-                        const label = getLabelLayout(site.name, index, isSelected);
+                        const siteDisplayName = getSiteDisplayName(site);
+                        const label = getLabelLayout(siteDisplayName, index, isSelected);
                         const x = Math.max(
                           labelBoundaryPadding,
                           Math.min(MAP_WIDTH - label.width - labelBoundaryPadding, point.x + label.offsetX)
@@ -644,7 +646,7 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
                               stroke="#FFFFFF"
                               strokeWidth={label.textStrokeWidth}
                             >
-                              {site.name}
+                              {siteDisplayName}
                             </SvgText>
                             <SvgText
                               x={textX}
@@ -654,7 +656,7 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
                               fontWeight="900"
                               fill="#101820"
                             >
-                              {site.name}
+                              {siteDisplayName}
                             </SvgText>
                           </G>
                         );
@@ -836,7 +838,7 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
         <View style={[styles.siteDot, { backgroundColor: checked ? '#D0473C' : traditionMeta.color }]} />
         <View style={styles.siteCardBody}>
           <View style={styles.siteCardTitleRow}>
-            <Text style={[styles.siteCardTitle, { color: colors.text }]} numberOfLines={1}>{site.name}</Text>
+            <Text style={[styles.siteCardTitle, { color: colors.text }]} numberOfLines={1}>{getSiteDisplayName(site)}</Text>
             <Text style={[styles.siteCardType, { color: traditionMeta.color }]}>
               {traditionMeta[isZh ? 'zh' : 'en']}
             </Text>
@@ -867,7 +869,7 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
               <View key={record.id} style={[styles.recordRow, { borderBottomColor: colors.divider }]}>
                 <Text style={[styles.recordDate, { color: colors.textSecondary }]}>{record.date}</Text>
                 <View style={styles.recordBody}>
-                  <Text style={[styles.recordTitle, { color: colors.text }]}>{site.name}</Text>
+                  <Text style={[styles.recordTitle, { color: colors.text }]}>{getSiteDisplayName(site)}</Text>
                   <Text style={[styles.recordMeta, { color: colors.textSecondary }]}>
                     {SACRED_RITE_LABELS[record.rite][isZh ? 'zh' : 'en']} · {site.city}
                   </Text>
@@ -885,12 +887,12 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
       <View style={styles.pilgrimageTopRow}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            {isZh ? '云行脚 · 圣地集印' : 'Cloud Pilgrimage'}
+            {isZh ? '云行脚 · 圣地集印' : language === 'es' ? 'Peregrinaje · Rutas Sagradas' : 'Cloud Pilgrimage · Sacred Trails'}
           </Text>
           <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>
             {isZh
               ? `已行脚 ${pilgrimage.totalKm} km · 当前：${pilgrimage.currentStop.site.name}`
-              : `${pilgrimage.totalKm} km walked · At ${pilgrimage.currentStop.site.name}`}
+              : `${pilgrimage.totalKm} km walked · At ${getSiteDisplayName(pilgrimage.currentStop.site)}`}
           </Text>
         </View>
         <View style={[styles.pill, { backgroundColor: colors.warning + '22' }]}>
@@ -944,7 +946,7 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
         {pilgrimage.nextStop
           ? isZh
             ? `距下一站「${pilgrimage.nextStop.site.name}」还差 ${pilgrimage.kmToNextStop} km（再坚持约 ${pilgrimage.daysToNextStop} 天过午即可抵达盖印）`
-            : `${pilgrimage.kmToNextStop} km (~${pilgrimage.daysToNextStop} days) to unlock ${pilgrimage.nextStop.site.name}`
+            : `${pilgrimage.kmToNextStop} km (~${pilgrimage.daysToNextStop} days) to unlock ${getSiteDisplayName(pilgrimage.nextStop.site)}`
           : isZh
           ? `本线圆满！已集齐 ${pilgrimage.route.nameZh} 全部圣地印章`
           : `Trail complete! All seals collected on ${pilgrimage.route.nameEn}`}

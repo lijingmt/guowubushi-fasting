@@ -11,7 +11,8 @@ import {
 import { useApp } from '../context/AppContext';
 import { Card } from '../components/Card';
 import { SeasonalNutritionCard } from '../components/SeasonalNutritionCard';
-import { CALORIE_REFERENCES } from '../constants/achievements';
+import { CALORIE_REFERENCES, CALORIE_REFERENCES_EN, CALORIE_REFERENCES_ES } from '../constants/achievements';
+import { isChineseLanguage } from '../utils/date';
 import { useResponsiveLayout } from '../theme/responsive';
 
 export const MealsScreen: React.FC = () => {
@@ -27,6 +28,7 @@ export const MealsScreen: React.FC = () => {
     colors,
     language,
   } = useApp();
+  const isZh = isChineseLanguage(language);
   const [showAddModal, setShowAddModal] = useState(false);
   const [mealName, setMealName] = useState('');
   const [mealCalories, setMealCalories] = useState('');
@@ -189,7 +191,7 @@ export const MealsScreen: React.FC = () => {
                 style={styles.quickAddScroll}
                 showsHorizontalScrollIndicator={false}
               >
-                {Object.entries(CALORIE_REFERENCES).slice(0, 10).map(
+                {Object.entries(isZh ? CALORIE_REFERENCES : language === 'es' ? CALORIE_REFERENCES_ES : CALORIE_REFERENCES_EN).slice(0, 10).map(
                   ([name, calories]) => (
                     <TouchableOpacity
                       key={name}

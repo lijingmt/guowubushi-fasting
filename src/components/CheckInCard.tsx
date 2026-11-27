@@ -133,8 +133,8 @@ export const CheckInCard: React.FC = () => {
   ];
 
   const getAbstinenceNote = () => {
-    if (language === 'en') return '🙏 Abstinence Completed';
-    if (language === 'es') return '🙏 Abstinencia Completada';
+    if (language === 'en') return '🙏 Mindful Restraint Completed';
+    if (language === 'es') return '🙏 Autocontrol Consciente';
     return '🙏 禁欲完成';
   };
 
@@ -152,20 +152,20 @@ export const CheckInCard: React.FC = () => {
   };
 
   const getStandingNote = () => {
-    if (language === 'en') return `🧍 Standing ${selectedStandingTime}min`;
-    if (language === 'es') return `🧍 De Pie ${selectedStandingTime}min`;
+    if (language === 'en') return `🧍 Standing Qigong ${selectedStandingTime}min`;
+    if (language === 'es') return `🧍 Qigong de Pie ${selectedStandingTime}min`;
     return `🧍 站桩 ${selectedStandingTime}分钟`;
   };
 
   const getChantingNote = () => {
-    if (language === 'en') return '📿 Scripture Chanting (+10 merit)';
-    if (language === 'es') return '📿 Cantar Escrituras (+10 mérito)';
+    if (language === 'en') return '📿 Mantra / Chanting (+10 Zen pts)';
+    if (language === 'es') return '📿 Mantra / Canto (+10 pts Zen)';
     return '📿 诵经 (+10功德)';
   };
 
   const getListeningNote = () => {
-    if (language === 'en') return '🎧 Scripture Listening (+5 merit)';
-    if (language === 'es') return '🎧 Escuchar Escrituras (+5 mérito)';
+    if (language === 'en') return '🎧 Wisdom Audio (+5 Zen pts)';
+    if (language === 'es') return '🎧 Audio de Sabiduría (+5 pts Zen)';
     return '🎧 听经 (+5功德)';
   };
 
@@ -286,7 +286,8 @@ export const CheckInCard: React.FC = () => {
         // Check for abstinence in original notes to set the checkbox
         const notesLower = notesStr.toLowerCase();
         const hasAbstinence = notesLower.includes('炼丹') || notesLower.includes('禁欲') ||
-                            notesLower.includes('abstinence') || notesLower.includes('abstinencia');
+                            notesLower.includes('abstinence') || notesLower.includes('mindful restraint') ||
+                            notesLower.includes('abstinencia') || notesLower.includes('autocontrol consciente');
         setIsAbstinence(hasAbstinence);
       }
 

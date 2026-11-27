@@ -228,7 +228,7 @@ export const AppNavigator = () => {
         <Stack.Screen
           name="Leaderboard"
           component={LeaderboardScreen}
-          options={{ title: '修行排行榜' }}
+          options={{ title: isZh ? '修行排行榜' : language === 'es' ? 'Clasificación' : 'Leaderboard' }}
         />
         <Stack.Screen
           name="Retention"
@@ -248,7 +248,7 @@ export const AppNavigator = () => {
         <Stack.Screen
           name="QiZheng"
           component={QiZhengScreen}
-          options={{ title: isZh ? '七政流注 · 24h' : '7 Luminaries 24h' }}
+          options={{ title: isZh ? '七政流注 · 24h' : language === 'es' ? 'Reloj Corporal 24h' : 'TCM Body Clock · 24h' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

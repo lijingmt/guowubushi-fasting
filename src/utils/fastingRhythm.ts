@@ -10,10 +10,13 @@ export interface FastingTierMeta {
   unlockDays: number;
   nameZh: string;
   nameEn: string;
+  nameEs: string;
   windowZh: string;
   windowEn: string;
+  windowEs: string;
   descZh: string;
   descEn: string;
+  descEs: string;
 }
 
 export const FASTING_TIERS: Record<FastingTier, FastingTierMeta> = {
@@ -26,10 +29,13 @@ export const FASTING_TIERS: Record<FastingTier, FastingTierMeta> = {
     unlockDays: 0,
     nameZh: '初阶·晚清',
     nameEn: 'Gentle Dusk',
+    nameEs: 'Inicio Suave',
     windowZh: '18:00 止食',
-    windowEn: 'Stop by 18:00',
+    windowEn: 'Finish by 6:00 PM',
+    windowEs: 'Hasta las 18:00',
     descZh: '温和适应轻断食节律，戒掉夜宵与晚间高热饮食',
-    descEn: 'Ease into rhythmic fasting by finishing dinner by 18:00',
+    descEn: 'Ease into circadian fasting by ending late-night eating by 6:00 PM.',
+    descEs: 'Empieza el ayuno circadiano terminando de comer antes de las 18:00.',
   },
   intermediate: {
     id: 'intermediate',
@@ -40,10 +46,13 @@ export const FASTING_TIERS: Record<FastingTier, FastingTierMeta> = {
     unlockDays: 7,
     nameZh: '中阶·申时',
     nameEn: 'Afternoon Balance',
+    nameEs: 'Equilibrio 16:8',
     windowZh: '15:00 止食',
-    windowEn: 'Stop by 15:00',
+    windowEn: 'Finish by 3:00 PM',
+    windowEs: 'Hasta las 15:00',
     descZh: '经典 16:8 代谢区间，平衡燃脂与日常精力（建议满7天进阶）',
-    descEn: 'Balanced 16:8 metabolic window for steady fat burn',
+    descEn: 'Popular 16:8 early time-restricted window for steady daytime energy.',
+    descEs: 'Ventana temprana 16:8 para mantener energía estable durante el día.',
   },
   classic: {
     id: 'classic',
@@ -53,11 +62,14 @@ export const FASTING_TIERS: Record<FastingTier, FastingTierMeta> = {
     ratio: '18:6',
     unlockDays: 14,
     nameZh: '高阶·过午',
-    nameEn: 'Classic Noon',
+    nameEn: 'Classic Noon Fast',
+    nameEs: 'Tradición Guowu',
     windowZh: '13:00 止食',
-    windowEn: 'Stop by 13:00',
+    windowEn: 'Finish by 1:00 PM',
+    windowEs: 'Hasta las 13:00',
     descZh: '古法过午不食，午时后仅饮清水清茶，身轻神明（建议满14天）',
-    descEn: 'Traditional post-noon fasting for deep clarity and lightness',
+    descEn: 'Traditional Guowu rhythm — only water & herbal tea after midday.',
+    descEs: 'Ritmo clásico Guowu: solo agua e infusiones después del mediodía.',
   },
 };
 
@@ -66,8 +78,10 @@ export interface FastingGoalMeta {
   icon: string;
   titleZh: string;
   titleEn: string;
+  titleEs: string;
   subtitleZh: string;
   subtitleEn: string;
+  subtitleEs: string;
   recommendedTier: FastingTier;
   traditionalMode: boolean;
 }
@@ -77,9 +91,11 @@ export const FASTING_GOALS: FastingGoalMeta[] = [
     id: 'weight_loss',
     icon: '🍃',
     titleZh: '轻体减脂',
-    titleEn: 'Light & Lean',
+    titleEn: 'Metabolic & Weight Balance',
+    titleEs: 'Equilibrio Metabólico',
     subtitleZh: '温和控食，降低晚间热量盈余',
-    subtitleEn: 'Gentle calorie control and evening deficit',
+    subtitleEn: 'End late-night eating to support natural fat burn',
+    subtitleEs: 'Deja las cenas tardías y apoya la quema de grasa natural',
     recommendedTier: 'beginner',
     traditionalMode: false,
   },
@@ -87,9 +103,11 @@ export const FASTING_GOALS: FastingGoalMeta[] = [
     id: 'gut_sleep',
     icon: '🌙',
     titleZh: '调理肠胃与睡眠',
-    titleEn: 'Gut & Deep Sleep',
+    titleEn: 'Gut Rest & Deeper Sleep',
+    titleEs: 'Digestión y Sueño Profundo',
     subtitleZh: '睡前轻腹休养，次日神清气爽',
-    subtitleEn: 'Give digestion evening rest for deeper sleep',
+    subtitleEn: 'Finish meals earlier so digestion rests before bedtime',
+    subtitleEs: 'Cena temprano para descansar la digestión antes de dormir',
     recommendedTier: 'intermediate',
     traditionalMode: false,
   },
@@ -97,9 +115,11 @@ export const FASTING_GOALS: FastingGoalMeta[] = [
     id: 'mindful_discipline',
     icon: '🧭',
     titleZh: '戒晚食自律',
-    titleEn: 'Mindful Discipline',
+    titleEn: 'Circadian Clarity & Focus',
+    titleEs: 'Claridad y Ritmo Diario',
     subtitleZh: '顺应昼夜节律，建立日常掌控感',
-    subtitleEn: 'Build calm daily structure around meals',
+    subtitleEn: 'Sync meals with daylight for calm, steady energy',
+    subtitleEs: 'Sincroniza tus comidas con la luz del día para tener enfoque',
     recommendedTier: 'intermediate',
     traditionalMode: false,
   },
@@ -107,9 +127,11 @@ export const FASTING_GOALS: FastingGoalMeta[] = [
     id: 'traditional_practice',
     icon: '🪷',
     titleZh: '传统过午修行',
-    titleEn: 'Traditional Noon Fast',
+    titleEn: 'Eastern Noon-Fast Tradition',
+    titleEs: 'Tradición Oriental Guowu',
     subtitleZh: '严守午后不食、静坐观息与云行脚',
-    subtitleEn: 'Classic post-noon discipline, meditation & pilgrimage',
+    subtitleEn: 'Classic Guowu post-noon fast, Zen sitting & sacred trails',
+    subtitleEs: 'Ayuno clásico tras el mediodía, meditación Zen y rutas sagradas',
     recommendedTier: 'classic',
     traditionalMode: true,
   },
@@ -219,18 +241,18 @@ export interface ShichenInfo {
 }
 
 const SHICHEN_LIST: ShichenInfo[] = [
-  { index: 0, nameZh: '子时', nameEn: 'Zi Hour', range: '23:00-01:00' },
-  { index: 1, nameZh: '丑时', nameEn: 'Chou Hour', range: '01:00-03:00' },
-  { index: 2, nameZh: '寅时', nameEn: 'Yin Hour', range: '03:00-05:00' },
-  { index: 3, nameZh: '卯时', nameEn: 'Mao Hour', range: '05:00-07:00' },
-  { index: 4, nameZh: '辰时', nameEn: 'Chen Hour', range: '07:00-09:00' },
-  { index: 5, nameZh: '巳时', nameEn: 'Si Hour', range: '09:00-11:00' },
-  { index: 6, nameZh: '午时', nameEn: 'Wu Hour', range: '11:00-13:00' },
-  { index: 7, nameZh: '未时', nameEn: 'Wei Hour', range: '13:00-15:00' },
-  { index: 8, nameZh: '申时', nameEn: 'Shen Hour', range: '15:00-17:00' },
-  { index: 9, nameZh: '酉时', nameEn: 'You Hour', range: '17:00-19:00' },
-  { index: 10, nameZh: '戌时', nameEn: 'Xu Hour', range: '19:00-21:00' },
-  { index: 11, nameZh: '亥时', nameEn: 'Hai Hour', range: '21:00-23:00' },
+  { index: 0, nameZh: '子时', nameEn: 'Gallbladder (Zi)', range: '23:00-01:00' },
+  { index: 1, nameZh: '丑时', nameEn: 'Liver (Chou)', range: '01:00-03:00' },
+  { index: 2, nameZh: '寅时', nameEn: 'Lung (Yin)', range: '03:00-05:00' },
+  { index: 3, nameZh: '卯时', nameEn: 'Large Intestine (Mao)', range: '05:00-07:00' },
+  { index: 4, nameZh: '辰时', nameEn: 'Stomach (Chen)', range: '07:00-09:00' },
+  { index: 5, nameZh: '巳时', nameEn: 'Spleen (Si)', range: '09:00-11:00' },
+  { index: 6, nameZh: '午时', nameEn: 'Heart (Wu)', range: '11:00-13:00' },
+  { index: 7, nameZh: '未时', nameEn: 'Small Intestine (Wei)', range: '13:00-15:00' },
+  { index: 8, nameZh: '申时', nameEn: 'Bladder (Shen)', range: '15:00-17:00' },
+  { index: 9, nameZh: '酉时', nameEn: 'Kidney (You)', range: '17:00-19:00' },
+  { index: 10, nameZh: '戌时', nameEn: 'Pericardium (Xu)', range: '19:00-21:00' },
+  { index: 11, nameZh: '亥时', nameEn: 'Triple Burner (Hai)', range: '21:00-23:00' },
 ];
 
 /**
@@ -353,13 +375,14 @@ export interface PauseReasonMeta {
   icon: string;
   labelZh: string;
   labelEn: string;
+  labelEs: string;
 }
 
 export const PAUSE_REASONS: PauseReasonMeta[] = [
-  { id: 'social', icon: '🍲', labelZh: '聚餐应酬', labelEn: 'Social Meal' },
-  { id: 'period', icon: '🌸', labelZh: '生理期休养', labelEn: 'Cycle Rest' },
-  { id: 'travel', icon: '🧳', labelZh: '差旅奔波', labelEn: 'Travel' },
-  { id: 'recovery', icon: '🌿', labelZh: '身体调养', labelEn: 'Recovery' },
+  { id: 'social', icon: '🍲', labelZh: '聚餐应酬', labelEn: 'Social Meal', labelEs: 'Comida Social' },
+  { id: 'period', icon: '🌸', labelZh: '生理期休养', labelEn: 'Cycle Rest', labelEs: 'Descanso Mensual' },
+  { id: 'travel', icon: '🧳', labelZh: '差旅奔波', labelEn: 'Travel', labelEs: 'Viaje' },
+  { id: 'recovery', icon: '🌿', labelZh: '身体调养', labelEn: 'Recovery', labelEs: 'Recuperación' },
 ];
 
 export interface EffectiveDaySchedule {

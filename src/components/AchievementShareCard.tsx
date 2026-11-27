@@ -187,7 +187,9 @@ export const AchievementShareCard: React.FC<AchievementShareCardProps> = ({
           <View style={styles.footerLine} />
           <Text style={styles.footerText}>{getDownloadText()}</Text>
           <Text style={styles.footerLink}>apps.apple.com/app/id6762360504</Text>
-          <Text style={styles.footerBrand}>"过午不食" Fasting App</Text>
+          <Text style={styles.footerBrand}>
+            {language === 'zh' || language === 'zh-Hant' ? '「过午不食」东方节律轻断食' : 'Guowu · Circadian Zen Fasting'}
+          </Text>
         </View>
       </View>
     </View>

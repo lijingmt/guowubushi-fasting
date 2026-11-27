@@ -262,6 +262,46 @@ export const CALORIE_REFERENCES = {
   '坚果（一把）': 170,
 };
 
+// Western & East-meets-West calorie references for English UI
+export const CALORIE_REFERENCES_EN: Record<string, number> = {
+  'Boiled Egg (1)': 70,
+  'Grilled Chicken (100g)': 165,
+  'Salmon Fillet (100g)': 208,
+  'Tofu (100g)': 76,
+  'Greek Yogurt (1 cup)': 130,
+  'Oatmeal (1 bowl)': 150,
+  'Avocado (half)': 120,
+  'Steamed Rice (1 bowl)': 200,
+  'Quinoa (1 cup)': 220,
+  'Whole-Grain Toast (1 slice)': 80,
+  'Mixed Greens Salad': 45,
+  'Steamed Broccoli (100g)': 34,
+  'Apple (1)': 95,
+  'Banana (1)': 105,
+  'Raw Almonds (handful)': 170,
+  'Warm Broth (1 cup)': 40,
+  'Black Coffee / Tea': 0,
+};
+
+// Spanish calorie references
+export const CALORIE_REFERENCES_ES: Record<string, number> = {
+  'Huevo cocido (1)': 70,
+  'Pechuga de pollo (100g)': 165,
+  'Salmón (100g)': 208,
+  'Tofu (100g)': 76,
+  'Yogur griego (1 taza)': 130,
+  'Avena (1 tazón)': 150,
+  'Aguacate (medio)': 120,
+  'Arroz al vapor (1 tazón)': 200,
+  'Quinoa (1 taza)': 220,
+  'Pan integral (1 rebanada)': 80,
+  'Ensalada verde': 45,
+  'Manzana (1)': 95,
+  'Almendras (un puñado)': 170,
+  'Caldo tibio (1 taza)': 40,
+  'Café negro / Té': 0,
+};
+
 // 默认设置
 export const DEFAULT_SETTINGS = {
   reminderTime: '21:00', // 每天晚上9点提醒

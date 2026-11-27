@@ -13,7 +13,9 @@ const ABSTINENCE_MARKERS = [
   '禁欲完成',
   '禁慾完成',
   'abstinence completed',
+  'mindful restraint',
   'abstinencia completada',
+  'autocontrol consciente',
 ];
 
 /**

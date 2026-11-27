@@ -41,6 +41,7 @@ export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const isZh = isChineseLanguage(language);
+  const isEs = language === 'es';
   const shareCardRef = useRef<View>(null);
   const [showSharePreview, setShowSharePreview] = useState(false);
   const [showShareCardModal, setShowShareCardModal] = useState(false);
@@ -196,7 +197,8 @@ export const HomeScreen: React.FC = () => {
           if (blob) {
             // Try Web Share API first (mobile devices)
             if (navigator.share && navigator.canShare) {
-              const file = new File([blob], '过午不食-成就.png', { type: 'image/png' });
+              const fileName = isZh ? '过午不食-成就.png' : 'guowu-fasting-card.png';
+              const file = new File([blob], fileName, { type: 'image/png' });
               const shareData = {
                 title: (language === 'zh' || language === 'zh-Hant') ? '过午不食' : 'Fasting',
                 text: (language === 'zh' || language === 'zh-Hant')
@@ -225,7 +227,7 @@ export const HomeScreen: React.FC = () => {
             // Fallback: download the image
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
-            link.download = '过午不食-成就.png';
+            link.download = isZh ? '过午不食-成就.png' : 'guowu-fasting-card.png';
             link.href = url;
             link.click();
             URL.revokeObjectURL(url);
@@ -298,11 +300,13 @@ export const HomeScreen: React.FC = () => {
         <View style={styles.retentionTopRow}>
           <View style={styles.retentionTitleBlock}>
             <Text style={[styles.retentionEyebrow, { color: colors.primary }]}>
-              {(language === 'zh' || language === 'zh-Hant') ? '今日修行' : 'Daily Practice'}
+              {isZh ? '今日修行' : isEs ? 'Práctica Diaria' : 'Daily Practice'}
             </Text>
             <Text style={[styles.retentionTitle, { color: colors.text }]}>
-              {(language === 'zh' || language === 'zh-Hant')
+              {isZh
                 ? `Lv.${growthProfile.level} ${growthProfile.title}`
+                : isEs
+                ? `Nv.${growthProfile.level} Práctica`
                 : `Lv.${growthProfile.level} Practice`}
             </Text>
           </View>
@@ -331,11 +335,19 @@ export const HomeScreen: React.FC = () => {
         <View style={styles.retentionFooter}>
           <Text style={[styles.retentionHint, { color: colors.textSecondary }]}>
             {nextDailyTask
-              ? ((language === 'zh' || language === 'zh-Hant') ? `下一步：${nextDailyTask.title}` : `Next: ${nextDailyTask.title}`)
-              : ((language === 'zh' || language === 'zh-Hant') ? '今日目标已全部完成' : 'All daily tasks complete')}
+              ? isZh
+                ? `下一步：${nextDailyTask.title}`
+                : isEs
+                ? `Siguiente: ${nextDailyTask.title}`
+                : `Next: ${nextDailyTask.title}`
+              : isZh
+              ? '今日目标已全部完成'
+              : isEs
+              ? 'Tareas de hoy completadas'
+              : 'All daily tasks complete'}
           </Text>
           <Text style={[styles.retentionAction, { color: colors.primary }]}>
-            {(language === 'zh' || language === 'zh-Hant') ? '查看' : 'Open'}
+            {isZh ? '查看' : isEs ? 'Abrir' : 'Open'}
           </Text>
         </View>
       </TouchableOpacity>
@@ -437,7 +449,9 @@ export const HomeScreen: React.FC = () => {
           style={[styles.waterButton, { backgroundColor: colors.info }]}
           onPress={handleAddWater}
         >
-          <Text style={styles.waterButtonText}>+ 250ml</Text>
+          <Text style={styles.waterButtonText}>
+            {!isZh && settings.weightUnit === 'lb' ? '+ 250 ml (8 oz)' : '+ 250ml'}
+          </Text>
         </TouchableOpacity>
       </Card>
 
@@ -481,11 +495,17 @@ export const HomeScreen: React.FC = () => {
       <View style={styles.header}>
         <Text style={[styles.greeting, { color: colors.text }]}>{t.welcome}</Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          {settings.traditionalMode
-            ? t.appName
-            : isZh
-            ? '东方节律轻断食 · 减负又静心'
-            : t.appName}
+          {isZh
+            ? settings.traditionalMode
+              ? t.appName
+              : '东方节律轻断食 · 减负又静心'
+            : isEs
+            ? settings.traditionalMode
+              ? 'Tradición Guowu · Cuerpo y Mente'
+              : 'Ayuno Circadiano · Ritmo Oriental'
+            : settings.traditionalMode
+            ? 'Ancient Guowu Rhythm · Body & Mind'
+            : 'Circadian Fasting · Eastern Rhythm'}
         </Text>
       </View>
 

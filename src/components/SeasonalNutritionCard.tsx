@@ -15,6 +15,7 @@ interface SeasonalNutritionCardProps {
 export const SeasonalNutritionCard: React.FC<SeasonalNutritionCardProps> = ({ compact = false }) => {
   const { colors, language } = useApp();
   const isZh = isChineseLanguage(language);
+  const isEs = language === 'es';
   const guide = useMemo(() => getSeasonalNutritionGuide(new Date()), []);
 
   const combos = isZh ? guide.mealCombosZh : guide.mealCombosEn;
@@ -24,7 +25,7 @@ export const SeasonalNutritionCard: React.FC<SeasonalNutritionCardProps> = ({ co
     <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={styles.headerRow}>
         <Text style={[styles.title, { color: colors.text }]}>
-          {isZh ? `🥣 ${guide.solarTerm.nameZh}食养 · 抗饿与复食` : `🥣 ${guide.solarTerm.nameEn} Nutrition`}
+          {isZh ? `🥣 ${guide.solarTerm.nameZh}食养 · 抗饿与复食` : isEs ? `🥣 Nutrición Estacional` : `🥣 ${guide.solarTerm.nameEn} Nutrition`}
         </Text>
         <View style={[styles.seasonPill, { backgroundColor: guide.solarTerm.seasonColor + '1C' }]}>
           <Text style={[styles.seasonText, { color: guide.solarTerm.seasonColor }]}>
@@ -36,7 +37,7 @@ export const SeasonalNutritionCard: React.FC<SeasonalNutritionCardProps> = ({ co
       {!compact && (
         <View style={[styles.sectionBox, { backgroundColor: colors.backgroundSecondary }]}>
           <Text style={[styles.sectionHeading, { color: colors.primary }]}>
-            {isZh ? '早午抗饿搭配（减缓下午馋意）' : 'Satiating Meal Ideas'}
+            {isZh ? '早午抗饿搭配（减缓下午馋意）' : isEs ? 'Ideas Saciantes de Día' : 'Satiating Meal Ideas'}
           </Text>
           {combos.map((line, i) => (
             <Text key={i} style={[styles.bodyText, { color: colors.text }]}>
@@ -48,7 +49,7 @@ export const SeasonalNutritionCard: React.FC<SeasonalNutritionCardProps> = ({ co
 
       <View style={[styles.sectionBox, { backgroundColor: colors.backgroundSecondary }]}>
         <Text style={[styles.sectionHeading, { color: colors.warning }]}>
-          {isZh ? '破食 / 复食第一口' : 'Gentle Refeed First Bite'}
+          {isZh ? '破食 / 复食第一口' : isEs ? 'Primer Bocado al Romper el Ayuno' : 'Gentle Refeed First Bite'}
         </Text>
         <Text style={[styles.bodyText, { color: colors.text }]}>
           {isZh ? guide.refeedFirstBiteZh : guide.refeedFirstBiteEn}
@@ -57,7 +58,7 @@ export const SeasonalNutritionCard: React.FC<SeasonalNutritionCardProps> = ({ co
 
       <View style={styles.drinksRow}>
         <Text style={[styles.drinksLabel, { color: colors.textSecondary }]}>
-          {isZh ? '午后零卡推荐：' : 'Afternoon Tea/Water:'}
+          {isZh ? '午后零卡推荐：' : isEs ? 'Té / Agua por la Tarde:' : 'Afternoon Tea/Water:'}
         </Text>
         <View style={styles.chipsWrap}>
           {drinks.map((drink) => (

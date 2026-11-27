@@ -15,7 +15,12 @@ import { shareAsync } from 'expo-sharing';
 import * as Haptics from 'expo-haptics';
 
 export const FastingScreen: React.FC = () => {
-  const { colors, language, stats } = useApp();
+  const { colors, language, settings, stats } = useApp();
+  const isZh = language === 'zh' || language === 'zh-Hant';
+  const useLb = !isZh && settings.weightUnit === 'lb';
+  const displayedWeightLoss = useLb
+    ? Number((stats.fastingEstimatedWeightLoss * 2.20462).toFixed(2))
+    : stats.fastingEstimatedWeightLoss;
   const rl = useResponsiveLayout();
   const shareCardRef = useRef<View>(null);
   const [showSharePreview, setShowSharePreview] = useState(false);
@@ -82,9 +87,9 @@ export const FastingScreen: React.FC = () => {
     return '预计减重';
   };
 
-  const getKgLabel = () => {
-    if (language === 'en') return 'kg';
-    if (language === 'es') return 'kg';
+  const getWeightUnitLabel = () => {
+    if (useLb) return 'lb';
+    if (language === 'en' || language === 'es') return 'kg';
     return '公斤';
   };
 
@@ -183,7 +188,7 @@ export const FastingScreen: React.FC = () => {
           if (blob) {
             // Try Web Share API first (mobile devices)
             if (navigator.share && navigator.canShare) {
-              const file = new File([blob], '过午不食-禁食成就.png', { type: 'image/png' });
+              const file = new File([blob], isZh ? '过午不食-禁食成就.png' : 'guowu-fasting-journey.png', { type: 'image/png' });
               const shareData = {
                 title: (language === 'zh' || language === 'zh-Hant') ? '过午不食 - 禁食成就' : 'Fasting Achievement',
                 text: (language === 'zh' || language === 'zh-Hant')
@@ -211,7 +216,7 @@ export const FastingScreen: React.FC = () => {
             // Fallback: download the image
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
-            link.download = '过午不食-禁食成就.png';
+            link.download = isZh ? '过午不食-禁食成就.png' : 'guowu-fasting-journey.png';
             link.href = url;
             link.click();
             URL.revokeObjectURL(url);
@@ -345,8 +350,8 @@ export const FastingScreen: React.FC = () => {
           />
           <StatCard
             title={getWeightLossLabel()}
-            value={stats.fastingEstimatedWeightLoss}
-            unit={getKgLabel()}
+            value={displayedWeightLoss}
+            unit={getWeightUnitLabel()}
             icon="⚖️"
             colors={['#265947', '#3D7B65']}
           />
@@ -424,9 +429,9 @@ export const FastingScreen: React.FC = () => {
                     </View>
                     <View style={styles.shareStatDivider} />
                     <View style={styles.shareMainStatItem}>
-                      <Text style={styles.shareMainStatValue}>{stats.fastingEstimatedWeightLoss}</Text>
+                      <Text style={styles.shareMainStatValue}>{displayedWeightLoss}</Text>
                       <Text style={styles.shareMainStatLabel}>
-                        {language === 'en' ? 'kg Loss' : language === 'es' ? 'kg Pérdida' : '减重公斤'}
+                        {useLb ? 'lb Loss' : language === 'en' ? 'kg Loss' : language === 'es' ? 'kg Pérdida' : '减重公斤'}
                       </Text>
                     </View>
                   </View>
@@ -453,7 +458,9 @@ export const FastingScreen: React.FC = () => {
                       {(language === 'zh' || language === 'zh-Hant') ? '下载app：' : language === 'es' ? 'Descarga la app:' : 'Download the app:'}
                     </Text>
                     <Text style={styles.shareFooterLink}>apps.apple.com/app/id6762360504</Text>
-                    <Text style={styles.shareFooterBrand}>"过午不食" Fasting App</Text>
+                    <Text style={styles.shareFooterBrand}>
+                      {isZh ? '「过午不食」东方节律轻断食' : 'Guowu · Circadian Zen Fasting'}
+                    </Text>
                   </View>
                 </View>
               </LinearGradient>

@@ -84,6 +84,7 @@ export const SettingsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const rl = useResponsiveLayout();
   const isZh = isChineseLanguage(language);
+  const isEs = language === 'es';
   const currentTier = FASTING_TIERS[settings.fastingTier || 'classic'];
   const currentGoal = FASTING_GOALS.find((g) => g.id === (settings.fastingGoal || 'mindful_discipline')) || FASTING_GOALS[2];
   const pilgrimage = useMemo(
@@ -112,8 +113,8 @@ export const SettingsScreen: React.FC = () => {
     const shareMessage = (language === 'zh' || language === 'zh-Hant')
       ? `我正在使用"过午不食"app来追踪禁食习惯，推荐你也试试！\n${appUrl}`
       : language === 'es'
-      ? `Estoy usando la app "Ayuno Intermitente" para seguir mis hábitos de ayuno. ¡Te la recomiendo!\n${appUrl}`
-      : `I'm using the "Intermittent Fasting" app to track my fasting habits. Highly recommend!\n${appUrl}`;
+      ? `Estoy usando la app "Guowu · Ayuno Circadiano" para seguir mis hábitos de ayuno. ¡Te la recomiendo!\n${appUrl}`
+      : `I'm practicing Circadian Zen Fasting with Guowu — mindful fasting meets Eastern rhythm!\n${appUrl}`;
 
     const copyAndAlert = async () => {
       await Clipboard.setStringAsync(appUrl);
@@ -121,8 +122,8 @@ export const SettingsScreen: React.FC = () => {
       const openWeChatMsg = (language === 'zh' || language === 'zh-Hant')
         ? '\n\n请打开微信，粘贴链接发送给朋友'
         : language === 'es'
-        ? '\n\nAbre WeChat y pega el enlace'
-        : '\n\nOpen WeChat and paste the link';
+        ? '\n\nPega el enlace en WhatsApp, Mensajes o cualquier app para compartir.'
+        : '\n\nPaste the link in Messages, WhatsApp, or any app to share.';
       Alert.alert(copyMsg, openWeChatMsg);
     };
 
@@ -322,28 +323,32 @@ export const SettingsScreen: React.FC = () => {
 
       {/* 节律与模式 */}
       <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-        {isZh ? '节律与模式' : 'Rhythm & Mode'}
+        {isZh ? '节律与模式' : isEs ? 'Ritmo y Modo' : 'Rhythm & Mode'}
       </Text>
       <Card>
         <SettingItem
-          label={isZh ? '当前目标' : 'Main Goal'}
-          value={isZh ? currentGoal.titleZh : currentGoal.titleEn}
+          label={isZh ? '当前目标' : isEs ? 'Objetivo Principal' : 'Main Goal'}
+          value={isZh ? currentGoal.titleZh : isEs ? currentGoal.titleEs : currentGoal.titleEn}
           onPress={() => setShowGoalPicker(true)}
         />
         <Divider />
         <SettingItem
-          label={isZh ? '过午阶梯' : 'Fasting Tier'}
-          value={isZh ? `${currentTier.nameZh} (${currentTier.windowZh})` : `${currentTier.nameEn} (${currentTier.ratio})`}
+          label={isZh ? '过午阶梯' : isEs ? 'Nivel de Ayuno' : 'Fasting Tier'}
+          value={isZh ? `${currentTier.nameZh} (${currentTier.windowZh})` : isEs ? `${currentTier.nameEs} (${currentTier.ratio})` : `${currentTier.nameEn} (${currentTier.ratio})`}
           onPress={() => setShowTierPicker(true)}
         />
         <Divider />
         <View style={styles.settingItem}>
           <View style={{ flex: 1, paddingRight: 12 }}>
             <Text style={[styles.settingLabel, { color: colors.text }]}>
-              {isZh ? '传统过午修行风格' : 'Traditional Practice Style'}
+              {isZh ? '传统过午修行风格' : isEs ? 'Estilo Tradicional Guowu' : 'Traditional Practice Style'}
             </Text>
             <Text style={[styles.settingDesc, { color: colors.textLight }]}>
-              {isZh ? '开启后突出传统典籍与清修称谓，关闭则偏向现代轻断食' : 'Emphasize classical terms or keep modern wellness phrasing'}
+              {isZh
+                ? '开启后突出传统典籍与清修称谓，关闭则偏向现代轻断食'
+                : isEs
+                ? 'Destaca términos orientales clásicos o usa un tono moderno de bienestar'
+                : 'Emphasize classical terms or keep modern wellness phrasing'}
             </Text>
           </View>
           <Switch
@@ -427,8 +432,8 @@ export const SettingsScreen: React.FC = () => {
         />
         <Divider />
         <SettingItem
-          label={isZh ? '🪐 七政流注 · 24h 经络盘' : '🪐 7 Luminaries 24h Flow'}
-          value={isZh ? '七政值时 · 旺相 · 脏腑' : 'Planets & Meridians'}
+          label={isZh ? '🪐 七政流注 · 24h 经络盘' : isEs ? '🧭 Reloj Corporal MTC · 24h' : '🧭 TCM Body Clock · 24h'}
+          value={isZh ? '七政值时 · 旺相 · 脏腑' : isEs ? 'Circadiano · Elementos · Meridianos' : 'Circadian · Five Elements · Meridians'}
           onPress={() => navigation.navigate('QiZheng')}
         />
       </Card>
@@ -513,22 +518,24 @@ export const SettingsScreen: React.FC = () => {
 
       {/* 轻享 Pro 路线预告（核心功能永久免费） */}
       <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-        {isZh ? '未来计划 · 轻享 Pro' : 'Roadmap · Mindful Pro'}
+        {isZh ? '未来计划 · 轻享 Pro' : isEs ? 'Próximamente · Guowu Plus' : 'Roadmap · Guowu Plus'}
       </Text>
       <Card>
         <Text style={[styles.settingLabel, { color: colors.primary, fontWeight: '700', marginBottom: 6 }]}>
-          {isZh ? '当前核心功能 100% 免费开放' : 'All Core Features Are 100% Free'}
+          {isZh ? '当前核心功能 100% 免费开放' : isEs ? 'Todas las funciones principales son 100% gratis' : 'All Core Features Are 100% Free'}
         </Text>
         <Text style={[styles.settingDesc, { color: colors.textSecondary, lineHeight: 19 }]}>
           {isZh
             ? '后续规划：二十四节气限定日签模板、白噪音混音台、更多国内外云行脚路线，以及加密 iCloud 自动备份。'
+            : isEs
+            ? 'Próximas mejoras: plantillas de los 24 términos solares, mezclador de sonido, más rutas de peregrinaje y copia en iCloud.'
             : 'Upcoming perks: full 24-solar-term poster themes, ambient sound mixer, extended pilgrimage routes & iCloud sync.'}
         </Text>
       </Card>
 
       {/* 本地备份与迁移 */}
       <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-        {isZh ? '数据备份与恢复' : 'Backup & Restore'}
+        {isZh ? '数据备份与恢复' : isEs ? 'Copia de Seguridad y Restauración' : 'Backup & Restore'}
       </Text>
       <Card>
         <SettingItem
@@ -594,7 +601,7 @@ export const SettingsScreen: React.FC = () => {
           onPress={handleShareApp}
           rightElement={<Text style={{ fontSize: 20 }}>📤</Text>}
         />
-        <SettingItem label={t.version} value={Constants.expoConfig?.version || '1.0.42'} />
+        <SettingItem label={t.version} value={Constants.expoConfig?.version || '1.0.43'} />
         <SettingItem
           label={(language === 'zh' || language === 'zh-Hant') ? '隐私政策' : 'Privacy Policy'}
           onPress={() => {
@@ -750,7 +757,7 @@ export const SettingsScreen: React.FC = () => {
                   key={lang.code}
                   style={[styles.optionButton, { backgroundColor: colors.backgroundSecondary }]}
                   onPress={async () => {
-                    await updateSettings({ language: lang.code as any });
+                    await updateSettings({ language: lang.code as any, languageManuallySelected: true });
                     setShowLanguagePicker(false);
                   }}
                 >
