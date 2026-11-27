@@ -77,6 +77,7 @@ export const SettingsScreen: React.FC = () => {
     exportBackupJson,
     importBackupJson,
     proState,
+    isBillingEnabled,
     subscriptionTier,
     isLiteUnlocked,
     isProUnlocked,
@@ -354,7 +355,7 @@ export const SettingsScreen: React.FC = () => {
         </View>
       </Card>
 
-      {Platform.OS === 'ios' && (
+      {isBillingEnabled && (
         <>
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
             {isZh ? '清修会员与随喜奉茶' : isEs ? 'Membresía Guowu y Té' : 'Guowu Membership & Tea'}

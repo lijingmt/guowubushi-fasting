@@ -29,6 +29,16 @@ export const ALL_IAP_PRODUCT_IDS = [
 export const APPLE_EULA_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
 export const PRIVACY_POLICY_URL = 'https://github.com/lijingmt/guowubushi-fasting/blob/main/PRIVACY_POLICY.md';
 export const APPLE_MANAGE_SUBS_URL = 'https://apps.apple.com/account/subscriptions';
+export const GOOGLE_PLAY_MANAGE_SUBS_URL = 'https://play.google.com/store/account/subscriptions?package=com.guowu.fasting';
+
+export function resolveBillingEnabledFromChannel(
+  platform: string,
+  nativeChannelEnabled: boolean
+): boolean {
+  if (platform === 'ios') return true;
+  if (platform === 'android') return Boolean(nativeChannelEnabled);
+  return false;
+}
 
 export interface ProductCatalogFallback {
   id: string;

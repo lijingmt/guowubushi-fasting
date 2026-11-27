@@ -63,7 +63,7 @@ const MIXER_PRESETS: Array<{
 ];
 
 export const MeditationScreen = () => {
-  const { t, addPractice, stats, settings, checkInRecords, practiceRecords, colors, language, isLiteUnlocked, openProStore } = useApp();
+  const { t, addPractice, stats, settings, checkInRecords, practiceRecords, colors, language, isBillingEnabled, isLiteUnlocked, openProStore } = useApp();
   const rl = useResponsiveLayout();
   const social = useSocial();
   const isZh = language === 'zh' || language === 'zh-Hant';
@@ -813,7 +813,7 @@ export const MeditationScreen = () => {
         {(language === 'zh' || language === 'zh-Hant') ? '部分音效来源' : language === 'es' ? 'Algunas fuentes de sonido' : 'Some Sound Effects'}: Pixabay (royalty-free)
       </Text>
 
-      {Platform.OS === 'ios' && (
+      {isBillingEnabled && (
         <TouchableOpacity
           onPress={() => {
             Haptics.selectionAsync();

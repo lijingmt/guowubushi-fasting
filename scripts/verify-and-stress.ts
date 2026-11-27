@@ -39,6 +39,7 @@ import { PILGRIMAGE_ROUTES, calculatePilgrimageKm, computePilgrimageProgress } f
 import { SACRED_SITES } from '../src/data/sacredSites';
 import {
   ALL_IAP_PRODUCT_IDS,
+  GOOGLE_PLAY_MANAGE_SUBS_URL,
   LITE_MONTHLY_ID,
   LITE_PRODUCT_FALLBACKS,
   LITE_YEARLY_ID,
@@ -53,6 +54,7 @@ import {
   isProPosterStyle,
   isProSkin,
   isProWellnessWindow,
+  resolveBillingEnabledFromChannel,
   resolveEffectivePosterStyle,
   resolveEffectiveThemeSkin,
   resolveSubscriptionTier,
@@ -1290,6 +1292,15 @@ async function main() {
     assert.equal(getTeaSupporterBadge(0), null);
     assert.equal(getTeaSupporterBadge(1)?.titleZh, '🍵 清茶知音');
     assert.equal(getTeaSupporterBadge(3)?.titleZh, '🍵 同修护持');
+  });
+
+  await runSection('26. Cross-platform billing channel resolution (App Store vs Google Play vs Direct Free)', () => {
+    assert.equal(resolveBillingEnabledFromChannel('ios', false), true);
+    assert.equal(resolveBillingEnabledFromChannel('ios', true), true);
+    assert.equal(resolveBillingEnabledFromChannel('android', true), true);
+    assert.equal(resolveBillingEnabledFromChannel('android', false), false);
+    assert.equal(resolveBillingEnabledFromChannel('web', true), false);
+    assert.ok(GOOGLE_PLAY_MANAGE_SUBS_URL.includes('com.guowu.fasting'));
   });
 
   console.log('\nALL VERIFICATION & STRESS TESTS PASSED');

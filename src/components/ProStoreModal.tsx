@@ -17,6 +17,7 @@ import {
   ALL_SUBSCRIPTION_FALLBACKS,
   APPLE_EULA_URL,
   APPLE_MANAGE_SUBS_URL,
+  GOOGLE_PLAY_MANAGE_SUBS_URL,
   LITE_MONTHLY_ID,
   LITE_PRODUCT_FALLBACKS,
   LITE_YEARLY_ID,
@@ -35,6 +36,7 @@ export const ProStoreModal: React.FC = () => {
     colors,
     language,
     proState,
+    isBillingEnabled,
     subscriptionTier,
     isProUnlocked,
     proProducts,
@@ -118,20 +120,22 @@ export const ProStoreModal: React.FC = () => {
         '✨ 包含「雅致清修 Lite」全部皮肤、日签与双轨混音',
         '📊 近 30 日 / 90 日身心体感与腰围趋势深度对比',
         '🛡️ 护航暂停券每月不限次数（免费版每月 1 次）',
-        '☁️ Apple iCloud 私有自动备份与换机一键恢复',
+        ...(Platform.OS === 'ios'
+          ? ['☁️ Apple iCloud 私有自动备份与换机一键恢复']
+          : ['📤 本地 JSON 完整数据迁移随身携行']),
       ]
     : isEs
     ? [
         '✨ Incluye todo lo de Guowu Lite (temas, pósters y mezclador)',
         '📊 Tendencias avanzadas de bienestar y cintura (30 y 90 días)',
         '🛡️ Pases de pausa ilimitados al mes (1 gratis en básico)',
-        '☁️ Copia privada automática y restauración en iCloud',
+        ...(Platform.OS === 'ios' ? ['☁️ Copia privada automática y restauración en iCloud'] : []),
       ]
     : [
         '✨ Everything in Guowu Lite (themes, posters & mixer)',
         '📊 30-day & 90-day wellness & waist trend analytics',
         '🛡️ Unlimited monthly Pause Passes (free includes 1/mo)',
-        '☁️ Private iCloud Auto-Backup & cross-device restore',
+        ...(Platform.OS === 'ios' ? ['☁️ Private iCloud Auto-Backup & cross-device restore'] : []),
       ];
 
   const features = activeTierTab === 'lite' ? liteFeatures : proFeatures;
@@ -220,7 +224,7 @@ export const ProStoreModal: React.FC = () => {
                 </View>
               ) : null}
 
-              {Platform.OS === 'ios' && (
+              {isBillingEnabled && (
                 <>
                   {subscriptionTier !== 'free' && (
                     <View
@@ -244,16 +248,26 @@ export const ProStoreModal: React.FC = () => {
                       {!isProUnlocked && (
                         <Text style={[styles.activeMeta, { color: colors.primary, fontWeight: '700' }]}>
                           {isZh
-                            ? '可随时升级「全享版 Pro」解锁 30/90日深析与 iCloud 云备份'
-                            : 'Upgrade below anytime for 30/90d trends & iCloud backup'}
+                            ? Platform.OS === 'ios'
+                              ? '可随时升级「全享版 Pro」解锁 30/90日深析与 iCloud 云备份'
+                              : '可随时升级「全享版 Pro」解锁 30/90日深析与无限暂停券'
+                            : 'Upgrade below anytime for 30/90d trends & unlimited Pause Passes'}
                         </Text>
                       )}
                       <TouchableOpacity
                         style={[styles.manageBtn, { borderColor: colors.success }]}
-                        onPress={() => Linking.openURL(APPLE_MANAGE_SUBS_URL)}
+                        onPress={() =>
+                          Linking.openURL(
+                            Platform.OS === 'android'
+                              ? GOOGLE_PLAY_MANAGE_SUBS_URL
+                              : APPLE_MANAGE_SUBS_URL
+                          )
+                        }
                       >
                         <Text style={[styles.manageBtnText, { color: colors.success }]}>
-                          {isZh ? '前往 Apple ID 管理订阅' : isEs ? 'Gestionar en Apple ID' : 'Manage Subscription'}
+                          {Platform.OS === 'android'
+                            ? isZh ? '前往 Google Play 管理订阅' : isEs ? 'Gestionar en Google Play' : 'Manage on Google Play'
+                            : isZh ? '前往 Apple ID 管理订阅' : isEs ? 'Gestionar en Apple ID' : 'Manage Subscription'}
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -455,10 +469,16 @@ export const ProStoreModal: React.FC = () => {
                 ))}
               </View>
 
-              {Platform.OS === 'ios' && (
+              {isBillingEnabled && (
                 <View style={[styles.legalBox, { borderColor: colors.divider }]}>
                   <Text style={[styles.legalText, { color: colors.textLight }]}>
-                    {isZh
+                    {Platform.OS === 'android'
+                      ? isZh
+                        ? '自动续期说明：确认购买（或免费试用期满后）将通过您的 Google Play 账户扣款。订阅结束前 24 小时内将自动续费；您可随时在「Google Play → 付款和订阅 → 订阅」中管理或取消。本订阅仅提供当前周期本地进阶功能使用权，不包含终身或永久云端承诺。'
+                        : isEs
+                        ? 'El pago se carga a tu cuenta de Google Play al confirmar. Se renueva automáticamente salvo cancelación previa en Google Play → Suscripciones. Sin compromiso vitalicio.'
+                        : 'Payment is charged to your Google Play account. Subscriptions auto-renew unless cancelled before period end in Google Play → Payments & subscriptions. Unlocks selected local features for the current period only (no lifetime obligation).'
+                      : isZh
                       ? '自动续期说明：确认购买（或试用期满后）将通过 Apple ID 账户扣款。订阅结束前 24 小时内将自动续费；您可随时前往 iPhone「设置 → Apple ID → 订阅」管理或取消。本订阅仅提供当前周期内本地进阶功能使用权，不包含终身或永久云端承诺。'
                       : isEs
                       ? 'El pago se carga a tu Apple ID al confirmar. Se renueva automáticamente salvo cancelación 24h antes en Ajustes → Apple ID → Suscripciones. Sin compromiso vitalicio.'

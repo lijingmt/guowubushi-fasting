@@ -4,6 +4,7 @@ import {
   ALL_IAP_PRODUCT_IDS,
   TEA_TIP_IDS,
   getCurrentYearMonth,
+  resolveBillingEnabledFromChannel,
   resolveSubscriptionTier,
   type SubscriptionTier,
 } from '../utils/proCatalog';
@@ -57,8 +58,9 @@ export const DEFAULT_PRO_STATE: ProEntitlementState = {
   lastCheckedAt: null,
 };
 
-interface NativeStoreKitModule {
+interface NativeBillingModule {
   isAvailable(): Promise<boolean>;
+  getBillingMode?(): Promise<{ enabled: boolean; channel: string; buildMode?: string }>;
   fetchProducts(productIds: string[]): Promise<StoreKitProductInfo[]>;
   purchase(productId: string): Promise<NativePurchaseResult>;
   getCurrentEntitlements(): Promise<{
@@ -77,12 +79,41 @@ interface NativeStoreKitModule {
   }>;
 }
 
-function getNativeStoreKit(): NativeStoreKitModule | null {
-  if (Platform.OS !== 'ios') return null;
-  const mod = (NativeModules as Record<string, unknown>).GuowuStoreKit as
-    | NativeStoreKitModule
-    | undefined;
-  return mod || null;
+function getNativeStoreKit(): NativeBillingModule | null {
+  const mods = NativeModules as Record<string, unknown>;
+  if (Platform.OS === 'ios') {
+    return (mods.GuowuStoreKit as NativeBillingModule | undefined) || null;
+  }
+  if (Platform.OS === 'android') {
+    return (mods.GuowuPlayBilling as NativeBillingModule | undefined) || null;
+  }
+  return null;
+}
+
+export async function detectNativeBillingSupport(): Promise<{
+  enabled: boolean;
+  channel: 'app_store' | 'google_play' | 'direct_free';
+}> {
+  if (Platform.OS === 'ios') {
+    return { enabled: true, channel: 'app_store' };
+  }
+  if (Platform.OS === 'android') {
+    const mod = getNativeStoreKit();
+    if (!mod?.getBillingMode) {
+      return { enabled: false, channel: 'direct_free' };
+    }
+    try {
+      const mode = await mod.getBillingMode();
+      const enabled = resolveBillingEnabledFromChannel('android', Boolean(mode?.enabled));
+      return {
+        enabled,
+        channel: enabled ? 'google_play' : 'direct_free',
+      };
+    } catch {
+      return { enabled: false, channel: 'direct_free' };
+    }
+  }
+  return { enabled: false, channel: 'direct_free' };
 }
 
 export async function loadProState(): Promise<ProEntitlementState> {

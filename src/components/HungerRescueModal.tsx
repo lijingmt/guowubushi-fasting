@@ -36,7 +36,7 @@ function getBreathPhase(secInCycle: number, isZh: boolean, isEs: boolean): strin
  * 15 分钟饥饿波峰倒计时 + 4-4-6 正念呼吸 + 无缝雨声 + 磬音 + 一键饮温水 + 抗饿成就记录
  */
 export const HungerRescueModal: React.FC<HungerRescueModalProps> = ({ visible, onClose }) => {
-  const { language, addWater, recordHungerRescue, recordCravingEvent, hungerRescueCount, addPractice, openProStore } = useApp();
+  const { language, addWater, recordHungerRescue, recordCravingEvent, hungerRescueCount, addPractice, isBillingEnabled, openProStore } = useApp();
   const isZh = isChineseLanguage(language);
   const isEs = language === 'es';
 
@@ -320,23 +320,25 @@ export const HungerRescueModal: React.FC<HungerRescueModalProps> = ({ visible, o
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={{ marginTop: vs(10), paddingVertical: vs(4) }}
-            onPress={() => {
-              Haptics.selectionAsync();
-              void stopAllAudio();
-              onClose();
-              openProStore();
-            }}
-          >
-            <Text style={{ fontSize: fs(11.5), color: '#D4B475', textAlign: 'center', fontWeight: '600' }}>
-              {isZh
-                ? '如觉有帮助，欢迎随喜请作者喝杯清茶 →'
-                : isEs
-                ? '¿Te ayudó? Invita un té al autor →'
-                : 'Helpful? Buy the indie developer a cup of tea →'}
-            </Text>
-          </TouchableOpacity>
+          {isBillingEnabled && (
+            <TouchableOpacity
+              style={{ marginTop: vs(10), paddingVertical: vs(4) }}
+              onPress={() => {
+                Haptics.selectionAsync();
+                void stopAllAudio();
+                onClose();
+                openProStore();
+              }}
+            >
+              <Text style={{ fontSize: fs(11.5), color: '#D4B475', textAlign: 'center', fontWeight: '600' }}>
+                {isZh
+                  ? '如觉有帮助，欢迎随喜请作者喝杯清茶 →'
+                  : isEs
+                  ? '¿Te ayudó? Invita un té al autor →'
+                  : 'Helpful? Buy the indie developer a cup of tea →'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </Modal>

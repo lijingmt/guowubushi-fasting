@@ -96,6 +96,7 @@ import { Colors, getThemeColors } from '../theme/colors';
 import { saveWidgetSnapshot } from '../utils/widgetSnapshot';
 import {
   DEFAULT_PRO_STATE,
+  detectNativeBillingSupport,
   fetchStoreKitProducts,
   incrementMonthlyPausePassUsage,
   loadProState,
@@ -250,6 +251,7 @@ interface AppContextType {
 
   // Pro 分层会员与随喜奉茶
   proState: ProEntitlementState;
+  isBillingEnabled: boolean;
   subscriptionTier: SubscriptionTier;
   isLiteUnlocked: boolean;
   isProUnlocked: boolean;
@@ -298,7 +300,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [proStorePreferredTier, setProStorePreferredTier] = useState<PaidTier>('pro');
   const [proBusy, setProBusy] = useState(false);
   const [teaThankYouProductId, setTeaThankYouProductId] = useState<string | null>(null);
-  const subscriptionTier: SubscriptionTier = Platform.OS === 'ios' ? proState.tier : 'pro';
+  const [isBillingEnabled, setIsBillingEnabled] = useState<boolean>(Platform.OS === 'ios');
+  const subscriptionTier: SubscriptionTier = isBillingEnabled ? proState.tier : 'pro';
   const isLiteUnlocked = hasTierAccess(subscriptionTier, 'lite');
   const isProUnlocked = hasTierAccess(subscriptionTier, 'pro');
 
@@ -537,6 +540,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         savedRescueCount,
         initialCloudStatus,
         savedProState,
+        billingSupport,
       ] = await Promise.all([
         getCheckInRecords(),
         getMealRecords(),
@@ -552,6 +556,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         getHungerRescueCount(),
         getICloudStatus(),
         loadProState(),
+        detectNativeBillingSupport(),
       ]);
       const today = getLocalDateString();
 
@@ -612,8 +617,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setCloudSyncStatus(initialCloudStatus);
       proStateRef.current = savedProState;
       setProState(savedProState);
+      setIsBillingEnabled(billingSupport.enabled);
 
-      if (Platform.OS === 'ios') {
+      if (billingSupport.enabled) {
         void fetchStoreKitProducts().then((items) => {
           if (items.length > 0) setProProducts(items);
         });
@@ -1523,7 +1529,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [proState]);
 
   const refreshProEntitlements = async (): Promise<void> => {
-    if (Platform.OS !== 'ios') return;
+    if (!isBillingEnabled) return;
     const synced = await syncNativeEntitlements(proStateRef.current);
     proStateRef.current = synced;
     setProState(synced);
@@ -1534,20 +1540,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   useEffect(() => {
-    if (Platform.OS !== 'ios') return;
+    if (!isBillingEnabled) return;
     const sub = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'active') {
         void refreshProEntitlements();
       }
     });
     return () => sub.remove();
-  }, []);
+  }, [isBillingEnabled]);
 
   const openProStore = (hint?: string, preferredTier: PaidTier = 'pro') => {
     setProStoreHint(hint || null);
     setProStorePreferredTier(preferredTier);
     setProStoreVisible(true);
-    if (Platform.OS === 'ios' && proProducts.length === 0) {
+    if (isBillingEnabled && proProducts.length === 0) {
       void fetchStoreKitProducts().then((items) => {
         if (items.length > 0) setProProducts(items);
       });
@@ -1563,12 +1569,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const purchaseProProduct = async (productId: string): Promise<void> => {
     const isZhLang = isChineseLanguage(language);
-    if (Platform.OS !== 'ios') {
+    const storeName = Platform.OS === 'android' ? 'Google Play' : 'App Store';
+    if (!isBillingEnabled) {
       Alert.alert(
         isZhLang ? '提示' : 'Notice',
         isZhLang
-          ? 'Android 版所有功能目前完全免费开放，无需内购。'
-          : 'All features are currently unlocked for free on this platform.'
+          ? '当前直装版本全部功能免费开放，无需内购。'
+          : 'All features are unlocked for free in this direct edition.'
       );
       return;
     }
@@ -1597,8 +1604,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               : '🎋 Guowu Lite Unlocked',
             unlockedTier === 'pro'
               ? isZhLang
-                ? '感谢支持！已解锁全部皮肤日签、双轨混音、30/90日深析、无限暂停券及 iCloud 自动同步。'
-                : 'Thank you! All themes, posters, dual mixer, 30/90d charts, unlimited Pause Passes & iCloud sync are unlocked.'
+                ? Platform.OS === 'ios'
+                  ? '感谢支持！已解锁全部皮肤日签、双轨混音、30/90日深析、无限暂停券及 iCloud 自动同步。'
+                  : '感谢支持！已解锁全部皮肤日签、双轨混音、30/90日深析与无限护航暂停券。'
+                : 'Thank you! All themes, posters, dual mixer, 30/90d charts, and unlimited Pause Passes are unlocked.'
               : isZhLang
               ? '感谢支持！已解锁全部东方美学皮肤、节气日签与双轨白噪音混音台。'
               : 'Thank you! All Eastern skins, solar-term posters & dual ambient mixer are now unlocked.'
@@ -1608,15 +1617,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         Alert.alert(
           isZhLang ? '等待确认' : 'Purchase Pending',
           isZhLang
-            ? '您的购买正在等待家庭或系统授权，批准后将自动生效。'
-            : 'Your purchase is awaiting approval and will unlock automatically.'
+            ? '您的购买正在等待确认，批准后将自动生效。'
+            : 'Your purchase is awaiting confirmation and will unlock automatically.'
         );
       } else if (result.status === 'unavailable') {
         Alert.alert(
           isZhLang ? '商品暂未就绪' : 'Product Unavailable',
           isZhLang
-            ? '未从 App Store 获取到此商品信息，请确认网络及沙盒账号后重试。'
-            : 'Unable to load product from App Store. Check network or Sandbox account and try again.'
+            ? `未从 ${storeName} 获取到此商品信息，请确认网络及商店账号后重试。`
+            : `Unable to load product from ${storeName}. Check network and store account.`
         );
       } else if (result.status === 'error' || result.status === 'unverified') {
         Alert.alert(
@@ -1631,7 +1640,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const restoreProPurchases = async (): Promise<void> => {
     const isZhLang = isChineseLanguage(language);
-    if (Platform.OS !== 'ios') return;
+    const storeName = Platform.OS === 'android' ? 'Google Play' : 'App Store';
+    const acctName = Platform.OS === 'android' ? 'Google Play 账号' : 'Apple ID';
+    if (!isBillingEnabled) return;
     setProBusy(true);
     try {
       const { state, ok, error } = await restoreNativePurchases(proStateRef.current);
@@ -1640,7 +1651,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (!ok) {
         Alert.alert(
           isZhLang ? '恢复失败' : 'Restore Failed',
-          error || (isZhLang ? '无法连接 App Store，请稍后重试。' : 'Could not sync with App Store.')
+          error || (isZhLang ? `无法连接 ${storeName}，请稍后重试。` : `Could not sync with ${storeName}.`)
         );
         return;
       }
@@ -1660,8 +1671,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         Alert.alert(
           isZhLang ? '未发现有效订阅' : 'No Active Subscription',
           isZhLang
-            ? '当前 Apple ID 名下暂无生效中的「清修 Pro」订阅。'
-            : 'No active Guowu Pro subscription was found for this Apple ID.'
+            ? `当前 ${acctName} 名下暂无生效中的订阅。`
+            : `No active subscription was found for this ${storeName} account.`
         );
       }
     } finally {
@@ -1783,6 +1794,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         consumeRepairCardForGift,
         receiveRepairCardGifts,
         proState,
+        isBillingEnabled,
         subscriptionTier,
         isLiteUnlocked,
         isProUnlocked,
