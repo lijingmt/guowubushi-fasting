@@ -80,13 +80,19 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             title: '⚠️ Descargo de Responsabilidad de Salud',
             color: colors.warning,
             content:
-              'Esta aplicación es solo para fines informativos y no sustituye el consejo médico. Consulta a un profesional de salud antes de iniciar cualquier programa de ayuno.',
+              'Esta aplicación es solo para fines informativos y no sustituye el consejo médico. Consulta a un profesional de la salud calificado antes de iniciar cualquier programa de ayuno, especialmente si eres menor de 18 años, estás embarazada o lactando, tienes diabetes, hipoglucemia, enfermedades cardíacas, trastornos alimentarios o tomas medicamentos recetados.',
           },
           {
             title: '🚨 Detente Si Te Sientes Mal',
             color: colors.error,
             content:
-              'Si sientes mareos, debilidad extrema o palpitaciones, detén el ayuno inmediatamente y aliméntate.',
+              'Si experimentas mareos, desmayos, dolor en el pecho, palpitaciones, dolor de cabeza severo, debilidad extrema o náuseas, detén el ayuno inmediatamente, aliméntate y busca atención médica si persisten.',
+          },
+          {
+            title: '⚖️ Limitación de Responsabilidad',
+            color: colors.textSecondary,
+            content:
+              'Esta aplicación y sus creadores no se responsabilizan por lesiones, problemas de salud o daños derivados del uso de la aplicación. Úsala de forma racional bajo tu propia responsabilidad.',
           },
           {
             title: '🔒 Privacidad y Datos',
@@ -109,13 +115,19 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             title: '⚠️ Health Disclaimer',
             color: colors.warning,
             content:
-              'This app is for informational purposes only and is not medical advice. Consult a qualified physician before fasting, especially if under 18, pregnant, diabetic, or on medication.',
+              'This app is for informational purposes only and is not medical advice. Always consult a qualified healthcare professional before starting any fasting program, especially if under 18, pregnant or nursing, have diabetes, hypoglycemia, heart disease, eating disorders, or take prescription medications.',
           },
           {
             title: '🚨 Stop If Unwell',
             color: colors.error,
             content:
-              'If you feel dizziness, fainting, chest pain, or severe discomfort, stop fasting immediately, eat, and seek medical care if needed.',
+              'If you experience dizziness, fainting, chest pain, palpitations, severe headache, extreme weakness, or nausea, stop fasting immediately, eat, and seek medical care if needed.',
+          },
+          {
+            title: '⚖️ Limitation of Liability',
+            color: colors.textSecondary,
+            content:
+              'This app and its creators are not liable for any injury, health issue, or damages resulting from use of this app. Listen to your body and use at your own risk.',
           },
           {
             title: '🔒 Privacy & Data',
@@ -137,13 +149,19 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           title: '⚠️ 健康免责声明',
           color: colors.warning,
           content:
-            '本应用仅供生活节律参考，不构成医疗建议。开始轻断食前请评估自身状况；未满18岁、孕期哺乳期、低血糖、糖尿病或正在服药人群请先咨询医生。',
+            '本应用仅供生活节律与信息参考，不构成医疗建议或诊疗意见。开始轻断食前请评估自身状况并建议咨询医生，尤其是未满 18 岁、孕期或哺乳期、糖尿病、低血糖、心脏疾病、饮食失调或正在服用处方药物人群。',
         },
         {
           title: '🚨 身体不适立即停止',
           color: colors.error,
           content:
-            '若出现头晕、心慌、乏力、恶心等不适，请立即停止禁食并正常进食，必要时及时就医。',
+            '若出现头晕、昏厥、胸痛、心慌、剧烈头痛、极度乏力或恶心等不适症状，请立即停止禁食并正常进食，症状持续请及时就医。',
+        },
+        {
+          title: '⚖️ 责任限制',
+          color: colors.textSecondary,
+          content:
+            '本应用及其创作者不对因使用本应用导致的任何伤害、健康问题或损害承担责任。请结合自身健康状况理性使用，使用风险由您自行承担。',
         },
         {
           title: '🔒 隐私与数据安全',
@@ -315,8 +333,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             <View style={[styles.summaryBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Text style={[styles.summaryText, { color: colors.textSecondary }]}>
                 {isZh
-                  ? '· 身体感到头晕心慌时请随时进食\n· 断食期间注意饮用足量温开水\n· 在设置中可随时切换方案与传统修行模式'
-                  : '· Stop and eat anytime if dizzy or unwell\n· Hydrate well during fasting hours\n· Customize tier & mode anytime in Settings'}
+                  ? '· 本应用仅供节律参考，不构成医疗建议，使用风险由您自行承担\n· 未满18岁、孕期/哺乳期、糖尿病/低血糖、心脏病、饮食失调或服药人群请先遵医嘱\n· 若出现头晕、胸痛、心慌、昏厥等不适，请立即停止禁食并进食，必要时就医\n· 断食期间请足量饮水，可在设置中随时切换方案或开启护航暂停券'
+                  : '· Informational lifestyle tool only, not medical advice; use at your own risk\n· Under 18, pregnant/nursing, diabetes/hypoglycemia, heart disease, eating disorders, or on Rx meds: consult a doctor first\n· Stop & eat immediately if dizzy, faint, chest pain, or palpitations occur\n· Hydrate well and adjust tier or Pause Pass anytime in Settings'}
               </Text>
             </View>
 
