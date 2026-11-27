@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
+import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import { useApp } from '../context/AppContext';
 import { useSocial } from '../context/SocialContext';
 import type { SilentGestureType } from '../types';
+import { isChineseLanguage } from '../utils/date';
 import { fs, rs, vs } from '../theme/responsive';
 
 const SESSIONS = [
@@ -30,16 +32,26 @@ function getNextCollectiveSession(now: Date): { zh: string; en: string; remainMi
 }
 
 /**
- * 「星火心灯」无言同频共修池：无自由文本输入，仅有「合十」「点心灯」「敲磬」三种轻触善意手势
+ * 「星火心灯」无言同频共修池：无自由文本输入，仅有「合十」「点心灯」「敲磬」三种轻触善意手势（含真实磬音与水波涟漪动效）
  */
 export const HeartLampPool: React.FC = () => {
   const { colors, language } = useApp();
-  const { onlineUsers, onlineCount, silentRoomCounts, recentSilentGestures, sendSilentGesture } = useSocial();
+  const {
+    onlineUsers,
+    onlineCount,
+    silentRoomCounts,
+    silentRoomTodayCounts,
+    recentSilentGestures,
+    sendSilentGesture,
+  } = useSocial();
   const [lastGestureHint, setLastGestureHint] = useState<string>('');
   const [now, setNow] = useState(() => new Date());
   const pulseAnim = useRef(new Animated.Value(0.65)).current;
+  const rippleScale = useRef(new Animated.Value(0.4)).current;
+  const rippleOpacity = useRef(new Animated.Value(0)).current;
+  const bellRef = useRef<Audio.Sound | null>(null);
 
-  const isZh = language === 'zh' || language === 'zh-Hant';
+  const isZh = isChineseLanguage(language);
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -53,12 +65,50 @@ export const HeartLampPool: React.FC = () => {
     return () => {
       loop.stop();
       clearInterval(timer);
+      if (bellRef.current) {
+        void bellRef.current.unloadAsync().catch(() => {});
+      }
     };
   }, [pulseAnim]);
+
+  const playRipple = () => {
+    rippleScale.setValue(0.35);
+    rippleOpacity.setValue(0.85);
+    Animated.parallel([
+      Animated.timing(rippleScale, { toValue: 1.5, duration: 900, useNativeDriver: true }),
+      Animated.timing(rippleOpacity, { toValue: 0, duration: 900, useNativeDriver: true }),
+    ]).start();
+  };
+
+  useEffect(() => {
+    if (recentSilentGestures.length > 0) {
+      playRipple();
+    }
+  }, [recentSilentGestures[0]?.id]);
+
+  const playBellSound = async () => {
+    try {
+      if (bellRef.current) {
+        await bellRef.current.unloadAsync().catch(() => {});
+        bellRef.current = null;
+      }
+      const { sound } = await Audio.Sound.createAsync(
+        require('../../assets/sounds/temple_bell.mp3'),
+        { shouldPlay: true, volume: 0.45 }
+      );
+      bellRef.current = sound;
+    } catch {
+      // ignore audio unavailable
+    }
+  };
 
   const nextSession = getNextCollectiveSession(now);
   const remainH = Math.floor(nextSession.remainMinutes / 60);
   const remainM = nextSession.remainMinutes % 60;
+  const todayTotal =
+    (silentRoomTodayCounts?.bow || 0) +
+    (silentRoomTodayCounts?.lamp || 0) +
+    (silentRoomTodayCounts?.bell || 0);
 
   const lamps = useMemo(() => {
     const count = Math.max(5, Math.min(18, onlineCount || onlineUsers.length || 5));
@@ -77,6 +127,10 @@ export const HeartLampPool: React.FC = () => {
     Haptics.impactAsync(
       gesture === 'bell' ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light
     );
+    playRipple();
+    if (gesture === 'bell') {
+      void playBellSound();
+    }
     sendSilentGesture(gesture);
     setLastGestureHint(isZh ? `已${labelZh} · 与同修共鸣` : `${labelEn} sent`);
   };
@@ -86,57 +140,69 @@ export const HeartLampPool: React.FC = () => {
   return (
     <View style={[styles.container, { backgroundColor: '#162420', borderColor: '#2B3E37' }]}>
       <View style={styles.headerRow}>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.title}>{isZh ? '无言同频共修' : 'Silent Practice Pool'}</Text>
           <Text style={styles.subTitle}>
             {isZh
-              ? `${Math.max(1, onlineCount)} 位同修在线 · 下场${nextSession.zh} ${remainH}h${String(remainM).padStart(2, '0')}m 后`
-              : `${Math.max(1, onlineCount)} online · Next ${nextSession.en} in ${remainH}h ${remainM}m`}
+              ? `${Math.max(1, onlineCount)} 位在线 · 今日共鸣 ${todayTotal} 次 · 下场${nextSession.zh} ${remainH}h${String(remainM).padStart(2, '0')}m`
+              : `${Math.max(1, onlineCount)} online · ${todayTotal} today · Next ${nextSession.en} in ${remainH}h ${remainM}m`}
           </Text>
         </View>
       </View>
 
-      <Animated.View style={[styles.pondCanvas, { opacity: pulseAnim }]}>
-        <Svg width="100%" height={108} viewBox="0 0 280 108">
-          <Path d="M25 86 Q140 72 255 86" stroke="#2F594C" strokeWidth={1.2} fill="none" />
-          <Path d="M55 96 Q140 85 225 96" stroke="#26473D" strokeWidth={1} fill="none" />
-          {lamps.map((lamp) => (
-            <React.Fragment key={lamp.key}>
-              <Circle
-                cx={lamp.cx}
-                cy={lamp.cy}
-                r={lamp.isLive ? 7 : 4.5}
-                fill={lamp.isLive ? '#F2C14E33' : '#73BC9E22'}
-              />
-              <Circle
-                cx={lamp.cx}
-                cy={lamp.cy}
-                r={lamp.isLive ? 3 : 2}
-                fill={lamp.isLive ? '#F6D167' : '#8AD0B4'}
-              />
-            </React.Fragment>
-          ))}
-        </Svg>
-      </Animated.View>
+      <View style={styles.pondWrapper}>
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.rippleRing,
+            {
+              opacity: rippleOpacity,
+              transform: [{ scale: rippleScale }],
+            },
+          ]}
+        />
+        <Animated.View style={[styles.pondCanvas, { opacity: pulseAnim }]}>
+          <Svg width="100%" height={108} viewBox="0 0 280 108">
+            <Path d="M25 86 Q140 72 255 86" stroke="#2F594C" strokeWidth={1.2} fill="none" />
+            <Path d="M55 96 Q140 85 225 96" stroke="#26473D" strokeWidth={1} fill="none" />
+            {lamps.map((lamp) => (
+              <React.Fragment key={lamp.key}>
+                <Circle
+                  cx={lamp.cx}
+                  cy={lamp.cy}
+                  r={lamp.isLive ? 7 : 4.5}
+                  fill={lamp.isLive ? '#F2C14E33' : '#73BC9E22'}
+                />
+                <Circle
+                  cx={lamp.cx}
+                  cy={lamp.cy}
+                  r={lamp.isLive ? 3 : 2}
+                  fill={lamp.isLive ? '#F6D167' : '#8AD0B4'}
+                />
+              </React.Fragment>
+            ))}
+          </Svg>
+        </Animated.View>
+      </View>
 
       <View style={styles.gesturesRow}>
         <TouchableOpacity
           style={styles.gestureBtn}
           onPress={() => triggerGesture('bow', '合十致意', 'Bow')}
         >
-          <Text style={styles.gestureText}>🙏 {isZh ? '合十' : 'Bow'} · {silentRoomCounts.bow}</Text>
+          <Text style={styles.gestureText}>🙏 {isZh ? '合十' : 'Bow'} · {silentRoomTodayCounts?.bow ?? silentRoomCounts.bow}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.gestureBtn}
           onPress={() => triggerGesture('lamp', '点一盏灯', 'Lamp')}
         >
-          <Text style={styles.gestureText}>🏮 {isZh ? '点灯' : 'Lamp'} · {silentRoomCounts.lamp}</Text>
+          <Text style={styles.gestureText}>🏮 {isZh ? '点灯' : 'Lamp'} · {silentRoomTodayCounts?.lamp ?? silentRoomCounts.lamp}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.gestureBtn}
           onPress={() => triggerGesture('bell', '轻敲一磬', 'Bell')}
         >
-          <Text style={styles.gestureText}>🔔 {isZh ? '敲磬' : 'Bell'} · {silentRoomCounts.bell}</Text>
+          <Text style={styles.gestureText}>🔔 {isZh ? '敲磬' : 'Bell'} · {silentRoomTodayCounts?.bell ?? silentRoomCounts.bell}</Text>
         </TouchableOpacity>
       </View>
 
@@ -172,11 +238,25 @@ const styles = StyleSheet.create({
     color: '#F3EFE4',
   },
   subTitle: {
-    fontSize: fs(12),
+    fontSize: fs(11.5),
     color: '#9CB3A8',
     marginTop: vs(2),
   },
+  pondWrapper: {
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  rippleRing: {
+    position: 'absolute',
+    width: rs(86),
+    height: rs(86),
+    borderRadius: rs(43),
+    borderWidth: 1.5,
+    borderColor: '#F6D167',
+  },
   pondCanvas: {
+    width: '100%',
     marginVertical: vs(8),
     alignItems: 'center',
   },

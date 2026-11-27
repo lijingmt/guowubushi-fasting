@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import Svg, {
@@ -209,7 +210,8 @@ const spreadMapPoints = (sites: SacredSite[]): Record<string, { x: number; y: nu
   }, {});
 };
 
-export const TempleMapScreen: React.FC = () => {
+export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
+  const insets = useSafeAreaInsets();
   const { colors, language, recordShareAction, stats, settings, updateSettings } = useApp();
   const isZh = language === 'zh' || language === 'zh-Hant';
   const [region, setRegion] = useState<SacredRegion>('china');
@@ -988,7 +990,10 @@ export const TempleMapScreen: React.FC = () => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingTop: embedded ? vs(10) : Math.max(insets.top + vs(8), vs(16)) },
+        ]}
       >
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.text }]}>{copy.title}</Text>

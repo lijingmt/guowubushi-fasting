@@ -71,6 +71,7 @@ interface SocialContextType {
   requestLeaderboard: (category: 'fasting' | 'meditation', period: 'weekly' | 'monthly' | 'yearly') => void;
 
   silentRoomCounts: SilentRoomCounts;
+  silentRoomTodayCounts: SilentRoomCounts;
   recentSilentGestures: SilentGestureEvent[];
   sendSilentGesture: (gesture: SilentGestureType) => void;
 
@@ -384,6 +385,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     publishLeaderboardStats,
     requestLeaderboard,
     silentRoomCounts: partykit.silentRoomCounts,
+    silentRoomTodayCounts: partykit.silentRoomTodayCounts,
     recentSilentGestures: partykit.recentSilentGestures,
     sendSilentGesture,
     buddyChallenges: partykit.buddyChallenges,

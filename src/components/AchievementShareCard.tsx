@@ -95,7 +95,7 @@ export const AchievementShareCard: React.FC<AchievementShareCardProps> = ({
 
       await shareAsync(destFile.uri, {
         mimeType: 'image/png',
-        dialogTitle: language === 'zh' ? '分享成就' : language === 'es' ? 'Compartir logro' : 'Share Achievement',
+        dialogTitle: (language === 'zh' || language === 'zh-Hant') ? '分享成就' : language === 'es' ? 'Compartir logro' : 'Share Achievement',
       });
     } catch (error) {
       console.error('Error sharing achievement:', error);
@@ -153,13 +153,13 @@ export const AchievementShareCard: React.FC<AchievementShareCardProps> = ({
           <View style={styles.secondaryStatItem}>
             <Text style={styles.secondaryStatIcon}>🍽️</Text>
             <Text style={styles.secondaryStatText}>
-              {stats.totalMealsSkipped} {language === 'zh' ? '餐' : language === 'es' ? 'comidas' : 'meals'}
+              {stats.totalMealsSkipped} {(language === 'zh' || language === 'zh-Hant') ? '餐' : language === 'es' ? 'comidas' : 'meals'}
             </Text>
           </View>
           <View style={styles.secondaryStatItem}>
             <Text style={styles.secondaryStatIcon}>🏆</Text>
             <Text style={styles.secondaryStatText}>
-              {stats.longestAbstinenceStreak} {language === 'zh' ? '天最长' : language === 'es' ? 'días máximo' : 'days best'}
+              {stats.longestAbstinenceStreak} {(language === 'zh' || language === 'zh-Hant') ? '天最长' : language === 'es' ? 'días máximo' : 'days best'}
             </Text>
           </View>
         </View>
@@ -168,7 +168,7 @@ export const AchievementShareCard: React.FC<AchievementShareCardProps> = ({
         {unlockedAchievements.length > 0 && (
           <View style={styles.achievementsContainer}>
             <Text style={styles.achievementsTitle}>
-              {language === 'zh' ? `已解锁 ${unlockedAchievements.length} 个成就` :
+              {(language === 'zh' || language === 'zh-Hant') ? `已解锁 ${unlockedAchievements.length} 个成就` :
                language === 'es' ? `${unlockedAchievements.length} logros` :
                `${unlockedAchievements.length} Achievements Unlocked`}
             </Text>
@@ -208,7 +208,7 @@ export const AchievementShareCard: React.FC<AchievementShareCardProps> = ({
       {/* Share button */}
       <View style={styles.shareButtonContainer}>
         <Text style={styles.shareButton} onPress={shareAchievement}>
-          {language === 'zh' ? '📤 分享成就' : language === 'es' ? '📤 Compartir' : '📤 Share Achievement'}
+          {(language === 'zh' || language === 'zh-Hant') ? '📤 分享成就' : language === 'es' ? '📤 Compartir' : '📤 Share Achievement'}
         </Text>
       </View>
     </>

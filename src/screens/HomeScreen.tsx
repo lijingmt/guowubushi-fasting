@@ -1,21 +1,19 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Alert, Modal, TextInput, Platform, Image } from 'react-native';
+import React, { useState, useRef, useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Alert, Modal, TextInput, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../context/AppContext';
-import { Card } from '../components/Card';
 import { StatCard } from '../components/StatCard';
+import { Card } from '../components/Card';
 import { CheckInCard } from '../components/CheckInCard';
 import { SundialCompassCard } from '../components/SundialCompassCard';
 import { DailyZenPoster } from '../components/DailyZenPoster';
 import * as Haptics from 'expo-haptics';
 import { responsiveSize, fs, rs, vs, layout, responsive } from '../theme/responsive';
 import { computePilgrimageProgress } from '../utils/pilgrimage';
-import { LinearGradient } from 'expo-linear-gradient';
+import { isChineseLanguage } from '../utils/date';
 import { captureRef } from 'react-native-view-shot';
-import * as FileSystem from 'expo-file-system';
 import { shareAsync } from 'expo-sharing';
 import { useNavigation } from '@react-navigation/native';
-
-const APP_STORE_URL = 'https://apps.apple.com/app/id6762360504';
 
 export const HomeScreen: React.FC = () => {
   const {
@@ -37,7 +35,8 @@ export const HomeScreen: React.FC = () => {
   } = useApp();
 
   const navigation = useNavigation<any>();
-  const [flameAnimation] = useState(false);
+  const insets = useSafeAreaInsets();
+  const isZh = isChineseLanguage(language);
   const shareCardRef = useRef<View>(null);
   const [showSharePreview, setShowSharePreview] = useState(false);
   const [showShareCardModal, setShowShareCardModal] = useState(false);
@@ -59,8 +58,8 @@ export const HomeScreen: React.FC = () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } else {
       Alert.alert(
-        language === 'zh' ? '无效的数值' : 'Invalid Value',
-        language === 'zh' ? '请输入500-10000之间的数值' : 'Please enter a value between 500 and 10000'
+        (language === 'zh' || language === 'zh-Hant') ? '无效的数值' : 'Invalid Value',
+        (language === 'zh' || language === 'zh-Hant') ? '请输入500-10000之间的数值' : 'Please enter a value between 500 and 10000'
       );
     }
   };
@@ -79,8 +78,8 @@ export const HomeScreen: React.FC = () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } else {
       Alert.alert(
-        language === 'zh' ? '无效的数值' : 'Invalid Value',
-        language === 'zh' ? '请输入500-3000之间的数值' : 'Please enter a value between 500 and 3000'
+        (language === 'zh' || language === 'zh-Hant') ? '无效的数值' : 'Invalid Value',
+        (language === 'zh' || language === 'zh-Hant') ? '请输入500-3000之间的数值' : 'Please enter a value between 500 and 3000'
       );
     }
   };
@@ -136,7 +135,7 @@ export const HomeScreen: React.FC = () => {
 
       await shareAsync(uri, {
         mimeType: 'image/png',
-        dialogTitle: language === 'zh' ? '分享成就' : language === 'es' ? 'Compartir logro' : 'Share Achievement',
+        dialogTitle: (language === 'zh' || language === 'zh-Hant') ? '分享成就' : language === 'es' ? 'Compartir logro' : 'Share Achievement',
       });
       await recordShareAction('daily');
 
@@ -160,7 +159,7 @@ export const HomeScreen: React.FC = () => {
         }
         // 添加禁食统计
         if (stats.totalSingleFastingSessions > 0) {
-          const fastingText = language === 'zh'
+          const fastingText = (language === 'zh' || language === 'zh-Hant')
             ? `\n\n⏰ 单次禁食：${stats.totalSingleFastingSessions}次，${stats.totalSingleFastingMinutes}分钟`
             : language === 'es'
             ? `\n\n⏰ Ayuno único: ${stats.totalSingleFastingSessions} sesiones, ${stats.totalSingleFastingMinutes} minutos`
@@ -194,8 +193,8 @@ export const HomeScreen: React.FC = () => {
             if (navigator.share && navigator.canShare) {
               const file = new File([blob], '过午不食-成就.png', { type: 'image/png' });
               const shareData = {
-                title: language === 'zh' ? '过午不食' : 'Fasting',
-                text: language === 'zh'
+                title: (language === 'zh' || language === 'zh-Hant') ? '过午不食' : 'Fasting',
+                text: (language === 'zh' || language === 'zh-Hant')
                   ? `我已经坚持过午不食${stats.currentStreak}天，节省做饭和用餐时间各${stats.completedDays}小时！`
                   : `I've been fasting for ${stats.currentStreak} days, saved ${stats.completedDays}h cooking and eating time!`,
                 files: [file],
@@ -231,7 +230,7 @@ export const HomeScreen: React.FC = () => {
         }, 'image/png');
       } catch (err) {
         console.error('Failed to generate image:', err);
-        alert(language === 'zh' ? '请截图保存' : 'Please take a screenshot to save');
+        alert((language === 'zh' || language === 'zh-Hant') ? '请截图保存' : 'Please take a screenshot to save');
       }
     }
   };
@@ -253,49 +252,6 @@ export const HomeScreen: React.FC = () => {
     return '💪';
   };
 
-  const getShareCopy = () => {
-    if (language === 'en') {
-      return {
-        title: 'No Fasting After Noon',
-        eyebrow: 'Daily practice completed',
-        headline: 'I am keeping a mindful fasting streak',
-        daysLabel: 'day streak',
-        completedLabel: 'completed days',
-        hoursLabel: 'hours saved',
-        caloriesLabel: 'kcal saved',
-        quote: 'Eat lighter, live clearer.',
-        progressLabel: 'This week',
-        footer: 'Track mindful fasting with me',
-      };
-    }
-    if (language === 'es') {
-      return {
-        title: 'Ayuno Consciente',
-        eyebrow: 'Práctica diaria completada',
-        headline: 'Mantengo mi racha de ayuno consciente',
-        daysLabel: 'días seguidos',
-        completedLabel: 'días completados',
-        hoursLabel: 'horas ahorradas',
-        caloriesLabel: 'kcal ahorradas',
-        quote: 'Come más ligero, vive más claro.',
-        progressLabel: 'Esta semana',
-        footer: 'Registra tu ayuno consciente conmigo',
-      };
-    }
-    return {
-      title: '过午不食',
-      eyebrow: '今日修行已完成',
-      headline: '我正在坚持过午不食',
-      daysLabel: '连续天数',
-      completedLabel: '完成天数',
-      hoursLabel: '节省小时',
-      caloriesLabel: '节省千卡',
-      quote: '少食知足，清醒每一天。',
-      progressLabel: '本周进度',
-      footer: '一起记录清醒、轻盈的生活',
-    };
-  };
-
   const renderShareCard = () => (
     <DailyZenPoster
       stats={stats}
@@ -304,8 +260,10 @@ export const HomeScreen: React.FC = () => {
     />
   );
 
-  const pilgrimage = computePilgrimageProgress(stats, settings.selectedPilgrimageRouteId);
-  const isZh = language === 'zh' || language === 'zh-Hant';
+  const pilgrimage = useMemo(
+    () => computePilgrimageProgress(stats, settings.selectedPilgrimageRouteId),
+    [stats, settings.selectedPilgrimageRouteId]
+  );
 
   // 响应式样式
   const styles = createResponsiveStyles();
@@ -314,7 +272,7 @@ export const HomeScreen: React.FC = () => {
     <View style={{ flex: 1 }}>
       <ScrollView
         style={{ flex: 1, backgroundColor: colors.background }}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top + vs(10), vs(20)) }]}
       >
       <View style={styles.header}>
         <Text style={[styles.greeting, { color: colors.text }]}>{t.welcome}</Text>
@@ -342,10 +300,10 @@ export const HomeScreen: React.FC = () => {
         <View style={styles.retentionTopRow}>
           <View style={styles.retentionTitleBlock}>
             <Text style={[styles.retentionEyebrow, { color: colors.primary }]}>
-              {language === 'zh' ? '今日修行' : 'Daily Practice'}
+              {(language === 'zh' || language === 'zh-Hant') ? '今日修行' : 'Daily Practice'}
             </Text>
             <Text style={[styles.retentionTitle, { color: colors.text }]}>
-              {language === 'zh'
+              {(language === 'zh' || language === 'zh-Hant')
                 ? `Lv.${growthProfile.level} ${growthProfile.title}`
                 : `Lv.${growthProfile.level} Practice`}
             </Text>
@@ -375,11 +333,11 @@ export const HomeScreen: React.FC = () => {
         <View style={styles.retentionFooter}>
           <Text style={[styles.retentionHint, { color: colors.textSecondary }]}>
             {nextDailyTask
-              ? (language === 'zh' ? `下一步：${nextDailyTask.title}` : `Next: ${nextDailyTask.title}`)
-              : (language === 'zh' ? '今日目标已全部完成' : 'All daily tasks complete')}
+              ? ((language === 'zh' || language === 'zh-Hant') ? `下一步：${nextDailyTask.title}` : `Next: ${nextDailyTask.title}`)
+              : ((language === 'zh' || language === 'zh-Hant') ? '今日目标已全部完成' : 'All daily tasks complete')}
           </Text>
           <Text style={[styles.retentionAction, { color: colors.primary }]}>
-            {language === 'zh' ? '查看' : 'Open'}
+            {(language === 'zh' || language === 'zh-Hant') ? '查看' : 'Open'}
           </Text>
         </View>
       </TouchableOpacity>
@@ -409,14 +367,14 @@ export const HomeScreen: React.FC = () => {
           value={stats.completedDays}
           unit={t.days}
           icon="📅"
-          colors={['#FF9800', '#F44336']}
+          colors={['#265947', '#3D7B65']}
         />
         <StatCard
           title={t.longestStreakLabel}
           value={stats.longestStreak}
           unit={t.days}
           icon="🏆"
-          colors={['#FFD700', '#FFA500']}
+          colors={['#C68B33', '#9F6D22']}
         />
       </View>
 
@@ -426,14 +384,14 @@ export const HomeScreen: React.FC = () => {
           value={stats.totalCaloriesSaved}
           unit={t.kcal}
           icon="💪"
-          colors={['#4CAF50', '#8BC34A']}
+          colors={['#3B7A57', '#2D6044']}
         />
         <StatCard
           title={t.totalMealsSkipped}
           value={stats.totalMealsSkipped}
           unit={t.mealsUnit}
           icon="🍽️"
-          colors={['#2196F3', '#03A9F4']}
+          colors={['#3E6B89', '#2C5069']}
         />
       </View>
 
@@ -443,14 +401,14 @@ export const HomeScreen: React.FC = () => {
           value={stats.longestAbstinenceStreak}
           unit={t.dayUnit}
           icon="🙏"
-          colors={['#9C27B0', '#7B1FA2']}
+          colors={['#6D4C7D', '#523860']}
         />
         <StatCard
           title={t.totalHoursSaved}
           value={stats.totalHoursSaved}
           unit={t.hoursUnit}
           icon="⏰"
-          colors={['#FF9800', '#F57C00']}
+          colors={['#8A6D3B', '#6B532C']}
         />
       </View>
 
@@ -515,10 +473,10 @@ export const HomeScreen: React.FC = () => {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>
-              {language === 'zh' ? '设置每日卡路里目标' : 'Set Daily Calorie Goal'}
+              {(language === 'zh' || language === 'zh-Hant') ? '设置每日卡路里目标' : 'Set Daily Calorie Goal'}
             </Text>
             <Text style={[styles.modalHint, { color: colors.textSecondary }]}>
-              {language === 'zh' ? '请输入500-10000之间的数值' : 'Enter a value between 500 and 10000'}
+              {(language === 'zh' || language === 'zh-Hant') ? '请输入500-10000之间的数值' : 'Enter a value between 500 and 10000'}
             </Text>
             <TextInput
               style={[styles.calorieInput, { color: colors.text, backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
@@ -543,7 +501,7 @@ export const HomeScreen: React.FC = () => {
                 onPress={handleSaveCalorieGoal}
               >
                 <Text style={styles.saveButtonText}>
-                  {language === 'zh' ? '保存' : 'Save'}
+                  {(language === 'zh' || language === 'zh-Hant') ? '保存' : 'Save'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -561,10 +519,10 @@ export const HomeScreen: React.FC = () => {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>
-              {language === 'zh' ? '设置每日饮水目标' : 'Set Daily Water Goal'}
+              {(language === 'zh' || language === 'zh-Hant') ? '设置每日饮水目标' : 'Set Daily Water Goal'}
             </Text>
             <Text style={[styles.modalHint, { color: colors.textSecondary }]}>
-              {language === 'zh' ? '请输入500-3000之间的数值' : 'Enter a value between 500 and 3000'}
+              {(language === 'zh' || language === 'zh-Hant') ? '请输入500-3000之间的数值' : 'Enter a value between 500 and 3000'}
             </Text>
             <TextInput
               style={[styles.calorieInput, { color: colors.text, backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
@@ -589,7 +547,7 @@ export const HomeScreen: React.FC = () => {
                 onPress={handleSaveWaterGoal}
               >
                 <Text style={styles.saveButtonText}>
-                  {language === 'zh' ? '保存' : 'Save'}
+                  {(language === 'zh' || language === 'zh-Hant') ? '保存' : 'Save'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -607,7 +565,7 @@ export const HomeScreen: React.FC = () => {
         <View style={styles.sharePreviewOverlay}>
           <View style={styles.sharePreviewContent}>
             <Text style={[styles.sharePreviewTitle, { color: colors.text }]}>
-              {language === 'zh' ? '分享成就' : 'Share Achievement'}
+              {(language === 'zh' || language === 'zh-Hant') ? '分享成就' : 'Share Achievement'}
             </Text>
 
             {/* Share Card Preview */}
@@ -622,7 +580,7 @@ export const HomeScreen: React.FC = () => {
                 onPress={() => setShowSharePreview(false)}
               >
                 <Text style={[styles.sharePreviewButtonText, { color: colors.text }]}>
-                  {language === 'zh' ? '关闭' : 'Close'}
+                  {(language === 'zh' || language === 'zh-Hant') ? '关闭' : 'Close'}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -630,13 +588,13 @@ export const HomeScreen: React.FC = () => {
                 onPress={handleDownloadImage}
               >
                 <Text style={styles.sharePreviewButtonTextDownload}>
-                  📤 {language === 'zh' ? '分享' : 'Share'}
+                  📤 {(language === 'zh' || language === 'zh-Hant') ? '分享' : 'Share'}
                 </Text>
               </TouchableOpacity>
             </View>
 
             <Text style={[styles.sharePreviewHint, { color: colors.textSecondary }]}>
-              {language === 'zh' ? '提示：也可以直接截图分享' : 'Tip: You can also take a screenshot'}
+              {(language === 'zh' || language === 'zh-Hant') ? '提示：也可以直接截图分享' : 'Tip: You can also take a screenshot'}
             </Text>
           </View>
         </View>
@@ -651,8 +609,8 @@ export const HomeScreen: React.FC = () => {
       >
         <View style={styles.shareCardModalOverlay}>
           <View style={styles.shareCardModalContent}>
-            <Text style={[styles.shareCardModalTitle, { color: colors.text }]}>
-              {language === 'zh' ? '分享成就' : 'Share Achievement'}
+            <Text style={styles.shareCardModalTitle}>
+              {isZh ? '每日节气日签' : 'Daily Zen Card'}
             </Text>
 
             {/* Share Card - visible preview only (not used for capture) */}
@@ -703,7 +661,7 @@ export const HomeScreen: React.FC = () => {
                 onPress={() => setShowShareCardModal(false)}
               >
                 <Text style={[styles.shareCardModalButtonText, { color: colors.text }]}>
-                  {language === 'zh' ? '取消' : 'Cancel'}
+                  {(language === 'zh' || language === 'zh-Hant') ? '取消' : 'Cancel'}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -711,7 +669,7 @@ export const HomeScreen: React.FC = () => {
                 onPress={handleNativeShare}
               >
                 <Text style={styles.shareCardModalButtonTextShare}>
-                  📤 {language === 'zh' ? '分享' : 'Share'}
+                  📤 {(language === 'zh' || language === 'zh-Hant') ? '分享' : 'Share'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -743,12 +701,12 @@ const createResponsiveStyles = () => {
     },
     content: {
       padding: layout.contentPadding,
-      paddingTop: vs(60),
+      paddingTop: vs(16),
       paddingBottom: vs(40),
     },
     header: {
-      marginTop: vs(50),
-      marginBottom: vs(20),
+      marginTop: vs(8),
+      marginBottom: vs(16),
     },
     greeting: {
       fontSize: responsive({
@@ -834,9 +792,9 @@ const createResponsiveStyles = () => {
       alignItems: 'center',
       marginTop: vs(16),
       marginBottom: vs(16),
-      shadowColor: '#FF5722',
+      shadowColor: '#265947',
       shadowOffset: { width: 0, height: vs(2) },
-      shadowOpacity: 0.3,
+      shadowOpacity: 0.2,
       shadowRadius: rs(4),
       elevation: 4,
     },
@@ -1070,189 +1028,6 @@ const createResponsiveStyles = () => {
       }),
       fontWeight: '600',
     },
-	    shareCardBackground: {
-	      width: '100%',
-	      height: '100%',
-	      overflow: 'hidden',
-	    },
-	    shareTopBand: {
-	      position: 'absolute',
-	      top: -42,
-	      left: -34,
-	      width: 230,
-	      height: 120,
-	      borderRadius: 28,
-	      backgroundColor: 'rgba(255, 255, 255, 0.13)',
-	      transform: [{ rotate: '-17deg' }],
-	    },
-	    shareBottomBand: {
-	      position: 'absolute',
-	      right: -48,
-	      bottom: 52,
-	      width: 240,
-	      height: 92,
-	      borderRadius: 24,
-	      backgroundColor: 'rgba(16, 44, 37, 0.22)',
-	      transform: [{ rotate: '-14deg' }],
-	    },
-	    shareCardContent: {
-	      flex: 1,
-	      padding: 24,
-	    },
-	    shareBrandRow: {
-	      flexDirection: 'row',
-	      alignItems: 'center',
-	      gap: 10,
-	    },
-	    shareLogo: {
-	      width: 54,
-	      height: 28,
-	      borderRadius: 6,
-	      backgroundColor: 'rgba(255, 255, 255, 0.16)',
-	    },
-	    shareBrandTextBlock: {
-	      flex: 1,
-	    },
-	    shareBrandTitle: {
-	      fontSize: 18,
-	      fontWeight: 'bold',
-	      color: '#fff',
-	    },
-	    shareBrandSubtitle: {
-	      fontSize: 10,
-	      color: 'rgba(255, 255, 255, 0.72)',
-	      marginTop: 1,
-	    },
-	    shareBadge: {
-	      alignSelf: 'flex-start',
-	      marginTop: 24,
-	      paddingHorizontal: 12,
-	      paddingVertical: 6,
-	      borderRadius: 999,
-	      backgroundColor: 'rgba(255, 255, 255, 0.18)',
-	      borderWidth: 1,
-	      borderColor: 'rgba(255, 255, 255, 0.2)',
-	    },
-	    shareBadgeText: {
-	      color: '#FFF7D6',
-	      fontSize: 11,
-	      fontWeight: '700',
-	    },
-	    shareHeadline: {
-	      color: '#fff',
-	      fontSize: 22,
-	      lineHeight: 28,
-	      fontWeight: '800',
-	      marginTop: 14,
-	      maxWidth: 250,
-	    },
-	    shareHeroMetric: {
-	      marginTop: 14,
-	      flexDirection: 'row',
-	      alignItems: 'flex-end',
-	    },
-	    shareHeroNumber: {
-	      color: '#FFF4B8',
-	      fontSize: 86,
-	      lineHeight: 90,
-	      fontWeight: '900',
-	    },
-	    shareHeroLabel: {
-	      color: 'rgba(255, 255, 255, 0.86)',
-	      fontSize: 14,
-	      fontWeight: '700',
-	      marginLeft: 8,
-	      marginBottom: 14,
-	    },
-	    shareMetricGrid: {
-	      flexDirection: 'row',
-	      gap: 8,
-	      marginTop: 12,
-	    },
-	    shareMetricCard: {
-	      flex: 1,
-	      minHeight: 62,
-	      borderRadius: 12,
-	      paddingHorizontal: 8,
-	      paddingVertical: 9,
-	      backgroundColor: 'rgba(255, 255, 255, 0.16)',
-	      borderWidth: 1,
-	      borderColor: 'rgba(255, 255, 255, 0.16)',
-	      justifyContent: 'center',
-	    },
-	    shareMetricValue: {
-	      color: '#fff',
-	      fontSize: 18,
-	      fontWeight: '900',
-	      textAlign: 'center',
-	    },
-	    shareMetricLabel: {
-	      color: 'rgba(255, 255, 255, 0.78)',
-	      fontSize: 9,
-	      lineHeight: 12,
-	      marginTop: 4,
-	      textAlign: 'center',
-	    },
-	    shareProgressBlock: {
-	      marginTop: 16,
-	      borderRadius: 14,
-	      padding: 12,
-	      backgroundColor: 'rgba(16, 44, 37, 0.24)',
-	    },
-	    shareProgressHeader: {
-	      flexDirection: 'row',
-	      justifyContent: 'space-between',
-	      alignItems: 'center',
-	      marginBottom: 8,
-	    },
-	    shareProgressLabel: {
-	      color: 'rgba(255, 255, 255, 0.84)',
-	      fontSize: 11,
-	      fontWeight: '700',
-	    },
-	    shareProgressCount: {
-	      color: '#FFF4B8',
-	      fontSize: 11,
-	      fontWeight: '800',
-	    },
-	    shareProgressTrack: {
-	      flexDirection: 'row',
-	      gap: 5,
-	    },
-	    shareProgressDot: {
-	      flex: 1,
-	      height: 8,
-	      borderRadius: 99,
-	      backgroundColor: 'rgba(255, 255, 255, 0.2)',
-	    },
-	    shareProgressDotActive: {
-	      backgroundColor: '#FFF4B8',
-	    },
-	    shareQuote: {
-	      marginTop: 13,
-	      color: '#FFF7D6',
-	      fontSize: 14,
-	      lineHeight: 20,
-	      fontWeight: '700',
-	      textAlign: 'center',
-	    },
-	    shareFooter: {
-	      position: 'absolute',
-	      bottom: 18,
-	      left: 24,
-	      right: 24,
-	      alignItems: 'center',
-	    },
-	    shareFooterText: {
-	      fontSize: 10,
-	      color: 'rgba(255, 255, 255, 0.76)',
-	      marginBottom: 3,
-	    },
-	    shareFooterLink: {
-	      fontSize: 10,
-	      color: '#fff',
-	      fontWeight: '800',
-	    },
     // Share Preview Modal styles
     sharePreviewOverlay: {
       flex: 1,
@@ -1318,7 +1093,7 @@ const createResponsiveStyles = () => {
     // Native share card modal styles
     shareCardModalOverlay: {
       flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      backgroundColor: 'rgba(17, 23, 21, 0.82)',
       justifyContent: 'center',
       alignItems: 'center',
       padding: 20,
@@ -1329,16 +1104,14 @@ const createResponsiveStyles = () => {
     shareCardModalTitle: {
       fontSize: 20,
       fontWeight: 'bold',
-      marginBottom: 20,
+      color: '#FFFFFF',
+      marginBottom: 16,
     },
-	    shareCardModalCard: {
-	      width: 320,
-	      height: 480,
-	      borderRadius: 20,
-	      marginBottom: 20,
-	      backgroundColor: '#1B3A33',
-	      overflow: 'hidden',
-	    },
+    shareCardModalCard: {
+      marginBottom: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     shareCardModalActions: {
       flexDirection: 'row',
       gap: 12,
@@ -1362,15 +1135,11 @@ const createResponsiveStyles = () => {
       fontWeight: '600',
     },
     // Hidden share card for capture - rendered off-screen for proper screenshot
-	    hiddenShareCard: {
-	      position: 'absolute',
-	      width: 320,
-	      height: 480,
-	      bottom: -500, // Render off-screen to avoid visible interference
-	      right: 10,
-	      backgroundColor: '#1B3A33',
-	      borderRadius: 20,
-	      overflow: 'hidden',
-	    },
+    hiddenShareCard: {
+      position: 'absolute',
+      top: -2000,
+      left: 0,
+      backgroundColor: 'transparent',
+    },
   });
 };

@@ -8,7 +8,7 @@ import { MeditationType } from '../types';
 import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
 import { getLastWeight, saveLastWeight } from '../services/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getLocalDateString } from '../utils/date';
+import { getLocalDateString, isChineseLanguage } from '../utils/date';
 
 // Time options for meditation and standing meditation
 const TIME_OPTIONS = [
@@ -63,6 +63,9 @@ export const CheckInCard: React.FC = () => {
   const [tempWeight, setTempWeight] = useState(weightMin);
   const [isAbstinence, setIsAbstinence] = useState(false);
   const [selectedWater, setSelectedWater] = useState<number | null>(null);
+  const [showTraditionalOptions, setShowTraditionalOptions] = useState(Boolean(settings.traditionalMode));
+  const isZh = isChineseLanguage(language);
+  const revealTraditional = Boolean(settings.traditionalMode) || showTraditionalOptions;
 
   // Unfreeze animation states
   const [showUnfreezeAnimation, setShowUnfreezeAnimation] = useState(false);
@@ -430,7 +433,7 @@ export const CheckInCard: React.FC = () => {
       return (
         <>
           <LinearGradient
-            colors={todayCheckIn.completed ? ['#FF9800', '#FF5722'] : ['#9E9E9E', '#757575']}
+            colors={todayCheckIn.completed ? ['#265947', '#3D7B65'] : ['#8B9690', '#6E7872']}
             style={styles.completedContainer}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -460,7 +463,7 @@ export const CheckInCard: React.FC = () => {
             activeOpacity={0.7}
           >
             <Text style={[styles.editCheckInButtonText, { color: colors.textSecondary }]}>
-              ✏️ {language === 'zh' ? '修改打卡' : language === 'es' ? 'Editar registro' : 'Edit Check-in'}
+              ✏️ {(language === 'zh' || language === 'zh-Hant') ? '修改打卡' : language === 'es' ? 'Editar registro' : 'Edit Check-in'}
             </Text>
           </TouchableOpacity>
         </>
@@ -474,7 +477,7 @@ export const CheckInCard: React.FC = () => {
         activeOpacity={0.9}
       >
         <LinearGradient
-          colors={['#4CAF50', '#8BC34A']}
+          colors={['#265947', '#C68B33']}
           style={styles.checkInGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -538,18 +541,20 @@ export const CheckInCard: React.FC = () => {
                 </View>
               </TouchableOpacity>
 
-              {/* Abstinence toggle */}
-              <View style={[styles.abstinenceSection, { backgroundColor: colors.backgroundSecondary }]}>
-                <View style={styles.abstinenceRow}>
-                  <Text style={[styles.abstinenceLabel, { color: colors.text }]}>🙏 {t.todaysAbstinence}</Text>
-                  <Switch
-                    value={isAbstinence}
-                    onValueChange={setIsAbstinence}
-                    trackColor={{ false: colors.divider, true: colors.primary }}
-                    thumbColor="#fff"
-                  />
+              {/* Abstinence toggle (traditional practice item) */}
+              {revealTraditional && (
+                <View style={[styles.abstinenceSection, { backgroundColor: colors.backgroundSecondary }]}>
+                  <View style={styles.abstinenceRow}>
+                    <Text style={[styles.abstinenceLabel, { color: colors.text }]}>🙏 {t.todaysAbstinence}</Text>
+                    <Switch
+                      value={isAbstinence}
+                      onValueChange={setIsAbstinence}
+                      trackColor={{ false: colors.divider, true: colors.primary }}
+                      thumbColor="#fff"
+                    />
+                  </View>
                 </View>
-              </View>
+              )}
 
               {/* Water selection */}
               <View style={styles.waterSection}>
@@ -715,37 +720,61 @@ export const CheckInCard: React.FC = () => {
                 )}
               </View>
 
+              {!settings.traditionalMode && (
+                <TouchableOpacity
+                  onPress={() => setShowTraditionalOptions(!showTraditionalOptions)}
+                  style={{
+                    alignSelf: 'flex-start',
+                    paddingVertical: vs(6),
+                    paddingHorizontal: rs(10),
+                    borderRadius: rs(10),
+                    backgroundColor: colors.backgroundSecondary,
+                    marginBottom: vs(8),
+                  }}
+                >
+                  <Text style={{ fontSize: fs(12), fontWeight: '600', color: colors.primary }}>
+                    {showTraditionalOptions
+                      ? isZh ? '收起传统修行项 ▴' : 'Hide Traditional Items ▴'
+                      : isZh ? '展开传统修行项（禁欲 / 诵经 / 听经）▾' : 'More Traditional Practice Items ▾'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
               {/* 诵经 Scripture Chanting */}
-              <View style={[styles.practiceSection, { backgroundColor: colors.backgroundSecondary }]}>
-                <View style={styles.practiceHeaderRow}>
-                  <Text style={[styles.practiceLabel, { color: colors.text }]}>📿 {t.scriptureChanting}</Text>
-                  <Switch
-                    value={isScriptureChanting}
-                    onValueChange={setIsScriptureChanting}
-                    trackColor={{ false: colors.divider, true: colors.primary }}
-                    thumbColor="#fff"
-                  />
+              {revealTraditional && (
+                <View style={[styles.practiceSection, { backgroundColor: colors.backgroundSecondary }]}>
+                  <View style={styles.practiceHeaderRow}>
+                    <Text style={[styles.practiceLabel, { color: colors.text }]}>📿 {t.scriptureChanting}</Text>
+                    <Switch
+                      value={isScriptureChanting}
+                      onValueChange={setIsScriptureChanting}
+                      trackColor={{ false: colors.divider, true: colors.primary }}
+                      thumbColor="#fff"
+                    />
+                  </View>
+                  {isScriptureChanting && (
+                    <Text style={[styles.meritText, { color: colors.primary }]}>+10 {(t as any).practiceMerit || '功德'}</Text>
+                  )}
                 </View>
-                {isScriptureChanting && (
-                  <Text style={[styles.meritText, { color: colors.primary }]}>+10 {(t as any).practiceMerit || '功德'}</Text>
-                )}
-              </View>
+              )}
 
               {/* 听经 Scripture Listening */}
-              <View style={[styles.practiceSection, { backgroundColor: colors.backgroundSecondary }]}>
-                <View style={styles.practiceHeaderRow}>
-                  <Text style={[styles.practiceLabel, { color: colors.text }]}>🎧 {t.scriptureListening}</Text>
-                  <Switch
-                    value={isScriptureListening}
-                    onValueChange={setIsScriptureListening}
-                    trackColor={{ false: colors.divider, true: colors.success }}
-                    thumbColor="#fff"
-                  />
+              {revealTraditional && (
+                <View style={[styles.practiceSection, { backgroundColor: colors.backgroundSecondary }]}>
+                  <View style={styles.practiceHeaderRow}>
+                    <Text style={[styles.practiceLabel, { color: colors.text }]}>🎧 {t.scriptureListening}</Text>
+                    <Switch
+                      value={isScriptureListening}
+                      onValueChange={setIsScriptureListening}
+                      trackColor={{ false: colors.divider, true: colors.success }}
+                      thumbColor="#fff"
+                    />
+                  </View>
+                  {isScriptureListening && (
+                    <Text style={[styles.meritText, { color: colors.success }]}>+5 {(t as any).practiceMerit || '功德'}</Text>
+                  )}
                 </View>
-                {isScriptureListening && (
-                  <Text style={[styles.meritText, { color: colors.success }]}>+5 {(t as any).practiceMerit || '功德'}</Text>
-                )}
-              </View>
+              )}
 
               <TextInput
                 style={[styles.notesInput, { color: colors.text, backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}

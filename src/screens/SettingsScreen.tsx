@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   Share,
   Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
@@ -22,7 +23,8 @@ import { useSocial } from '../context/SocialContext';
 import { Card } from '../components/Card';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { getLocalDateString } from '../utils/date';
+import { getLocalDateString, isChineseLanguage } from '../utils/date';
+import { vs } from '../theme/responsive';
 import { FASTING_GOALS, FASTING_TIERS } from '../utils/fastingRhythm';
 import { computePilgrimageProgress } from '../utils/pilgrimage';
 import type { FastingGoal, FastingTier } from '../types';
@@ -71,10 +73,14 @@ export const SettingsScreen: React.FC = () => {
   const [showTierPicker, setShowTierPicker] = useState(false);
   const [showGoalPicker, setShowGoalPicker] = useState(false);
 
-  const isZh = language === 'zh' || language === 'zh-Hant';
+  const insets = useSafeAreaInsets();
+  const isZh = isChineseLanguage(language);
   const currentTier = FASTING_TIERS[settings.fastingTier || 'classic'];
   const currentGoal = FASTING_GOALS.find((g) => g.id === (settings.fastingGoal || 'mindful_discipline')) || FASTING_GOALS[2];
-  const pilgrimage = computePilgrimageProgress(stats, settings.selectedPilgrimageRouteId);
+  const pilgrimage = useMemo(
+    () => computePilgrimageProgress(stats, settings.selectedPilgrimageRouteId),
+    [stats, settings.selectedPilgrimageRouteId]
+  );
 
   const handleToggleNotifications = async (value: boolean) => {
     if (value) {
@@ -94,7 +100,7 @@ export const SettingsScreen: React.FC = () => {
 
   const handleShareApp = async () => {
     const appUrl = 'https://apps.apple.com/app/id6762360504';
-    const shareMessage = language === 'zh'
+    const shareMessage = (language === 'zh' || language === 'zh-Hant')
       ? `我正在使用"过午不食"app来追踪禁食习惯，推荐你也试试！\n${appUrl}`
       : language === 'es'
       ? `Estoy usando la app "Ayuno Intermitente" para seguir mis hábitos de ayuno. ¡Te la recomiendo!\n${appUrl}`
@@ -102,8 +108,8 @@ export const SettingsScreen: React.FC = () => {
 
     const copyAndAlert = async () => {
       await Clipboard.setStringAsync(appUrl);
-      const copyMsg = language === 'zh' ? '链接已复制到剪贴板' : language === 'es' ? 'Enlace copiado' : 'Link copied to clipboard';
-      const openWeChatMsg = language === 'zh'
+      const copyMsg = (language === 'zh' || language === 'zh-Hant') ? '链接已复制到剪贴板' : language === 'es' ? 'Enlace copiado' : 'Link copied to clipboard';
+      const openWeChatMsg = (language === 'zh' || language === 'zh-Hant')
         ? '\n\n请打开微信，粘贴链接发送给朋友'
         : language === 'es'
         ? '\n\nAbre WeChat y pega el enlace'
@@ -113,19 +119,19 @@ export const SettingsScreen: React.FC = () => {
 
     // Show options
     Alert.alert(
-      language === 'zh' ? '分享应用' : language === 'es' ? 'Compartir App' : 'Share App',
-      language === 'zh'
+      (language === 'zh' || language === 'zh-Hant') ? '分享应用' : language === 'es' ? 'Compartir App' : 'Share App',
+      (language === 'zh' || language === 'zh-Hant')
         ? '选择分享方式'
         : language === 'es'
         ? 'Elige cómo compartir'
         : 'Choose how to share',
       [
         {
-          text: language === 'zh' ? '复制链接' : language === 'es' ? 'Copiar enlace' : 'Copy Link',
+          text: (language === 'zh' || language === 'zh-Hant') ? '复制链接' : language === 'es' ? 'Copiar enlace' : 'Copy Link',
           onPress: copyAndAlert,
         },
         {
-          text: language === 'zh' ? '系统分享' : language === 'es' ? 'Compartir' : 'Share',
+          text: (language === 'zh' || language === 'zh-Hant') ? '系统分享' : language === 'es' ? 'Compartir' : 'Share',
           onPress: async () => {
             try {
               await Share.share({
@@ -138,7 +144,7 @@ export const SettingsScreen: React.FC = () => {
           },
         },
         {
-          text: language === 'zh' ? '取消' : language === 'es' ? 'Cancelar' : 'Cancel',
+          text: (language === 'zh' || language === 'zh-Hant') ? '取消' : language === 'es' ? 'Cancelar' : 'Cancel',
           style: 'cancel',
         },
       ]
@@ -241,7 +247,10 @@ export const SettingsScreen: React.FC = () => {
   const Divider = () => <View style={[styles.divider, { backgroundColor: colors.divider }]} />;
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top + vs(10), vs(20)) }]}
+    >
       <Text style={[styles.title, { color: colors.text }]}>{isZh ? '我的修行档案' : t.settings}</Text>
 
       {/* 个人档案概览卡片 */}
@@ -357,43 +366,43 @@ export const SettingsScreen: React.FC = () => {
 
       {/* 数据记录 */}
       <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-        {language === 'zh' ? '数据记录' : language === 'es' ? 'Registros' : 'Records'}
+        {(language === 'zh' || language === 'zh-Hant') ? '数据记录' : language === 'es' ? 'Registros' : 'Records'}
       </Text>
       <Card>
         <SettingItem
-          label={language === 'zh' ? '📊 统计数据' : language === 'es' ? '📊 Estadísticas' : '📊 Statistics'}
+          label={(language === 'zh' || language === 'zh-Hant') ? '📊 统计数据' : language === 'es' ? '📊 Estadísticas' : '📊 Statistics'}
           onPress={() => navigation.navigate('Stats')}
         />
         <Divider />
         <SettingItem
-          label={language === 'zh' ? '📅 打卡历史' : language === 'es' ? '📅 Historial' : '📅 History'}
+          label={(language === 'zh' || language === 'zh-Hant') ? '📅 打卡历史' : language === 'es' ? '📅 Historial' : '📅 History'}
           onPress={() => navigation.navigate('History')}
         />
         <Divider />
         <SettingItem
-          label={language === 'zh' ? '🍽️ 饮食记录' : language === 'es' ? '🍽️ Comidas' : '🍽️ Meals'}
+          label={(language === 'zh' || language === 'zh-Hant') ? '🍽️ 饮食记录' : language === 'es' ? '🍽️ Comidas' : '🍽️ Meals'}
           onPress={() => navigation.navigate('Meals')}
         />
       </Card>
 
       {/* Social / Community */}
       <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-        {language === 'zh' ? '同修社区' : language === 'es' ? 'Comunidad' : 'Community'}
+        {(language === 'zh' || language === 'zh-Hant') ? '同修社区' : language === 'es' ? 'Comunidad' : 'Community'}
       </Text>
       <Card>
         <View style={styles.settingItem}>
           <View>
             <Text style={[styles.settingLabel, { color: colors.text }]}>
-              {language === 'zh' ? '法号/昵称' : 'Nickname'}
+              {(language === 'zh' || language === 'zh-Hant') ? '法号/昵称' : 'Nickname'}
             </Text>
             <Text style={[styles.settingDesc, { color: colors.textLight }]}>
-              {social.nickname || (language === 'zh' ? '未设置' : 'Not set')}
+              {social.nickname || ((language === 'zh' || language === 'zh-Hant') ? '未设置' : 'Not set')}
             </Text>
           </View>
         </View>
         <Divider />
         <SettingItem
-          label={language === 'zh' ? '👥 同修好友' : '👥 Friends'}
+          label={(language === 'zh' || language === 'zh-Hant') ? '👥 同修好友' : '👥 Friends'}
           value={social.friends.length > 0 ? `${social.friends.length}` : undefined}
           onPress={() => navigation.navigate('Friends')}
         />
@@ -401,7 +410,7 @@ export const SettingsScreen: React.FC = () => {
         <View style={styles.settingItem}>
           <View>
             <Text style={[styles.settingLabel, { color: colors.text }]}>
-              {language === 'zh' ? '我的同修码' : 'Friend Code'}
+              {(language === 'zh' || language === 'zh-Hant') ? '我的同修码' : 'Friend Code'}
             </Text>
             <Text style={[styles.settingDesc, { color: colors.textLight, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }]}>
               {social.userId}
@@ -410,11 +419,11 @@ export const SettingsScreen: React.FC = () => {
           <TouchableOpacity
             onPress={async () => {
               await Clipboard.setStringAsync(social.userId);
-              Alert.alert(language === 'zh' ? '已复制' : 'Copied!');
+              Alert.alert((language === 'zh' || language === 'zh-Hant') ? '已复制' : 'Copied!');
             }}
           >
             <Text style={[styles.settingValue, { color: colors.primary }]}>
-              {language === 'zh' ? '复制' : 'Copy'}
+              {(language === 'zh' || language === 'zh-Hant') ? '复制' : 'Copy'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -473,26 +482,26 @@ export const SettingsScreen: React.FC = () => {
       <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t.about}</Text>
       <Card>
         <SettingItem
-          label={language === 'zh' ? '分享应用' : language === 'es' ? 'Compartir App' : 'Share App'}
+          label={(language === 'zh' || language === 'zh-Hant') ? '分享应用' : language === 'es' ? 'Compartir App' : 'Share App'}
           onPress={handleShareApp}
           rightElement={<Text style={{ fontSize: 20 }}>📤</Text>}
         />
-        <SettingItem label={t.version} value={Constants.expoConfig?.version || '1.0.36'} />
+        <SettingItem label={t.version} value={Constants.expoConfig?.version || '1.0.37'} />
         <SettingItem
-          label={language === 'zh' ? '隐私政策' : 'Privacy Policy'}
+          label={(language === 'zh' || language === 'zh-Hant') ? '隐私政策' : 'Privacy Policy'}
           onPress={() => {
             Linking.openURL('https://github.com/lijingmt/guowubushi-fasting/blob/main/PRIVACY_POLICY.md');
           }}
         />
         <Divider />
         <SettingItem
-          label={language === 'zh' ? '👋 重置欢迎页' : '👋 Reset Welcome'}
-          value={language === 'zh' ? '重新显示用户协议' : 'Show welcome screen again'}
+          label={(language === 'zh' || language === 'zh-Hant') ? '👋 重置欢迎页' : '👋 Reset Welcome'}
+          value={(language === 'zh' || language === 'zh-Hant') ? '重新显示用户协议' : 'Show welcome screen again'}
           onPress={async () => {
             await AsyncStorage.removeItem('@guowu_terms_agreed');
             Alert.alert(
-              language === 'zh' ? '已重置' : 'Reset Complete',
-              language === 'zh' ? '下次启动将显示欢迎页面' : 'Welcome screen will show on next launch'
+              (language === 'zh' || language === 'zh-Hant') ? '已重置' : 'Reset Complete',
+              (language === 'zh' || language === 'zh-Hant') ? '下次启动将显示欢迎页面' : 'Welcome screen will show on next launch'
             );
           }}
         />
@@ -530,13 +539,13 @@ export const SettingsScreen: React.FC = () => {
             />
             <Divider />
             <SettingItem
-              label={language === 'zh' ? '👋 重置欢迎页' : '👋 Reset Welcome'}
-              value={language === 'zh' ? '重新显示用户协议' : 'Show welcome screen again'}
+              label={(language === 'zh' || language === 'zh-Hant') ? '👋 重置欢迎页' : '👋 Reset Welcome'}
+              value={(language === 'zh' || language === 'zh-Hant') ? '重新显示用户协议' : 'Show welcome screen again'}
               onPress={async () => {
                 await AsyncStorage.removeItem('@guowu_terms_agreed');
                 Alert.alert(
-                  language === 'zh' ? '已重置' : 'Reset Complete',
-                  language === 'zh' ? '下次启动将显示欢迎页面' : 'Welcome screen will show on next launch'
+                  (language === 'zh' || language === 'zh-Hant') ? '已重置' : 'Reset Complete',
+                  (language === 'zh' || language === 'zh-Hant') ? '下次启动将显示欢迎页面' : 'Welcome screen will show on next launch'
                 );
               }}
             />
@@ -547,7 +556,7 @@ export const SettingsScreen: React.FC = () => {
       {/* App 图标说明 */}
       <View style={styles.iconAttribution}>
         <Text style={[styles.iconAttributionText, { color: colors.textLight }]}>
-          {language === 'zh'
+          {(language === 'zh' || language === 'zh-Hant')
             ? 'App图标由AI原创设计 (2026年4月16日)'
             : language === 'es'
             ? 'Icono de la App diseñado originalmente por IA (16 de abril de 2026)'
@@ -857,19 +866,19 @@ export const SettingsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#F6F2E9',
   },
   content: {
     padding: 16,
-    paddingTop: 70,
+    paddingTop: 20,
     paddingBottom: 32,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
-    marginTop: 50,
-    marginBottom: 24,
+    color: '#1F2A24',
+    marginTop: 8,
+    marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 14,
@@ -948,9 +957,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     borderWidth: 2,
-    borderColor: '#FF5722',
+    borderColor: '#265947',
     borderRadius: 12,
-    color: '#333',
+    color: '#1F2A24',
   },
   timeSeparator: {
     fontSize: 32,
@@ -973,7 +982,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   modalButtonConfirm: {
-    backgroundColor: '#FF5722',
+    backgroundColor: '#265947',
     marginLeft: 8,
   },
   modalButtonText: {
@@ -996,7 +1005,7 @@ const styles = StyleSheet.create({
   checkIcon: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#FF5722',
+    color: '#265947',
   },
   cancelButton: {
     paddingVertical: 12,

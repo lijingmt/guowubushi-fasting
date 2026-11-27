@@ -256,7 +256,7 @@ export const StatsScreen: React.FC = () => {
             onPress={() => setShowShareModal(true)}
           >
             <Text style={styles.shareAchievementButtonText}>
-              {language === 'zh' ? '📤 分享我的成就' : language === 'es' ? '📤 Compartir logros' : '📤 Share My Achievements'}
+              {(language === 'zh' || language === 'zh-Hant') ? '📤 分享我的成就' : language === 'es' ? '📤 Compartir logros' : '📤 Share My Achievements'}
             </Text>
           </TouchableOpacity>
 
@@ -316,7 +316,7 @@ export const StatsScreen: React.FC = () => {
               <Text style={[styles.shareModalCloseText, { color: colors.text }]}>✕</Text>
             </TouchableOpacity>
             <Text style={[styles.shareModalTitle, { color: colors.text }]}>
-              {language === 'zh' ? '分享成就' : language === 'es' ? 'Compartir' : 'Share Achievement'}
+              {(language === 'zh' || language === 'zh-Hant') ? '分享成就' : language === 'es' ? 'Compartir' : 'Share Achievement'}
             </Text>
             <View style={{ width: 20 }} />
           </View>
@@ -346,7 +346,7 @@ export const StatsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#F6F2E9',
   },
   content: {
     padding: 16,
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   tabActive: {
-    backgroundColor: '#FF5722',
+    backgroundColor: '#265947',
   },
   tabText: {
     fontSize: 14,
@@ -417,7 +417,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#FF5722',
+    color: '#265947',
   },
   statIcon: {
     fontSize: 20,
@@ -480,7 +480,7 @@ const styles = StyleSheet.create({
   achievementCount: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#FF5722',
+    color: '#265947',
   },
   achievementLabel: {
     fontSize: 14,

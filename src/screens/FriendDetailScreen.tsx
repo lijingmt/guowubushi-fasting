@@ -32,9 +32,9 @@ export const FriendDetailScreen: React.FC<Props> = ({ route }) => {
       t.removeFriend,
       t.removeFriendConfirm,
       [
-        { text: language === 'zh' ? '取消' : 'Cancel', style: 'cancel' },
+        { text: (language === 'zh' || language === 'zh-Hant') ? '取消' : 'Cancel', style: 'cancel' },
         {
-          text: language === 'zh' ? '确定' : 'OK',
+          text: (language === 'zh' || language === 'zh-Hant') ? '确定' : 'OK',
           style: 'destructive',
           onPress: () => {
             removeFriend(friendId);
@@ -47,18 +47,18 @@ export const FriendDetailScreen: React.FC<Props> = ({ route }) => {
   const handleEncourage = async () => {
     await sendFriendEncouragement(friendId, nickname, 'cheer');
     Alert.alert(
-      language === 'zh' ? '已鼓励' : 'Sent',
-      language === 'zh' ? '今日社交任务已记录。' : 'Daily social task recorded.'
+      (language === 'zh' || language === 'zh-Hant') ? '已鼓励' : 'Sent',
+      (language === 'zh' || language === 'zh-Hant') ? '今日社交任务已记录。' : 'Daily social task recorded.'
     );
   };
 
   const statItems = stats ? [
-    { label: language === 'zh' ? '连胜天数' : 'Streak', value: `${stats.streak}`, icon: '🔥' },
-    { label: language === 'zh' ? '总打坐时长' : 'Total Time', value: `${stats.totalMeditationMinutes}min`, icon: '⏱️' },
-    { label: language === 'zh' ? '打坐次数' : 'Sessions', value: `${stats.meditationSessionCount}`, icon: '🧘' },
-    { label: language === 'zh' ? '最长单次' : 'Longest', value: `${stats.longestMeditationSession}min`, icon: '🏆' },
-    { label: language === 'zh' ? '打坐天数' : 'Days', value: `${stats.totalMeditationDays}`, icon: '📅' },
-    { label: language === 'zh' ? '功德值' : 'Merit', value: `${stats.totalMerit}`, icon: '✨' },
+    { label: (language === 'zh' || language === 'zh-Hant') ? '连胜天数' : 'Streak', value: `${stats.streak}`, icon: '🔥' },
+    { label: (language === 'zh' || language === 'zh-Hant') ? '总打坐时长' : 'Total Time', value: `${stats.totalMeditationMinutes}min`, icon: '⏱️' },
+    { label: (language === 'zh' || language === 'zh-Hant') ? '打坐次数' : 'Sessions', value: `${stats.meditationSessionCount}`, icon: '🧘' },
+    { label: (language === 'zh' || language === 'zh-Hant') ? '最长单次' : 'Longest', value: `${stats.longestMeditationSession}min`, icon: '🏆' },
+    { label: (language === 'zh' || language === 'zh-Hant') ? '打坐天数' : 'Days', value: `${stats.totalMeditationDays}`, icon: '📅' },
+    { label: (language === 'zh' || language === 'zh-Hant') ? '功德值' : 'Merit', value: `${stats.totalMerit}`, icon: '✨' },
   ] : [];
 
   return (
@@ -84,7 +84,7 @@ export const FriendDetailScreen: React.FC<Props> = ({ route }) => {
       ) : (
         <Card variant="compact">
           <Text style={[styles.noStats, { color: colors.textSecondary }]}>
-            {language === 'zh' ? '对方未分享修行数据或当前不在线' : 'Stats not available (user offline or not sharing)'}
+            {(language === 'zh' || language === 'zh-Hant') ? '对方未分享修行数据或当前不在线' : 'Stats not available (user offline or not sharing)'}
           </Text>
         </Card>
       )}
@@ -94,7 +94,7 @@ export const FriendDetailScreen: React.FC<Props> = ({ route }) => {
         onPress={handleEncourage}
       >
         <Text style={styles.encourageBtnText}>
-          {language === 'zh' ? '鼓励好友坚持今日修行' : 'Encourage today'}
+          {(language === 'zh' || language === 'zh-Hant') ? '鼓励好友坚持今日修行' : 'Encourage today'}
         </Text>
       </TouchableOpacity>
 

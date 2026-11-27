@@ -108,6 +108,8 @@ interface ServerState {
   friendEncouragements: Record<string, FriendEncouragement[]>;
   connectionUsers: Record<string, string>;
   silentRoomCounts: SilentRoomCounts;
+  silentRoomTodayDate: string;
+  silentRoomTodayCounts: SilentRoomCounts;
   recentSilentGestures: SilentGestureEvent[];
   buddyChallenges: Record<string, BuddyChallenge>;
   pendingRepairCardGifts: Record<string, RepairCardGift[]>;
@@ -121,6 +123,7 @@ const FRIEND_REQUEST_KEY_PREFIX = "friendRequest:";
 const FRIEND_ENCOURAGEMENT_KEY_PREFIX = "friendEncouragements:";
 const USER_STATS_KEY_PREFIX = "userStats:";
 const SILENT_ROOM_COUNTS_KEY = "silentRoom:counts";
+const SILENT_ROOM_TODAY_KEY = "silentRoom:today";
 const BUDDY_CHALLENGE_KEY_PREFIX = "buddyChallenge:";
 const REPAIR_GIFT_KEY_PREFIX = "repairGift:";
 const MAX_FRIEND_ENCOURAGEMENTS_PER_USER = 100;
@@ -143,6 +146,8 @@ export default class FastingServer implements Party.Server {
     friendEncouragements: {},
     connectionUsers: {},
     silentRoomCounts: { bow: 0, lamp: 0, bell: 0 },
+    silentRoomTodayDate: new Date().toISOString().slice(0, 10),
+    silentRoomTodayCounts: { bow: 0, lamp: 0, bell: 0 },
     recentSilentGestures: [],
     buddyChallenges: {},
     pendingRepairCardGifts: {},
@@ -217,6 +222,20 @@ export default class FastingServer implements Party.Server {
         continue;
       }
 
+      if (key === SILENT_ROOM_TODAY_KEY) {
+        const todayData = value as { date?: string; counts?: Partial<SilentRoomCounts> } | undefined;
+        const todayKey = new Date().toISOString().slice(0, 10);
+        if (todayData && todayData.date === todayKey && todayData.counts) {
+          this.state.silentRoomTodayDate = todayKey;
+          this.state.silentRoomTodayCounts = {
+            bow: this.toNumber(todayData.counts.bow, 0),
+            lamp: this.toNumber(todayData.counts.lamp, 0),
+            bell: this.toNumber(todayData.counts.bell, 0),
+          };
+        }
+        continue;
+      }
+
       if (key.startsWith(BUDDY_CHALLENGE_KEY_PREFIX)) {
         const challenge = value as BuddyChallenge;
         if (challenge && Array.isArray(challenge.users) && challenge.users.length === 2) {
@@ -236,6 +255,7 @@ export default class FastingServer implements Party.Server {
   }
 
   async onConnect(connection: Party.Connection, _ctx: Party.ConnectionContext) {
+    this.ensureSilentRoomToday();
     connection.send(
       JSON.stringify({
         type: "init",
@@ -243,6 +263,7 @@ export default class FastingServer implements Party.Server {
         onlineCount: Object.keys(this.state.onlineUsers).length,
         onlineUsers: Object.values(this.state.onlineUsers),
         silentRoomCounts: this.state.silentRoomCounts,
+        silentRoomTodayCounts: this.state.silentRoomTodayCounts,
         recentSilentGestures: this.state.recentSilentGestures,
       })
     );
@@ -505,8 +526,10 @@ export default class FastingServer implements Party.Server {
             break;
           }
           this.connectionLastGestureAt[sender.id] = now;
+          this.ensureSilentRoomToday();
 
           this.state.silentRoomCounts[gesture] += 1;
+          this.state.silentRoomTodayCounts[gesture] += 1;
           const event: SilentGestureEvent = {
             id: now.toString(36) + Math.random().toString(36).substring(2, 6),
             userId: userId.substring(0, 100),
@@ -519,6 +542,10 @@ export default class FastingServer implements Party.Server {
           };
           this.state.recentSilentGestures = [event, ...this.state.recentSilentGestures].slice(0, MAX_SILENT_EVENTS);
           await this.room.storage.put(SILENT_ROOM_COUNTS_KEY, this.state.silentRoomCounts);
+          await this.room.storage.put(SILENT_ROOM_TODAY_KEY, {
+            date: this.state.silentRoomTodayDate,
+            counts: this.state.silentRoomTodayCounts,
+          });
           this.scheduleSilentRoomBroadcast();
           break;
         }
@@ -528,6 +555,8 @@ export default class FastingServer implements Party.Server {
           const toUserId = typeof data.payload?.toUserId === "string" ? data.payload.toUserId.trim() : "";
           if (!fromUserId || !toUserId || fromUserId === toUserId) break;
           if (!this.bindOrVerifySender(sender, fromUserId)) break;
+          const pairKey = this.getPairKey(fromUserId, toUserId);
+          if (!this.state.friendPairs[pairKey]) break;
 
           const durationDays: 7 | 21 = data.payload?.durationDays === 21 ? 21 : 7;
           const startDate =
@@ -539,7 +568,6 @@ export default class FastingServer implements Party.Server {
           const toNickname =
             typeof data.payload?.toNickname === "string" ? data.payload.toNickname.substring(0, 40) : "";
 
-          const pairKey = this.getPairKey(fromUserId, toUserId);
           const users = [fromUserId, toUserId].sort() as [string, string];
           const challenge: BuddyChallenge = {
             id: `buddy_${pairKey}_${Date.now()}`,
@@ -604,6 +632,7 @@ export default class FastingServer implements Party.Server {
           const toUserId = typeof data.payload?.toUserId === "string" ? data.payload.toUserId.trim() : "";
           if (!fromUserId || !toUserId || fromUserId === toUserId) break;
           if (!this.bindOrVerifySender(sender, fromUserId)) break;
+          if (!this.state.friendPairs[this.getPairKey(fromUserId, toUserId)]) break;
 
           const gift: RepairCardGift = {
             id: Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
@@ -647,12 +676,14 @@ export default class FastingServer implements Party.Server {
   async onRequest(req: Party.Request) {
     if (req.method === "GET") {
       this.cleanupStaleOnlineUsers();
+      this.ensureSilentRoomToday();
       return new Response(
         JSON.stringify({
           status: "ok",
           onlineCount: Object.keys(this.state.onlineUsers).length,
           leaderboardSize: Object.keys(this.state.leaderboard).length,
           silentRoomCounts: this.state.silentRoomCounts,
+          silentRoomTodayCounts: this.state.silentRoomTodayCounts,
           roomId: this.room.id,
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
@@ -795,11 +826,21 @@ export default class FastingServer implements Party.Server {
     (this.silentRoomBroadcastTimer as unknown as { unref?: () => void })?.unref?.();
   }
 
+  ensureSilentRoomToday() {
+    const today = new Date().toISOString().slice(0, 10);
+    if (this.state.silentRoomTodayDate !== today) {
+      this.state.silentRoomTodayDate = today;
+      this.state.silentRoomTodayCounts = { bow: 0, lamp: 0, bell: 0 };
+    }
+  }
+
   broadcastSilentRoom() {
+    this.ensureSilentRoomToday();
     this.broadcastAll(
       JSON.stringify({
         type: "silentRoomUpdate",
         counts: this.state.silentRoomCounts,
+        todayCounts: this.state.silentRoomTodayCounts,
         recentEvents: this.state.recentSilentGestures,
       })
     );

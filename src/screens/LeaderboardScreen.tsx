@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useApp } from '../context/AppContext';
 import { useSocial } from '../context/SocialContext';
@@ -20,7 +21,8 @@ type Period = 'weekly' | 'monthly' | 'yearly';
 
 const TROPHIES = ['🥇', '🥈', '🥉'];
 
-export const LeaderboardScreen = () => {
+export const LeaderboardScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
+  const insets = useSafeAreaInsets();
   const { t, colors, stats, checkInRecords, practiceRecords, language } = useApp();
   const social = useSocial();
   const navigation = useNavigation<any>();
@@ -182,7 +184,7 @@ export const LeaderboardScreen = () => {
       )}
 
       {/* Period tabs */}
-      <View style={[styles.tabRow, { backgroundColor: colors.card }]}>
+      <View style={[styles.tabRow, { backgroundColor: colors.card, paddingTop: embedded ? vs(10) : Math.max(insets.top + vs(10), vs(20)) }]}>
         {(['weekly', 'monthly', 'yearly'] as Period[]).map((p) => (
           <TouchableOpacity
             key={p}
@@ -303,7 +305,7 @@ const styles = StyleSheet.create({
   tabRow: {
     flexDirection: 'row',
     paddingHorizontal: responsiveSize.spacing.md,
-    paddingTop: vs(64),
+    paddingTop: vs(10),
     paddingBottom: vs(4),
   },
   tab: {

@@ -636,6 +636,37 @@ async function main() {
       aliceConn as any
     );
     assert.deepEqual(server.state.silentRoomCounts, { bow: 0, lamp: 0, bell: 0 });
+    assert.deepEqual(server.state.silentRoomTodayCounts, { bow: 0, lamp: 0, bell: 0 });
+
+    // Non-friend attempts must be rejected before friendship is established
+    await server.onMessage(
+      JSON.stringify({
+        type: 'startBuddyChallenge',
+        payload: { fromUserId: 'eve', fromNickname: 'Eve', toUserId: 'bob', toNickname: 'Bob', durationDays: 7, startDate: '2026-11-26' },
+      }),
+      eveConn as any
+    );
+    await server.onMessage(
+      JSON.stringify({ type: 'giftRepairCard', payload: { fromUserId: 'eve', fromNickname: 'Eve', toUserId: 'bob' } }),
+      eveConn as any
+    );
+    assert.equal(bobConn.sent.some((m) => m.type === 'buddyChallengesUpdate' || m.type === 'repairCardGiftReceived'), false);
+
+    // Establish accepted friendship between alice and bob
+    await server.onMessage(
+      JSON.stringify({ type: 'friendRequest', payload: { fromUserId: 'alice', fromNickname: 'Alice', toUserId: 'bob' } }),
+      aliceConn as any
+    );
+    const reqMsg = bobConn.sent.find((m) => m.type === 'friendRequestReceived');
+    assert.ok(reqMsg?.request?.id);
+    await server.onMessage(
+      JSON.stringify({
+        type: 'friendResponse',
+        payload: { requestId: reqMsg.request.id, fromUserId: 'alice', toUserId: 'bob', status: 'accepted' },
+      }),
+      bobConn as any
+    );
+    bobConn.sent.length = 0;
 
     // Start 7-day buddy challenge + light lamp + gift repair card (must stay private to Alice/Bob)
     await server.onMessage(
@@ -699,8 +730,13 @@ async function main() {
       server.state.silentRoomCounts.bow +
       server.state.silentRoomCounts.lamp +
       server.state.silentRoomCounts.bell;
+    const todayCounted =
+      server.state.silentRoomTodayCounts.bow +
+      server.state.silentRoomTodayCounts.lamp +
+      server.state.silentRoomTodayCounts.bell;
     assert.equal(totalCounted, 500, `Expected 500 after per-connection cooldown, got ${totalCounted}`);
-    console.log(`   -> Silent Room 500-user burst + cooldown (${elapsedMs.toFixed(2)} ms): total=${totalCounted}, recentEvents=${server.state.recentSilentGestures.length}`);
+    assert.equal(todayCounted, 500, `Expected today 500, got ${todayCounted}`);
+    console.log(`   -> Silent Room 500-user burst + cooldown (${elapsedMs.toFixed(2)} ms): total=${totalCounted}, today=${todayCounted}, recentEvents=${server.state.recentSilentGestures.length}`);
   });
 
   console.log('\nALL VERIFICATION & STRESS TESTS PASSED');

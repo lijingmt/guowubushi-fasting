@@ -17,9 +17,9 @@ import { useSocial } from '../context/SocialContext';
 import { useApp } from '../context/AppContext';
 import { Card } from '../components/Card';
 import { rs, vs, fs } from '../theme/responsive';
-import { getLocalDateString } from '../utils/date';
+import { getLocalDateString, isChineseLanguage } from '../utils/date';
 
-export const FriendsScreen: React.FC = () => {
+export const FriendsScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const { colors, t, language, retentionState } = useApp();
   const {
     userId,
@@ -35,7 +35,7 @@ export const FriendsScreen: React.FC = () => {
     lightBuddyLamp,
     giftRepairCard,
   } = useSocial();
-  const isZh = language === 'zh' || language === 'zh-Hant';
+  const isZh = isChineseLanguage(language);
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
 
@@ -47,11 +47,11 @@ export const FriendsScreen: React.FC = () => {
     const code = addCode.trim();
     if (!code) return;
     if (code === userId) {
-      Alert.alert(t.error, language === 'zh' ? '不能加自己为好友' : 'Cannot add yourself');
+      Alert.alert(t.error, (language === 'zh' || language === 'zh-Hant') ? '不能加自己为好友' : 'Cannot add yourself');
       return;
     }
     if (friends.find((f) => f.userId === code)) {
-      Alert.alert(t.error, language === 'zh' ? '已经是好友了' : 'Already friends');
+      Alert.alert(t.error, (language === 'zh' || language === 'zh-Hant') ? '已经是好友了' : 'Already friends');
       return;
     }
     sendFriendRequest(code);
@@ -72,9 +72,9 @@ export const FriendsScreen: React.FC = () => {
       t.removeFriend,
       t.removeFriendConfirm,
       [
-        { text: language === 'zh' ? '取消' : 'Cancel', style: 'cancel' },
+        { text: (language === 'zh' || language === 'zh-Hant') ? '取消' : 'Cancel', style: 'cancel' },
         {
-          text: language === 'zh' ? '确定' : 'OK',
+          text: (language === 'zh' || language === 'zh-Hant') ? '确定' : 'OK',
           style: 'destructive',
           onPress: () => removeFriend(friendUserId),
         },
@@ -86,7 +86,7 @@ export const FriendsScreen: React.FC = () => {
     await sendFriendEncouragement(friendUserId, friendNickname, 'cheer');
     Alert.alert(
       t.success,
-      language === 'zh' ? `已鼓励 ${friendNickname || '好友'}，今日社交任务已记录。` : 'Encouragement sent.'
+      (language === 'zh' || language === 'zh-Hant') ? `已鼓励 ${friendNickname || '好友'}，今日社交任务已记录。` : 'Encouragement sent.'
     );
   };
 
@@ -108,7 +108,10 @@ export const FriendsScreen: React.FC = () => {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={[styles.content, { paddingTop: insets.top + vs(20) }]}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={[styles.content, { paddingTop: embedded ? vs(12) : insets.top + vs(16) }]}
+    >
       {/* My friend code */}
       <Card variant="compact">
         <Text style={[styles.sectionTitle, { color: colors.text }]}>{t.friendCode}</Text>
@@ -247,20 +250,33 @@ export const FriendsScreen: React.FC = () => {
             const encouraged = encouragedToday.includes(friend.userId);
             return (
               <View key={friend.userId} style={[styles.friendRow, { borderBottomColor: colors.border }]}>
-                <TouchableOpacity
-                  style={styles.friendMain}
-                  onPress={() => navigation.navigate('FriendDetail', { userId: friend.userId, nickname: friend.nickname })}
-                >
-                  <View style={[styles.avatar, { backgroundColor: isOnline ? colors.success : colors.textSecondary }]}>
-                    <Text style={styles.avatarText}>{(friend.nickname || '?')[0].toUpperCase()}</Text>
-                  </View>
-                  <View style={styles.friendInfo}>
-                    <Text style={[styles.friendName, { color: colors.text }]}>{friend.nickname || t.anonymous}</Text>
-                    <Text style={[styles.friendStatus, { color: isOnline ? colors.success : colors.textSecondary }]}>
-                      {isOnline ? t.onlineStatus : t.offlineStatus}
+                <View style={styles.friendTopRow}>
+                  <TouchableOpacity
+                    style={styles.friendMain}
+                    onPress={() => navigation.navigate('FriendDetail', { userId: friend.userId, nickname: friend.nickname })}
+                  >
+                    <View style={[styles.avatar, { backgroundColor: isOnline ? colors.success : colors.textSecondary }]}>
+                      <Text style={styles.avatarText}>{(friend.nickname || '?')[0].toUpperCase()}</Text>
+                    </View>
+                    <View style={styles.friendInfo}>
+                      <Text style={[styles.friendName, { color: colors.text }]} numberOfLines={1}>
+                        {friend.nickname || t.anonymous}
+                      </Text>
+                      <Text style={[styles.friendStatus, { color: isOnline ? colors.success : colors.textSecondary }]}>
+                        {isOnline ? t.onlineStatus : t.offlineStatus}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.removeMiniBtn, { borderColor: colors.border }]}
+                    onPress={() => handleRemoveFriend(friend.userId, friend.nickname)}
+                  >
+                    <Text style={[styles.removeMiniText, { color: colors.textSecondary }]}>
+                      {isZh ? '移除' : 'Remove'}
                     </Text>
-                  </View>
-                </TouchableOpacity>
+                  </TouchableOpacity>
+                </View>
+
                 <View style={styles.friendActions}>
                   <TouchableOpacity
                     style={[styles.encourageBtn, { backgroundColor: encouraged ? colors.divider : colors.primary }]}
@@ -268,11 +284,11 @@ export const FriendsScreen: React.FC = () => {
                     disabled={encouraged}
                   >
                     <Text style={[styles.encourageBtnText, { color: encouraged ? colors.textSecondary : '#fff' }]}>
-                      {encouraged ? (language === 'zh' ? '已鼓励' : 'Sent') : (language === 'zh' ? '鼓励' : 'Cheer')}
+                      {encouraged ? (isZh ? '已鼓励' : 'Sent') : (isZh ? '鼓励' : 'Cheer')}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.removeMiniBtn, { borderColor: colors.primary }]}
+                    style={[styles.pactBtn, { borderColor: colors.primary, backgroundColor: colors.primary + '12' }]}
                     onPress={() => {
                       startBuddyChallenge(friend.userId, friend.nickname, 7);
                       Alert.alert(
@@ -286,19 +302,25 @@ export const FriendsScreen: React.FC = () => {
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.removeMiniBtn, { borderColor: colors.warning }]}
-                    onPress={() => handleGiftRepairCard(friend.userId, friend.nickname)}
+                    style={[styles.pactBtn, { borderColor: colors.info, backgroundColor: colors.info + '12' }]}
+                    onPress={() => {
+                      startBuddyChallenge(friend.userId, friend.nickname, 21);
+                      Alert.alert(
+                        t.success,
+                        isZh ? `已和 ${friend.nickname || '好友'} 开启 21 天结伴修行挑战！` : 'Started 21-day buddy pact!'
+                      );
+                    }}
                   >
-                    <Text style={[styles.removeMiniText, { color: colors.warning }]}>
-                      {isZh ? '赠卡' : 'Gift'}
+                    <Text style={[styles.removeMiniText, { color: colors.info }]}>
+                      {isZh ? '21天结伴' : '21d Pact'}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.removeMiniBtn, { borderColor: colors.error || '#f44336' }]}
-                    onPress={() => handleRemoveFriend(friend.userId, friend.nickname)}
+                    style={[styles.pactBtn, { borderColor: colors.warning, backgroundColor: colors.warning + '12' }]}
+                    onPress={() => handleGiftRepairCard(friend.userId, friend.nickname)}
                   >
-                    <Text style={[styles.removeMiniText, { color: colors.error || '#f44336' }]}>
-                      {language === 'zh' ? '移除' : 'Remove'}
+                    <Text style={[styles.removeMiniText, { color: colors.warning }]}>
+                      {isZh ? '赠护航卡' : 'Gift Card'}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -409,10 +431,14 @@ const styles = StyleSheet.create({
     paddingVertical: vs(16),
   },
   friendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingVertical: vs(12),
     borderBottomWidth: 1,
+    gap: vs(10),
+  },
+  friendTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: rs(8),
   },
   friendMain: {
@@ -448,23 +474,30 @@ const styles = StyleSheet.create({
   },
   friendActions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
-    gap: rs(6),
+    gap: rs(8),
   },
   encourageBtn: {
     borderRadius: rs(8),
-    paddingHorizontal: rs(10),
+    paddingHorizontal: rs(12),
     paddingVertical: vs(7),
   },
   encourageBtnText: {
     fontSize: fs(12),
     fontWeight: '800',
   },
+  pactBtn: {
+    borderWidth: 1,
+    borderRadius: rs(8),
+    paddingHorizontal: rs(10),
+    paddingVertical: vs(6),
+  },
   removeMiniBtn: {
     borderWidth: 1,
     borderRadius: rs(8),
-    paddingHorizontal: rs(8),
-    paddingVertical: vs(6),
+    paddingHorizontal: rs(9),
+    paddingVertical: vs(5),
   },
   removeMiniText: {
     fontSize: fs(11),

@@ -73,3 +73,10 @@ export function getLocalWeekKey(dateStr: string = getLocalDateString()): string 
   const day = date.getDay() || 7; // Sunday=7, Monday=1
   return addLocalDays(dateStr, -(day - 1));
 }
+
+/**
+ * Checks whether the active UI language is Simplified or Traditional Chinese.
+ */
+export function isChineseLanguage(lang?: string): boolean {
+  return lang === 'zh' || lang === 'zh-Hant';
+}

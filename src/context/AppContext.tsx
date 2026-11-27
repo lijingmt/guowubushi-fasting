@@ -25,7 +25,8 @@ import {
   FriendEncouragement,
 } from '../types';
 import { DEFAULT_SETTINGS } from '../constants/achievements';
-import { getLocalDateString } from '../utils/date';
+import { getLocalDateString, isChineseLanguage } from '../utils/date';
+import { FASTING_TIERS } from '../utils/fastingRhythm';
 import { computeUserStats } from '../utils/stats';
 import {
   getSettings,
@@ -71,9 +72,11 @@ import { Colors, lightColors, darkColors } from '../theme/colors';
 import { saveWidgetSnapshot } from '../utils/widgetSnapshot';
 
 const DAILY_REMINDER_NOTIFICATION_ID_KEY = '@guowu_daily_reminder_notification_id';
+const CUTOFF_REMINDER_NOTIFICATION_ID_KEY = '@guowu_cutoff_reminder_notification_id';
 const FASTING_NOTIFICATION_ID_KEY = '@guowu_fasting_notification_id';
 const DAILY_REMINDER_NOTIFICATION_KIND = 'dailyReminder';
 const DAILY_REMINDER_IDENTIFIER = 'guowu-daily-reminder';
+const CUTOFF_REMINDER_IDENTIFIER = 'guowu-cutoff-reminder';
 const LEGACY_DAILY_REMINDER_TITLES = ['过午不食打卡', 'Daily Check-In'];
 
 const isDailyReminderRequest = (request: Notifications.NotificationRequest) => {
@@ -396,7 +399,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     calculateStats();
   }, [checkInRecords, weightRecords, practiceRecords, fastingSessions]);
 
-  // 只在加载完成、提醒开关、提醒时间或语言改变时调度一次每日提醒。
+  // 只在加载完成、提醒开关、提醒时间、断食阶梯或语言改变时调度一次每日提醒。
   useEffect(() => {
     if (isLoading) return;
     if (settings.enableNotifications) {
@@ -404,7 +407,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     } else {
       cancelDailyReminderNotifications();
     }
-  }, [isLoading, settings.reminderTime, settings.enableNotifications, language]);
+  }, [isLoading, settings.reminderTime, settings.fastingTier, settings.enableNotifications, language]);
 
   const initializeData = async () => {
     try {
@@ -533,13 +536,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     const [hours, minutes] = settings.reminderTime.split(':').map(Number);
+    const isZh = isChineseLanguage(language);
 
     // 根据宽限期和今日任务状态决定通知内容
     const isInGracePeriod = stats.streakInGracePeriod;
     const getNotificationMessage = () => {
       if (isInGracePeriod) {
         // 宽限期状态的特殊消息
-        if (language === 'zh') {
+        if (isZh) {
           return '今天过午不食完成了吗？火苗已冰冻！赶快打卡，击碎冰冻火苗！';
         } else if (language === 'es') {
           return '¿Completaste el ayuno de hoy? ¡La llama está congelada! ¡Regístrate ahora para romper el hielo!';
@@ -549,22 +553,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const pendingTasks = dailyTasks.filter((task) => !task.completed);
       const nextTask = pendingTasks[0];
       if (dailyRating.stars >= 5) {
-        if (language === 'zh') return `今天已满星，连续${stats.currentStreak}天。睡前看一眼周总结，保持节奏。`;
+        if (isZh) return `今天已满星，连续${stats.currentStreak}天。睡前看一眼周总结，保持节奏。`;
         if (language === 'es') return `Hoy ya tienes 5 estrellas. Revisa tu resumen semanal y mantén el ritmo.`;
         return `Today is already 5-star. Review your weekly summary and keep the rhythm.`;
       }
       if (dailyRating.stars > 0 && nextTask) {
-        if (language === 'zh') return `今日${dailyRating.stars}星，还差「${nextTask.title}」就更稳了。`;
+        if (isZh) return `今日${dailyRating.stars}星，还差「${nextTask.title}」就更稳了。`;
         if (language === 'es') return `Hoy tienes ${dailyRating.stars} estrellas. Completa: ${nextTask.title}.`;
         return `You have ${dailyRating.stars} stars today. Next: ${nextTask.title}.`;
       }
       if (stats.currentStreak >= 6) {
-        if (language === 'zh') return `连续${stats.currentStreak}天了，今天补上主线打卡，不要让节奏断掉。`;
+        if (isZh) return `连续${stats.currentStreak}天了，今天补上主线打卡，不要让节奏断掉。`;
         if (language === 'es') return `Llevas ${stats.currentStreak} días. Completa el check-in principal.`;
         return `${stats.currentStreak}-day streak. Complete the main check-in today.`;
       }
       // 正常消息
-      if (language === 'zh') {
+      if (isZh) {
         return '今天过午不食完成了吗？先完成主线打卡，再补一个小目标。';
       } else if (language === 'es') {
         return '¿Completaste el ayuno de hoy? ¡Regístrate ahora!';
@@ -576,7 +580,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const identifier = await Notifications.scheduleNotificationAsync({
       identifier: DAILY_REMINDER_IDENTIFIER,
       content: {
-        title: language === 'zh' ? '过午不食打卡' : 'Daily Check-In',
+        title: isZh ? '过午不食打卡' : 'Daily Check-In',
         body: getNotificationMessage(),
         data: { kind: DAILY_REMINDER_NOTIFICATION_KIND },
         sound: 'default',
@@ -595,16 +599,46 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     await AsyncStorage.setItem(DAILY_REMINDER_NOTIFICATION_ID_KEY, identifier);
+
+    // 止食前 30 分钟智能预告提醒（联动所选过午阶梯 18:00 / 15:00 / 13:00）
+    const activeTier = FASTING_TIERS[settings.fastingTier || 'classic'] || FASTING_TIERS.classic;
+    const preCutoffHour = Math.max(0, activeTier.cutoffHour - 1);
+    const cutoffIdentifier = await Notifications.scheduleNotificationAsync({
+      identifier: CUTOFF_REMINDER_IDENTIFIER,
+      content: {
+        title: isZh ? `即将进入${activeTier.nameZh}止食窗` : `${activeTier.nameEn} Window Approaching`,
+        body: isZh
+          ? `30分钟后（${activeTier.cutoffHour}:00）开始净空轻断，记得适度补充温水。`
+          : `Fasting begins in 30m at ${activeTier.cutoffHour}:00. Hydrate well!`,
+        data: { kind: DAILY_REMINDER_NOTIFICATION_KIND },
+        sound: 'default',
+        priority: Notifications.AndroidNotificationPriority.DEFAULT,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
+        hour: preCutoffHour,
+        minute: 30,
+      } as any,
+    });
+    if (dailyReminderScheduleTokenRef.current !== scheduleToken) {
+      await Notifications.cancelScheduledNotificationAsync(cutoffIdentifier);
+      return;
+    }
+    await AsyncStorage.setItem(CUTOFF_REMINDER_NOTIFICATION_ID_KEY, cutoffIdentifier);
   };
 
   const cancelDailyReminderNotifications = async () => {
     if (Platform.OS === 'web') return;
 
     try {
-      const identifiers = new Set<string>();
+      const identifiers = new Set<string>([DAILY_REMINDER_IDENTIFIER, CUTOFF_REMINDER_IDENTIFIER]);
       const storedIdentifier = await AsyncStorage.getItem(DAILY_REMINDER_NOTIFICATION_ID_KEY);
       if (storedIdentifier) {
         identifiers.add(storedIdentifier);
+      }
+      const storedCutoffIdentifier = await AsyncStorage.getItem(CUTOFF_REMINDER_NOTIFICATION_ID_KEY);
+      if (storedCutoffIdentifier) {
+        identifiers.add(storedCutoffIdentifier);
       }
 
       const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
@@ -624,6 +658,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         })
       );
       await AsyncStorage.removeItem(DAILY_REMINDER_NOTIFICATION_ID_KEY);
+      await AsyncStorage.removeItem(CUTOFF_REMINDER_NOTIFICATION_ID_KEY);
     } catch (error) {
       console.error('Error cancelling daily reminder notifications:', error);
     }
@@ -885,8 +920,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         await cancelStoredNotification(FASTING_NOTIFICATION_ID_KEY);
         const identifier = await Notifications.scheduleNotificationAsync({
           content: {
-            title: language === 'zh' ? '🎉 禁食结束！' : language === 'es' ? '¡Ayuno terminado!' : 'Fasting Complete!',
-            body: language === 'zh'
+            title: (language === 'zh' || language === 'zh-Hant') ? '🎉 禁食结束！' : language === 'es' ? '¡Ayuno terminado!' : 'Fasting Complete!',
+            body: (language === 'zh' || language === 'zh-Hant')
               ? `恭喜！你已完成${durationHours}小时禁食`
               : language === 'es'
               ? `¡Felicidades! Has completado ${durationHours} horas de ayuno`
@@ -952,8 +987,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         await cancelStoredNotification(FASTING_NOTIFICATION_ID_KEY);
         await Notifications.scheduleNotificationAsync({
           content: {
-            title: language === 'zh' ? '🎉 禁食结束！' : language === 'es' ? '¡Ayuno terminado!' : 'Fasting Complete!',
-            body: language === 'zh'
+            title: (language === 'zh' || language === 'zh-Hant') ? '🎉 禁食结束！' : language === 'es' ? '¡Ayuno terminado!' : 'Fasting Complete!',
+            body: (language === 'zh' || language === 'zh-Hant')
               ? `恭喜！你已完成${activeFasting.durationHours}小时禁食`
               : language === 'es'
               ? `¡Felicidades! Has completado ${activeFasting.durationHours} horas de ayuno`
@@ -1005,7 +1040,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         stars: 0,
         energy: 0,
         repairCards: 0,
-        message: language === 'zh' ? '先完成一个今日目标，再领取修行力。' : 'Complete one daily task first.',
+        message: (language === 'zh' || language === 'zh-Hant') ? '先完成一个今日目标，再领取修行力。' : 'Complete one daily task first.',
       };
     }
 
@@ -1015,7 +1050,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         stars: dailyRating.stars,
         energy: 0,
         repairCards: 0,
-        message: language === 'zh' ? '今日星级奖励已经领取。' : 'Today reward is already claimed.',
+        message: (language === 'zh' || language === 'zh-Hant') ? '今日星级奖励已经领取。' : 'Today reward is already claimed.',
       };
     }
 
@@ -1039,7 +1074,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       stars: dailyRating.stars,
       energy,
       repairCards,
-      message: language === 'zh'
+      message: (language === 'zh' || language === 'zh-Hant')
         ? `领取成功：+${energy}修行力${repairCards > 0 ? `，+${repairCards}张补签卡` : ''}`
         : `Claimed: +${energy} energy${repairCards > 0 ? `, +${repairCards} repair card` : ''}`,
     };
@@ -1050,13 +1085,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (retentionState.repairCards <= 0) {
       return {
         success: false,
-        message: language === 'zh' ? '补签卡不足，先完成里程碑或满星周目标。' : 'No repair cards available.',
+        message: (language === 'zh' || language === 'zh-Hant') ? '补签卡不足，先完成里程碑或满星周目标。' : 'No repair cards available.',
       };
     }
     if (!repair.canRepair) {
       return {
         success: false,
-        message: language === 'zh' ? '昨天已经完成打卡，不需要补签。' : 'Yesterday is already checked in.',
+        message: (language === 'zh' || language === 'zh-Hant') ? '昨天已经完成打卡，不需要补签。' : 'Yesterday is already checked in.',
       };
     }
 
@@ -1066,7 +1101,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       completed: true,
       brokeAfterNoon: false,
       checkInTime: Date.now(),
-      notes: language === 'zh' ? '补签卡恢复连续' : 'Streak repaired with repair card',
+      notes: (language === 'zh' || language === 'zh-Hant') ? '补签卡恢复连续' : 'Streak repaired with repair card',
     };
 
     await saveCheckInRecord(repairedRecord);
@@ -1079,20 +1114,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     return {
       success: true,
-      message: language === 'zh' ? `已补签 ${repair.date}，连续记录已恢复。` : `Repaired ${repair.date}.`,
+      message: (language === 'zh' || language === 'zh-Hant') ? `已补签 ${repair.date}，连续记录已恢复。` : `Repaired ${repair.date}.`,
     };
   };
 
   const claimMilestoneReward = async (milestoneId: string): Promise<{ success: boolean; message: string }> => {
     const milestone = milestoneRewards.find((item) => item.id === milestoneId);
     if (!milestone) {
-      return { success: false, message: language === 'zh' ? '未找到该里程碑。' : 'Milestone not found.' };
+      return { success: false, message: (language === 'zh' || language === 'zh-Hant') ? '未找到该里程碑。' : 'Milestone not found.' };
     }
     if (!milestone.reached) {
-      return { success: false, message: language === 'zh' ? '里程碑还未达成。' : 'Milestone is not reached yet.' };
+      return { success: false, message: (language === 'zh' || language === 'zh-Hant') ? '里程碑还未达成。' : 'Milestone is not reached yet.' };
     }
     if (milestone.claimed) {
-      return { success: false, message: language === 'zh' ? '该里程碑奖励已领取。' : 'Milestone already claimed.' };
+      return { success: false, message: (language === 'zh' || language === 'zh-Hant') ? '该里程碑奖励已领取。' : 'Milestone already claimed.' };
     }
 
     await updateRetentionState((current) => ({
@@ -1104,7 +1139,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     return {
       success: true,
-      message: language === 'zh'
+      message: (language === 'zh' || language === 'zh-Hant')
         ? `领取成功：+${milestone.rewardEnergy}修行力${milestone.rewardRepairCards > 0 ? `，+${milestone.rewardRepairCards}张补签卡` : ''}`
         : `Claimed: +${milestone.rewardEnergy} energy${milestone.rewardRepairCards > 0 ? `, +${milestone.rewardRepairCards} repair card` : ''}`,
     };

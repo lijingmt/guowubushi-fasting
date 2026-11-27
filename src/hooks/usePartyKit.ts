@@ -51,6 +51,7 @@ interface UsePartyKitReturn {
   remoteFriends: Friend[];
   totalParticipants: number;
   silentRoomCounts: SilentRoomCounts;
+  silentRoomTodayCounts: SilentRoomCounts;
   recentSilentGestures: SilentGestureEvent[];
   buddyChallenges: BuddyChallenge[];
   pendingRepairGifts: RepairCardGift[];
@@ -106,6 +107,7 @@ export function usePartyKit(): UsePartyKitReturn {
   const [remoteFriends, setRemoteFriends] = useState<Friend[]>([]);
   const [totalParticipants, setTotalParticipants] = useState(0);
   const [silentRoomCounts, setSilentRoomCounts] = useState<SilentRoomCounts>({ bow: 0, lamp: 0, bell: 0 });
+  const [silentRoomTodayCounts, setSilentRoomTodayCounts] = useState<SilentRoomCounts>({ bow: 0, lamp: 0, bell: 0 });
   const [recentSilentGestures, setRecentSilentGestures] = useState<SilentGestureEvent[]>([]);
   const [buddyChallenges, setBuddyChallenges] = useState<BuddyChallenge[]>([]);
   const [pendingRepairGifts, setPendingRepairGifts] = useState<RepairCardGift[]>([]);
@@ -195,6 +197,9 @@ export function usePartyKit(): UsePartyKitReturn {
               }
               if (data.silentRoomCounts) {
                 setSilentRoomCounts(data.silentRoomCounts);
+              }
+              if (data.silentRoomTodayCounts) {
+                setSilentRoomTodayCounts(data.silentRoomTodayCounts);
               }
               if (Array.isArray(data.recentSilentGestures)) {
                 setRecentSilentGestures(data.recentSilentGestures);
@@ -294,6 +299,9 @@ export function usePartyKit(): UsePartyKitReturn {
             case 'silentRoomUpdate':
               if (data.counts) {
                 setSilentRoomCounts(data.counts);
+              }
+              if (data.todayCounts) {
+                setSilentRoomTodayCounts(data.todayCounts);
               }
               if (Array.isArray(data.recentEvents)) {
                 setRecentSilentGestures(data.recentEvents);
@@ -506,6 +514,7 @@ export function usePartyKit(): UsePartyKitReturn {
     remoteFriends,
     totalParticipants,
     silentRoomCounts,
+    silentRoomTodayCounts,
     recentSilentGestures,
     buddyChallenges,
     pendingRepairGifts,

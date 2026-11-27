@@ -68,13 +68,13 @@ export const MeditationShareCard: React.FC<MeditationShareCardProps> = ({
   };
 
   const getShareButtonText = () => {
-    if (language === 'zh') return '📤 分享我的打坐';
+    if ((language === 'zh' || language === 'zh-Hant')) return '📤 分享我的打坐';
     if (language === 'es') return '📤 Compartir';
     return '📤 Share My Meditation';
   };
 
   const getCloseText = () => {
-    if (language === 'zh') return '✕';
+    if ((language === 'zh' || language === 'zh-Hant')) return '✕';
     if (language === 'es') return '✕';
     return '✕';
   };
@@ -112,13 +112,13 @@ export const MeditationShareCard: React.FC<MeditationShareCardProps> = ({
 
       await shareAsync(shareUri, {
         mimeType: 'image/png',
-        dialogTitle: language === 'zh' ? '分享打坐成就' : language === 'es' ? 'Compartir' : 'Share Meditation',
+        dialogTitle: (language === 'zh' || language === 'zh-Hant') ? '分享打坐成就' : language === 'es' ? 'Compartir' : 'Share Meditation',
       });
     } catch (error) {
       console.error('Error sharing meditation:', error);
       // Show fallback - just share text
       await Share.share({
-        message: language === 'zh'
+        message: (language === 'zh' || language === 'zh-Hant')
           ? `我在"过午不食"App中累计打坐${totalMinutes}分钟，最长时间${longestSession}分钟！下载体验：https://apps.apple.com/app/id6762360504`
           : language === 'es'
           ? `He meditado ${totalMinutes} minutos en "过午不食", ¡descárgalo! https://apps.apple.com/app/id6762360504`
@@ -184,7 +184,7 @@ export const MeditationShareCard: React.FC<MeditationShareCardProps> = ({
         <View style={styles.quoteContainer}>
           <Text style={styles.quoteIcon}>🧘</Text>
           <Text style={styles.quoteText}>
-            {language === 'zh' ? '"静能生慧，定能生智"' :
+            {(language === 'zh' || language === 'zh-Hant') ? '"静能生慧，定能生智"' :
              language === 'es' ? '"El silencio es el lenguaje de Dios"' :
              '"Stillness reveals the truth"'}
           </Text>
@@ -208,7 +208,7 @@ export const MeditationShareCard: React.FC<MeditationShareCardProps> = ({
           {/* Header with close button */}
           <View style={styles.modalHeader}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>
-              {language === 'zh' ? '分享打坐成就' : language === 'es' ? 'Compartir Logro' : 'Share Meditation'}
+              {(language === 'zh' || language === 'zh-Hant') ? '分享打坐成就' : language === 'es' ? 'Compartir Logro' : 'Share Meditation'}
             </Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Text style={[styles.closeButtonText, { color: colors.text }]}>{getCloseText()}</Text>

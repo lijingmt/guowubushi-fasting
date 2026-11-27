@@ -203,7 +203,7 @@ export const FastingTimerCard: React.FC<FastingTimerCardProps> = ({ colors, lang
               style={[styles.testButton, { backgroundColor: colors.success }]}
               onPress={handleTest5Sec}
             >
-              <Text style={styles.testButtonText}>⚡ {language === 'zh' ? `快速开始 ${lastFastingDuration}小时` : language === 'es' ? `Inicio Rápido ${lastFastingDuration}h` : `Quick Start ${lastFastingDuration}h`}</Text>
+              <Text style={styles.testButtonText}>⚡ {(language === 'zh' || language === 'zh-Hant') ? `快速开始 ${lastFastingDuration}小时` : language === 'es' ? `Inicio Rápido ${lastFastingDuration}h` : `Quick Start ${lastFastingDuration}h`}</Text>
             </TouchableOpacity>
           </>
         )}
@@ -605,7 +605,7 @@ const FastingSetupModal: React.FC<FastingSetupModalProps> = ({
   };
 
   const t = {
-    cancel: language === 'zh' ? '取消' : language === 'es' ? 'Cancelar' : 'Cancel',
+    cancel: (language === 'zh' || language === 'zh-Hant') ? '取消' : language === 'es' ? 'Cancelar' : 'Cancel',
   };
 
   const handleStart = () => {
@@ -615,12 +615,12 @@ const FastingSetupModal: React.FC<FastingSetupModalProps> = ({
     setWarningAcknowledged(false);
 
     const getSuccessTitle = () => {
-      if (language === 'zh') return '禁食开始！';
+      if ((language === 'zh' || language === 'zh-Hant')) return '禁食开始！';
       if (language === 'es') return '¡Ayuno iniciado!';
       return 'Fasting Started!';
     };
     const getSuccessMessage = () => {
-      if (language === 'zh') return `${selectedHours}小时倒计时开始，加油！`;
+      if ((language === 'zh' || language === 'zh-Hant')) return `${selectedHours}小时倒计时开始，加油！`;
       if (language === 'es') return `¡Cuenta regresiva de ${selectedHours} horas iniciada, ¡ tú puedes!`;
       return `${selectedHours}h countdown started. You got this!`;
     };

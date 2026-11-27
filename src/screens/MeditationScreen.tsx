@@ -506,19 +506,19 @@ export const MeditationScreen = () => {
   };
 
   const getMeditatingLabel = () => {
-    if (language === 'zh') return '打坐中...';
+    if ((language === 'zh' || language === 'zh-Hant')) return '打坐中...';
     if (language === 'es') return 'Meditando...';
     return 'Meditating...';
   };
 
   const getStopLabel = () => {
-    if (language === 'zh') return '停止';
+    if ((language === 'zh' || language === 'zh-Hant')) return '停止';
     if (language === 'es') return 'Detener';
     return 'Stop';
   };
 
   const getStartLabel = () => {
-    if (language === 'zh') return '开始打坐';
+    if ((language === 'zh' || language === 'zh-Hant')) return '开始打坐';
     if (language === 'es') return 'Comenzar';
     return 'Start Meditation';
   };
@@ -531,7 +531,7 @@ export const MeditationScreen = () => {
   };
 
   const getTodayStatsLabel = () => {
-    if (language === 'zh') return '今日打坐';
+    if ((language === 'zh' || language === 'zh-Hant')) return '今日打坐';
     if (language === 'es') return 'Meditación de Hoy';
     return "Today's Meditation";
   };
@@ -621,7 +621,7 @@ export const MeditationScreen = () => {
                         { color: selectedDuration === duration ? '#fff' : colors.textSecondary },
                       ]}
                     >
-                      {language === 'zh' ? '分钟' : 'm'}
+                      {(language === 'zh' || language === 'zh-Hant') ? '分钟' : 'm'}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -660,7 +660,7 @@ export const MeditationScreen = () => {
           onPress={() => setShowSocial(!showSocial)}
         >
           <Text style={[styles.socialToggleText, { color: colors.text }]}>
-            👥 {social.onlineCount} {language === 'zh' ? '人打坐中' : language === 'es' ? 'meditando' : 'meditating'}
+            👥 {social.onlineCount} {(language === 'zh' || language === 'zh-Hant') ? '人打坐中' : language === 'es' ? 'meditando' : 'meditating'}
           </Text>
           <Text style={[styles.socialToggleArrow, { color: colors.textSecondary }]}>
             {showSocial ? '▼' : '▶'}
@@ -681,13 +681,13 @@ export const MeditationScreen = () => {
         onPress={() => setShowShareModal(true)}
       >
         <Text style={styles.shareButtonText}>
-          📤 {language === 'zh' ? '分享我的打坐' : language === 'es' ? 'Compartir' : 'Share My Meditation'}
+          📤 {(language === 'zh' || language === 'zh-Hant') ? '分享我的打坐' : language === 'es' ? 'Compartir' : 'Share My Meditation'}
         </Text>
       </TouchableOpacity>
 
       {/* 音效来源说明 */}
       <Text style={[styles.attributionText, { color: colors.textLight }]}>
-        {language === 'zh' ? '部分音效来源' : language === 'es' ? 'Algunas fuentes de sonido' : 'Some Sound Effects'}: Pixabay (royalty-free)
+        {(language === 'zh' || language === 'zh-Hant') ? '部分音效来源' : language === 'es' ? 'Algunas fuentes de sonido' : 'Some Sound Effects'}: Pixabay (royalty-free)
       </Text>
 
       {/* 背景音乐选择弹窗 */}
@@ -729,7 +729,7 @@ export const MeditationScreen = () => {
               onPress={() => setShowSoundPicker(false)}
             >
               <Text style={[styles.modalCloseButtonText, { color: colors.text }]}>
-                {language === 'zh' ? '关闭' : language === 'es' ? 'Cerrar' : 'Close'}
+                {(language === 'zh' || language === 'zh-Hant') ? '关闭' : language === 'es' ? 'Cerrar' : 'Close'}
               </Text>
             </TouchableOpacity>
           </View>

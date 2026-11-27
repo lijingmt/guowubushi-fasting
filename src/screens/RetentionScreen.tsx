@@ -82,7 +82,7 @@ export const RetentionScreen: React.FC<Props> = ({ navigation }) => {
       await recordShareAction('daily');
       return;
     }
-    if (task.target === 'Fasting' || task.target === 'Meditation' || task.target === 'Home') {
+    if (task.target === 'Meditation' || task.target === 'Home') {
       navigation.navigate('Main', { screen: task.target });
       return;
     }

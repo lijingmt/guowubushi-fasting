@@ -91,7 +91,7 @@ export const MealsScreen: React.FC = () => {
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>{t.meals}</Text>
         <Text style={[styles.date, { color: colors.textSecondary }]}>
-          {new Date().toLocaleDateString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-ES' : 'en-US', {
+          {new Date().toLocaleDateString((language === 'zh' || language === 'zh-Hant') ? 'zh-CN' : language === 'es' ? 'es-ES' : 'en-US', {
             month: 'long',
             day: 'numeric',
           })}
@@ -213,7 +213,7 @@ export const MealsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#F6F2E9',
   },
   content: {
     padding: 16,
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
   calorieAmount: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#265947',
   },
   calorieOver: {
     color: '#F44336',
@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   addButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#265947',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   quickAddChip: {
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#EFE9DC',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
@@ -410,7 +410,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   modalButtonConfirm: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#265947',
     marginLeft: 8,
   },
   modalButtonText: {

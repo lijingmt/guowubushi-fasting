@@ -90,7 +90,7 @@ export const FastingScreen: React.FC = () => {
     if (mins >= 60) {
       const hours = Math.floor(mins / 60);
       const remainingMins = mins % 60;
-      return language === 'zh'
+      return (language === 'zh' || language === 'zh-Hant')
         ? `${hours}小时${remainingMins > 0 ? remainingMins + '分钟' : ''}`
         : language === 'es'
         ? `${hours}h${remainingMins > 0 ? ' ' + remainingMins + 'min' : ''}`
@@ -149,7 +149,7 @@ export const FastingScreen: React.FC = () => {
 
       await shareAsync(uri, {
         mimeType: 'image/png',
-        dialogTitle: language === 'zh' ? '分享禁食成就' : language === 'es' ? 'Compartir logro de ayuno' : 'Share Fasting Achievement',
+        dialogTitle: (language === 'zh' || language === 'zh-Hant') ? '分享禁食成就' : language === 'es' ? 'Compartir logro de ayuno' : 'Share Fasting Achievement',
       });
 
       if (__DEV__) {
@@ -181,8 +181,8 @@ export const FastingScreen: React.FC = () => {
             if (navigator.share && navigator.canShare) {
               const file = new File([blob], '过午不食-禁食成就.png', { type: 'image/png' });
               const shareData = {
-                title: language === 'zh' ? '过午不食 - 禁食成就' : 'Fasting Achievement',
-                text: language === 'zh'
+                title: (language === 'zh' || language === 'zh-Hant') ? '过午不食 - 禁食成就' : 'Fasting Achievement',
+                text: (language === 'zh' || language === 'zh-Hant')
                   ? `我已经完成${stats.totalSingleFastingSessions}次禁食，累计${stats.totalSingleFastingMinutes}分钟！`
                   : `I've completed ${stats.totalSingleFastingSessions} fasting sessions, ${stats.totalSingleFastingMinutes} minutes total!`,
                 files: [file],
@@ -216,7 +216,7 @@ export const FastingScreen: React.FC = () => {
         }, 'image/png');
       } catch (err) {
         console.error('Failed to generate image:', err);
-        alert(language === 'zh' ? '请截图保存' : 'Please take a screenshot to save');
+        alert((language === 'zh' || language === 'zh-Hant') ? '请截图保存' : 'Please take a screenshot to save');
       }
     }
   };
@@ -233,7 +233,7 @@ export const FastingScreen: React.FC = () => {
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.text }]}>{getScreenTitle()}</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            ⏰ {language === 'zh' ? '开始你的禁食之旅' : language === 'es' ? 'Comienza tu viaje de ayuno' : 'Start your fasting journey'}
+            ⏰ {(language === 'zh' || language === 'zh-Hant') ? '开始你的禁食之旅' : language === 'es' ? 'Comienza tu viaje de ayuno' : 'Start your fasting journey'}
           </Text>
         </View>
 
@@ -247,7 +247,7 @@ export const FastingScreen: React.FC = () => {
             onPress={handleShare}
           >
             <Text style={styles.shareButtonText}>
-              📱 {language === 'zh' ? '分享禁食成就' : language === 'es' ? 'Compartir Logro' : 'Share Achievement'}
+              📱 {(language === 'zh' || language === 'zh-Hant') ? '分享禁食成就' : language === 'es' ? 'Compartir Logro' : 'Share Achievement'}
             </Text>
           </TouchableOpacity>
         )}
@@ -281,7 +281,7 @@ export const FastingScreen: React.FC = () => {
             colors={['#FFA726', '#FB8C00']}
           />
           <StatCard
-            title={language === 'zh' ? '最长连续' : language === 'es' ? 'Racha Más Larga' : 'Longest Streak'}
+            title={(language === 'zh' || language === 'zh-Hant') ? '最长连续' : language === 'es' ? 'Racha Más Larga' : 'Longest Streak'}
             value={stats.longestSingleFastingStreak}
             unit={getDaysLabel()}
             icon="🏆"
@@ -295,24 +295,24 @@ export const FastingScreen: React.FC = () => {
             value={stats.fastingCaloriesSaved}
             unit="kcal"
             icon="🔥"
-            colors={['#FF5722', '#FF9800']}
+            colors={['#C68B33', '#9F6D22']}
           />
           <StatCard
             title={getWeightLossLabel()}
             value={stats.fastingEstimatedWeightLoss}
             unit={getKgLabel()}
             icon="⚖️"
-            colors={['#4CAF50', '#8BC34A']}
+            colors={['#265947', '#3D7B65']}
           />
         </View>
 
         {/* Health Tips */}
         <Card style={styles.tipsCard}>
           <Text style={[styles.tipsTitle, { color: colors.warning }]}>
-            ⚠️ {language === 'zh' ? '健康提示' : language === 'es' ? 'Consejos de Salud' : 'Health Tips'}
+            ⚠️ {(language === 'zh' || language === 'zh-Hant') ? '健康提示' : language === 'es' ? 'Consejos de Salud' : 'Health Tips'}
           </Text>
           <Text style={[styles.tipsText, { color: colors.textSecondary }]}>
-            {language === 'zh'
+            {(language === 'zh' || language === 'zh-Hant')
               ? '• 禁食期间多喝水\n• 感到不适请立即停止\n• 建议从短时间开始\n• 禁食前后避免暴饮暴食'
               : language === 'es'
               ? '• Bebe mucha agua durante el ayuno\n• Detente inmediatamente si te sientes mal\n• Comienza con periodos cortos\n• Evita comer en exceso antes y después'
@@ -331,7 +331,7 @@ export const FastingScreen: React.FC = () => {
         <View style={styles.sharePreviewOverlay}>
           <View style={styles.sharePreviewContent}>
             <Text style={[styles.sharePreviewTitle, { color: colors.text }]}>
-              {language === 'zh' ? '分享禁食成就' : language === 'es' ? 'Compartir Logro de Ayuno' : 'Share Fasting Achievement'}
+              {(language === 'zh' || language === 'zh-Hant') ? '分享禁食成就' : language === 'es' ? 'Compartir Logro de Ayuno' : 'Share Fasting Achievement'}
             </Text>
 
             {/* Share Card Preview */}
@@ -396,7 +396,7 @@ export const FastingScreen: React.FC = () => {
                       />
                     </View>
                     <Text style={styles.qrCodeText}>
-                      {language === 'zh' ? '扫码下载' : language === 'es' ? 'Escanea' : 'Scan to Download'}
+                      {(language === 'zh' || language === 'zh-Hant') ? '扫码下载' : language === 'es' ? 'Escanea' : 'Scan to Download'}
                     </Text>
                   </View>
 
@@ -404,7 +404,7 @@ export const FastingScreen: React.FC = () => {
                   <View style={styles.shareFooter}>
                     <View style={styles.shareFooterLine} />
                     <Text style={styles.shareFooterText}>
-                      {language === 'zh' ? '下载app：' : language === 'es' ? 'Descarga la app:' : 'Download the app:'}
+                      {(language === 'zh' || language === 'zh-Hant') ? '下载app：' : language === 'es' ? 'Descarga la app:' : 'Download the app:'}
                     </Text>
                     <Text style={styles.shareFooterLink}>apps.apple.com/app/id6762360504</Text>
                     <Text style={styles.shareFooterBrand}>"过午不食" Fasting App</Text>
@@ -420,7 +420,7 @@ export const FastingScreen: React.FC = () => {
                 onPress={() => setShowSharePreview(false)}
               >
                 <Text style={[styles.sharePreviewButtonText, { color: colors.text }]}>
-                  {language === 'zh' ? '关闭' : 'Close'}
+                  {(language === 'zh' || language === 'zh-Hant') ? '关闭' : 'Close'}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -428,13 +428,13 @@ export const FastingScreen: React.FC = () => {
                 onPress={handleDownloadImage}
               >
                 <Text style={styles.sharePreviewButtonTextDownload}>
-                  📤 {language === 'zh' ? '分享' : 'Share'}
+                  📤 {(language === 'zh' || language === 'zh-Hant') ? '分享' : 'Share'}
                 </Text>
               </TouchableOpacity>
             </View>
 
             <Text style={[styles.sharePreviewHint, { color: colors.textSecondary }]}>
-              {language === 'zh' ? '提示：也可以直接截图分享' : 'Tip: You can also take a screenshot'}
+              {(language === 'zh' || language === 'zh-Hant') ? '提示：也可以直接截图分享' : 'Tip: You can also take a screenshot'}
             </Text>
           </View>
         </View>
@@ -450,7 +450,7 @@ export const FastingScreen: React.FC = () => {
         <View style={styles.shareCardModalOverlay}>
           <View style={styles.shareCardModalContent}>
             <Text style={[styles.shareCardModalTitle, { color: colors.text }]}>
-              {language === 'zh' ? '分享禁食成就' : language === 'es' ? 'Compartir Logro de Ayuno' : 'Share Fasting Achievement'}
+              {(language === 'zh' || language === 'zh-Hant') ? '分享禁食成就' : language === 'es' ? 'Compartir Logro de Ayuno' : 'Share Fasting Achievement'}
             </Text>
 
             {/* Share Card Preview */}
@@ -511,7 +511,7 @@ export const FastingScreen: React.FC = () => {
                     />
                   </View>
                   <Text style={styles.qrCodeText}>
-                    {language === 'zh' ? '扫码下载' : language === 'es' ? 'Escanea' : 'Scan to Download'}
+                    {(language === 'zh' || language === 'zh-Hant') ? '扫码下载' : language === 'es' ? 'Escanea' : 'Scan to Download'}
                   </Text>
                 </View>
 
@@ -519,7 +519,7 @@ export const FastingScreen: React.FC = () => {
                 <View style={styles.shareFooter}>
                   <View style={styles.shareFooterLine} />
                   <Text style={styles.shareFooterText}>
-                    {language === 'zh' ? '下载app：' : language === 'es' ? 'Descarga la app:' : 'Download the app:'}
+                    {(language === 'zh' || language === 'zh-Hant') ? '下载app：' : language === 'es' ? 'Descarga la app:' : 'Download the app:'}
                   </Text>
                   <Text style={styles.shareFooterLink}>apps.apple.com/app/id6762360504</Text>
                   <Text style={styles.shareFooterBrand}>"过午不食" Fasting App</Text>
@@ -534,7 +534,7 @@ export const FastingScreen: React.FC = () => {
                 onPress={() => setShowShareCardModal(false)}
               >
                 <Text style={[styles.shareCardModalButtonText, { color: colors.text }]}>
-                  {language === 'zh' ? '取消' : 'Cancel'}
+                  {(language === 'zh' || language === 'zh-Hant') ? '取消' : 'Cancel'}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -542,7 +542,7 @@ export const FastingScreen: React.FC = () => {
                 onPress={handleNativeShare}
               >
                 <Text style={styles.shareCardModalButtonTextShare}>
-                  📤 {language === 'zh' ? '分享' : 'Share'}
+                  📤 {(language === 'zh' || language === 'zh-Hant') ? '分享' : 'Share'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -616,7 +616,7 @@ export const FastingScreen: React.FC = () => {
                 />
               </View>
               <Text style={styles.qrCodeText}>
-                {language === 'zh' ? '扫码下载' : language === 'es' ? 'Escanea' : 'Scan to Download'}
+                {(language === 'zh' || language === 'zh-Hant') ? '扫码下载' : language === 'es' ? 'Escanea' : 'Scan to Download'}
               </Text>
             </View>
 
@@ -624,7 +624,7 @@ export const FastingScreen: React.FC = () => {
             <View style={styles.shareFooter}>
               <View style={styles.shareFooterLine} />
               <Text style={styles.shareFooterText}>
-                {language === 'zh' ? '下载app：' : language === 'es' ? 'Descarga la app:' : 'Download the app:'}
+                {(language === 'zh' || language === 'zh-Hant') ? '下载app：' : language === 'es' ? 'Descarga la app:' : 'Download the app:'}
               </Text>
               <Text style={styles.shareFooterLink}>apps.apple.com/app/id6762360504</Text>
               <Text style={styles.shareFooterBrand}>"过午不食" Fasting App</Text>

@@ -74,9 +74,9 @@ export const JourneyScreen: React.FC = () => {
       </View>
 
       <View style={styles.content}>
-        {activeTab === 'pilgrimage' && <TempleMapScreen />}
-        {activeTab === 'leaderboard' && <LeaderboardScreen />}
-        {activeTab === 'buddies' && <FriendsScreen />}
+        {activeTab === 'pilgrimage' && <TempleMapScreen embedded />}
+        {activeTab === 'leaderboard' && <LeaderboardScreen embedded />}
+        {activeTab === 'buddies' && <FriendsScreen embedded />}
       </View>
     </View>
   );
