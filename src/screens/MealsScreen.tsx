@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { Card } from '../components/Card';
+import { SeasonalNutritionCard } from '../components/SeasonalNutritionCard';
 import { CALORIE_REFERENCES } from '../constants/achievements';
 
 export const MealsScreen: React.FC = () => {
@@ -97,6 +98,8 @@ export const MealsScreen: React.FC = () => {
           })}
         </Text>
       </View>
+
+      <SeasonalNutritionCard />
 
       <Card style={styles.summaryCard}>
         <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>{t.totalCalories}</Text>

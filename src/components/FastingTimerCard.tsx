@@ -18,9 +18,20 @@ interface FastingTimerCardProps {
 }
 
 export const FastingTimerCard: React.FC<FastingTimerCardProps> = ({ colors, language }) => {
-  const { t, activeFasting, startFastingSession, cancelFastingSession, completeFastingSession } = useApp();
+  const {
+    t,
+    activeFasting,
+    startFastingSession,
+    adjustActiveFastingStartTime,
+    logManualFastingSession,
+    cancelFastingSession,
+    completeFastingSession,
+  } = useApp();
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
+  const [showBackfillModal, setShowBackfillModal] = useState(false);
+  const [backfillHours, setBackfillHours] = useState(16);
+  const [backfillEndedHoursAgo, setBackfillEndedHoursAgo] = useState(0);
   const [pendingQuickStart, setPendingQuickStart] = useState(false); // 是否在同意免责声明后快速开始
   const [disclaimerAgreed, setDisclaimerAgreed] = useState(false);
   const [lastFastingDuration, setLastFastingDuration] = useState(8); // 默认8小时
@@ -205,6 +216,24 @@ export const FastingTimerCard: React.FC<FastingTimerCardProps> = ({ colors, lang
             >
               <Text style={styles.testButtonText}>⚡ {(language === 'zh' || language === 'zh-Hant') ? `快速开始 ${lastFastingDuration}小时` : language === 'es' ? `Inicio Rápido ${lastFastingDuration}h` : `Quick Start ${lastFastingDuration}h`}</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                marginTop: vs(8),
+                paddingVertical: vs(9),
+                borderRadius: rs(10),
+                borderWidth: 1,
+                borderColor: colors.border,
+                alignItems: 'center',
+              }}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setShowBackfillModal(true);
+              }}
+            >
+              <Text style={{ fontSize: fs(12.5), fontWeight: '700', color: colors.textSecondary }}>
+                {(language === 'zh' || language === 'zh-Hant') ? '📝 忘了打开计时？补录已完成断食' : '📝 Forgot timer? Log past fast'}
+              </Text>
+            </TouchableOpacity>
           </>
         )}
 
@@ -215,14 +244,42 @@ export const FastingTimerCard: React.FC<FastingTimerCardProps> = ({ colors, lang
               const stage = getPhysiologicalStage(elapsedHrs);
               const isZh = language === 'zh' || language === 'zh-Hant';
               return (
-                <View style={{ backgroundColor: colors.backgroundSecondary, borderRadius: rs(12), padding: rs(10), marginBottom: vs(10) }}>
-                  <Text style={{ fontSize: fs(12), fontWeight: '700', color: colors.primary }}>
-                    {isZh ? `身体状态 · ${stage.titleZh} (${elapsedHrs.toFixed(1)}h)` : `Stage · ${stage.titleEn} (${elapsedHrs.toFixed(1)}h)`}
-                  </Text>
-                  <Text style={{ fontSize: fs(11), color: colors.textSecondary, marginTop: vs(2) }}>
-                    {isZh ? stage.detailZh : stage.detailEn}
-                  </Text>
-                </View>
+                <>
+                  <View style={{ backgroundColor: colors.backgroundSecondary, borderRadius: rs(12), padding: rs(10), marginBottom: vs(8) }}>
+                    <Text style={{ fontSize: fs(12), fontWeight: '700', color: colors.primary }}>
+                      {isZh ? `身体状态 · ${stage.titleZh} (${elapsedHrs.toFixed(1)}h)` : `Stage · ${stage.titleEn} (${elapsedHrs.toFixed(1)}h)`}
+                    </Text>
+                    <Text style={{ fontSize: fs(11), color: colors.textSecondary, marginTop: vs(2) }}>
+                      {isZh ? stage.detailZh : stage.detailEn}
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: rs(6), marginBottom: vs(10) }}>
+                    <Text style={{ fontSize: fs(11), color: colors.textSecondary, fontWeight: '600' }}>
+                      {isZh ? '补改开始：' : 'Backdate:'}
+                    </Text>
+                    {[30, 60, 120, 240].map((mins) => (
+                      <TouchableOpacity
+                        key={mins}
+                        style={{
+                          paddingHorizontal: rs(8),
+                          paddingVertical: vs(5),
+                          borderRadius: rs(8),
+                          backgroundColor: colors.backgroundSecondary,
+                          borderWidth: 1,
+                          borderColor: colors.border,
+                        }}
+                        onPress={async () => {
+                          Haptics.selectionAsync();
+                          await adjustActiveFastingStartTime(activeFasting.startTime - mins * 60000);
+                        }}
+                      >
+                        <Text style={{ fontSize: fs(11), fontWeight: '700', color: colors.primary }}>
+                          -{mins < 60 ? `${mins}m` : `${mins / 60}h`}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
               );
             })()}
             <TouchableOpacity
@@ -235,6 +292,99 @@ export const FastingTimerCard: React.FC<FastingTimerCardProps> = ({ colors, lang
             </TouchableOpacity>
           </>
         )}
+
+      <Modal
+        visible={showBackfillModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowBackfillModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(17,23,21,0.58)', justifyContent: 'center', alignItems: 'center', padding: rs(20) }}>
+          <View style={{ width: '100%', maxWidth: rs(350), borderRadius: rs(20), padding: rs(18), backgroundColor: colors.card }}>
+            <Text style={{ fontSize: fs(17), fontWeight: '800', color: colors.text, textAlign: 'center', marginBottom: vs(10) }}>
+              {(language === 'zh' || language === 'zh-Hant') ? '补录已完成单次断食' : 'Log Completed Fast'}
+            </Text>
+            <Text style={{ fontSize: fs(12), fontWeight: '700', color: colors.textSecondary, marginBottom: vs(6) }}>
+              {(language === 'zh' || language === 'zh-Hant') ? '断食时长' : 'Fasting Duration'}
+            </Text>
+            <View style={{ flexDirection: 'row', gap: rs(8), marginBottom: vs(12) }}>
+              {[14, 16, 18, 20].map((h) => (
+                <TouchableOpacity
+                  key={h}
+                  style={{
+                    flex: 1,
+                    paddingVertical: vs(9),
+                    borderRadius: rs(10),
+                    alignItems: 'center',
+                    backgroundColor: backfillHours === h ? colors.primary : colors.backgroundSecondary,
+                  }}
+                  onPress={() => setBackfillHours(h)}
+                >
+                  <Text style={{ fontSize: fs(13), fontWeight: '800', color: backfillHours === h ? '#FFF' : colors.text }}>
+                    {h}h
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={{ fontSize: fs(12), fontWeight: '700', color: colors.textSecondary, marginBottom: vs(6) }}>
+              {(language === 'zh' || language === 'zh-Hant') ? '何时结束进食/断食？' : 'Ended when?'}
+            </Text>
+            <View style={{ flexDirection: 'row', gap: rs(8), marginBottom: vs(16) }}>
+              {[
+                { label: (language === 'zh' || language === 'zh-Hant') ? '刚刚' : 'Now', ago: 0 },
+                { label: (language === 'zh' || language === 'zh-Hant') ? '1小时前' : '1h ago', ago: 1 },
+                { label: (language === 'zh' || language === 'zh-Hant') ? '2小时前' : '2h ago', ago: 2 },
+              ].map((opt) => (
+                <TouchableOpacity
+                  key={opt.ago}
+                  style={{
+                    flex: 1,
+                    paddingVertical: vs(9),
+                    borderRadius: rs(10),
+                    alignItems: 'center',
+                    backgroundColor: backfillEndedHoursAgo === opt.ago ? colors.primary : colors.backgroundSecondary,
+                  }}
+                  onPress={() => setBackfillEndedHoursAgo(opt.ago)}
+                >
+                  <Text style={{ fontSize: fs(12), fontWeight: '700', color: backfillEndedHoursAgo === opt.ago ? '#FFF' : colors.text }}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={{ flexDirection: 'row', gap: rs(10) }}>
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: vs(11), borderRadius: rs(12), backgroundColor: colors.divider, alignItems: 'center' }}
+                onPress={() => setShowBackfillModal(false)}
+              >
+                <Text style={{ fontSize: fs(14), fontWeight: '700', color: colors.text }}>
+                  {(language === 'zh' || language === 'zh-Hant') ? '取消' : 'Cancel'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: vs(11), borderRadius: rs(12), backgroundColor: colors.primary, alignItems: 'center' }}
+                onPress={async () => {
+                  const endTs = Date.now() - backfillEndedHoursAgo * 3600000;
+                  const startTs = endTs - backfillHours * 3600000;
+                  await logManualFastingSession(startTs, endTs);
+                  setShowBackfillModal(false);
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  Alert.alert(
+                    (language === 'zh' || language === 'zh-Hant') ? '已补录' : 'Logged',
+                    (language === 'zh' || language === 'zh-Hant')
+                      ? `已记录 1 次 ${backfillHours} 小时轻断食。`
+                      : `Logged a ${backfillHours}h fasting session.`
+                  );
+                }}
+              >
+                <Text style={{ fontSize: fs(14), fontWeight: '700', color: '#FFF' }}>
+                  {(language === 'zh' || language === 'zh-Hant') ? '确认补录' : 'Save'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
       </View>
 
       <FastingDisclaimerModal

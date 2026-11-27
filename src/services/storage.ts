@@ -12,10 +12,13 @@ import {
   Friend,
   RetentionState,
   SacredSiteCheckIn,
+  WellnessRecord,
+  BackupPayload,
 } from '../types';
 import { DEFAULT_SETTINGS } from '../constants/achievements';
 import { addLocalDays, diffLocalDays, getLocalDateString } from '../utils/date';
 import { normalizeRetentionState } from '../utils/retention';
+import { serializeBackupPayload } from '../utils/backup';
 
 const KEYS = {
   SETTINGS: '@guowu_settings',
@@ -35,6 +38,8 @@ const KEYS = {
   FRIENDS_LIST: '@guowu_friends', // 好友列表
   RETENTION_STATE: '@guowu_retention_state', // 留存激励状态
   SACRED_SITE_CHECKINS: '@guowu_sacred_site_checkins', // 寺观地图打卡记录
+  WELLNESS_RECORDS: '@guowu_wellness_records', // 身心体感与腰围记录
+  HUNGER_RESCUE_COUNT: '@guowu_hunger_rescue_count', // 抗饿急救成功次数
 };
 
 // 设置相关
@@ -387,6 +392,8 @@ export const clearAllData = async (): Promise<void> => {
       KEYS.ACTIVE_FASTING_STATE,
       KEYS.RETENTION_STATE,
       KEYS.SACRED_SITE_CHECKINS,
+      KEYS.WELLNESS_RECORDS,
+      KEYS.HUNGER_RESCUE_COUNT,
     ];
     for (const key of keys) {
       await AsyncStorage.removeItem(key);
@@ -746,4 +753,136 @@ export const removeFriend = async (userId: string): Promise<void> => {
   } catch (error) {
     console.error('Error removing friend:', error);
   }
+};
+
+// ============ 身心体感与抗饿急救存储 ============
+
+export const getWellnessRecords = async (): Promise<WellnessRecord[]> => {
+  try {
+    const data = await AsyncStorage.getItem(KEYS.WELLNESS_RECORDS);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Error getting wellness records:', error);
+    return [];
+  }
+};
+
+export const saveWellnessRecord = async (record: WellnessRecord): Promise<WellnessRecord[]> => {
+  try {
+    const existing = await getWellnessRecords();
+    const idx = existing.findIndex((r) => r.date === record.date);
+    const next = [...existing];
+    if (idx >= 0) {
+      next[idx] = record;
+    } else {
+      next.push(record);
+    }
+    next.sort((a, b) => a.date.localeCompare(b.date));
+    await AsyncStorage.setItem(KEYS.WELLNESS_RECORDS, JSON.stringify(next));
+    return next;
+  } catch (error) {
+    console.error('Error saving wellness record:', error);
+    return getWellnessRecords();
+  }
+};
+
+export const getHungerRescueCount = async (): Promise<number> => {
+  try {
+    const val = await AsyncStorage.getItem(KEYS.HUNGER_RESCUE_COUNT);
+    return val ? Math.max(0, parseInt(val, 10) || 0) : 0;
+  } catch {
+    return 0;
+  }
+};
+
+export const incrementHungerRescueCount = async (): Promise<number> => {
+  const next = (await getHungerRescueCount()) + 1;
+  await AsyncStorage.setItem(KEYS.HUNGER_RESCUE_COUNT, String(next)).catch(() => {});
+  return next;
+};
+
+// ============ 一键导出/恢复全量本地备份 ============
+
+export const exportAllLocalData = async (appVersion: string): Promise<string> => {
+  const [
+    settings,
+    checkInRecords,
+    mealRecords,
+    weightRecords,
+    waterRecords,
+    practiceRecords,
+    fastingSessions,
+    retentionState,
+    sacredSiteCheckIns,
+    wellnessRecords,
+    hungerRescueCount,
+  ] = await Promise.all([
+    getSettings(),
+    getCheckInRecords(),
+    getMealRecords(),
+    getWeightRecords(),
+    getWaterRecords(),
+    getPracticeRecords(),
+    getFastingSessions(),
+    getRetentionState(),
+    getSacredSiteCheckIns(),
+    getWellnessRecords(),
+    getHungerRescueCount(),
+  ]);
+
+  return serializeBackupPayload(
+    {
+      settings,
+      checkInRecords,
+      mealRecords,
+      weightRecords,
+      waterRecords,
+      practiceRecords,
+      fastingSessions,
+      retentionState,
+      sacredSiteCheckIns,
+      wellnessRecords,
+      hungerRescueCount,
+    },
+    appVersion
+  );
+};
+
+export const restoreAllLocalData = async (payload: BackupPayload): Promise<void> => {
+  const d = payload.data;
+  const writes: Promise<void>[] = [];
+  if (d.settings) {
+    writes.push(AsyncStorage.setItem(KEYS.SETTINGS, JSON.stringify({ ...DEFAULT_SETTINGS, ...d.settings })));
+  }
+  if (d.checkInRecords) {
+    writes.push(AsyncStorage.setItem(KEYS.CHECKIN_RECORDS, JSON.stringify(d.checkInRecords)));
+  }
+  if (d.mealRecords) {
+    writes.push(AsyncStorage.setItem(KEYS.MEAL_RECORDS, JSON.stringify(d.mealRecords)));
+  }
+  if (d.weightRecords) {
+    writes.push(AsyncStorage.setItem(KEYS.WEIGHT_RECORDS, JSON.stringify(d.weightRecords)));
+  }
+  if (d.waterRecords) {
+    writes.push(AsyncStorage.setItem(KEYS.WATER_RECORDS, JSON.stringify(d.waterRecords)));
+  }
+  if (d.practiceRecords) {
+    writes.push(AsyncStorage.setItem(KEYS.PRACTICE_RECORDS, JSON.stringify(d.practiceRecords)));
+  }
+  if (d.fastingSessions) {
+    writes.push(AsyncStorage.setItem(KEYS.FASTING_SESSIONS, JSON.stringify(d.fastingSessions)));
+  }
+  if (d.retentionState) {
+    writes.push(AsyncStorage.setItem(KEYS.RETENTION_STATE, JSON.stringify(normalizeRetentionState(d.retentionState))));
+  }
+  if (d.sacredSiteCheckIns) {
+    writes.push(AsyncStorage.setItem(KEYS.SACRED_SITE_CHECKINS, JSON.stringify(d.sacredSiteCheckIns)));
+  }
+  if (d.wellnessRecords) {
+    writes.push(AsyncStorage.setItem(KEYS.WELLNESS_RECORDS, JSON.stringify(d.wellnessRecords)));
+  }
+  if (typeof d.hungerRescueCount === 'number') {
+    writes.push(AsyncStorage.setItem(KEYS.HUNGER_RESCUE_COUNT, String(Math.max(0, Math.floor(d.hungerRescueCount)))));
+  }
+  await Promise.all(writes);
 };

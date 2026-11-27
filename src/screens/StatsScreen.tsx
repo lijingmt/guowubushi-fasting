@@ -13,13 +13,34 @@ import { useApp } from '../context/AppContext';
 import { Card } from '../components/Card';
 import { AchievementShareCard } from '../components/AchievementShareCard';
 import { ACHIEVEMENTS } from '../constants/achievements';
-import { getLocalDateString, parseLocalDate } from '../utils/date';
+import { getLocalDateString, isChineseLanguage, parseLocalDate } from '../utils/date';
+import { computeWellnessSummary } from '../utils/backup';
 
 const { width } = Dimensions.get('window');
 
+function colorWithOpacity(color: string, opacity: number): string {
+  const safeOpacity = Number.isFinite(opacity) ? Math.max(0, Math.min(1, opacity)) : 1;
+  if (color.startsWith('#') && (color.length === 7 || color.length === 4)) {
+    const hex = color.length === 4
+      ? `${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`
+      : color.slice(1);
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    if (!Number.isNaN(r) && !Number.isNaN(g) && !Number.isNaN(b)) {
+      return `rgba(${r}, ${g}, ${b}, ${safeOpacity})`;
+    }
+  }
+  if (color.startsWith('rgb(')) {
+    return color.replace('rgb(', 'rgba(').replace(')', `, ${safeOpacity})`);
+  }
+  return `rgba(38, 89, 71, ${safeOpacity})`;
+}
+
 export const StatsScreen: React.FC = () => {
-  const { t, stats, checkInRecords, weightRecords, colors, language } = useApp();
-  const [viewMode, setViewMode] = useState<'overview' | 'weight' | 'achievements'>('overview');
+  const { t, stats, checkInRecords, weightRecords, wellnessRecords, hungerRescueCount, colors, language } = useApp();
+  const isZh = isChineseLanguage(language);
+  const [viewMode, setViewMode] = useState<'overview' | 'weight' | 'wellness' | 'achievements'>('overview');
   const [showShareModal, setShowShareModal] = useState(false);
 
   // 准备图表数据 - 最近7天的打卡记录
@@ -55,17 +76,24 @@ export const StatsScreen: React.FC = () => {
 
   const weekData = getLast7DaysData();
   const weightData = getWeightData();
+  const wellnessSummary = computeWellnessSummary(wellnessRecords, checkInRecords);
+  const waistRecords = wellnessRecords
+    .filter((r) => typeof r.waistCm === 'number' && Number.isFinite(r.waistCm) && r.waistCm > 0)
+    .slice(-10)
+    .reverse();
 
   const unlockedAchievements = ACHIEVEMENTS.filter((a) =>
     a.condition(stats)
   );
 
+  const isDarkMode = colors.background === '#121212';
+
   const chartConfig = {
     backgroundColor: colors.background,
     backgroundGradientFrom: colors.background,
     backgroundGradientTo: colors.background,
-    decimalPlaces: 0,
-    color: (opacity = 1) => colors.primary.replace(')', `, ${opacity})`).replace('rgb', 'rgba').replace('#', 'rgba(255, 87, 34,'),
+    decimalPlaces: 1,
+    color: (opacity = 1) => colorWithOpacity(colors.primary, opacity),
     labelColor: (opacity = 1) => isDarkMode ? `rgba(255, 255, 255, ${opacity})` : `rgba(0, 0, 0, ${opacity})`,
     style: {
       borderRadius: 16,
@@ -76,8 +104,6 @@ export const StatsScreen: React.FC = () => {
       stroke: colors.primary,
     },
   };
-
-  const isDarkMode = colors.background === '#121212';
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={styles.content}>
@@ -109,7 +135,21 @@ export const StatsScreen: React.FC = () => {
               viewMode === 'weight' && styles.tabTextActive,
             ]}
           >
-            {t.weight}
+            {isZh ? '体重·围度' : t.weight}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, viewMode === 'wellness' && [styles.tabActive, { backgroundColor: colors.primary }]]}
+          onPress={() => setViewMode('wellness')}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              { color: colors.textSecondary },
+              viewMode === 'wellness' && styles.tabTextActive,
+            ]}
+          >
+            {isZh ? '身心状态' : 'Wellness'}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -238,6 +278,186 @@ export const StatsScreen: React.FC = () => {
               )}
             </Card>
           ))}
+
+          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 16 }]}>
+            {isZh ? '📏 腰围变化 (首页「身心体感」录入)' : '📏 Waist Tracker'}
+          </Text>
+          {wellnessSummary.latestWaistCm !== null ? (
+            <>
+              <Card style={styles.chartCard}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-around', width: '100%' }}>
+                  <View style={{ alignItems: 'center' }}>
+                    <Text style={[styles.statValue, { color: colors.primary }]}>
+                      {wellnessSummary.latestWaistCm} cm
+                    </Text>
+                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                      {isZh ? '最近腰围' : 'Latest Waist'}
+                    </Text>
+                  </View>
+                  <View style={{ alignItems: 'center' }}>
+                    <Text style={[styles.statValue, { color: (wellnessSummary.waistDeltaCm ?? 0) >= 0 ? colors.success : colors.primary }]}>
+                      {wellnessSummary.waistDeltaCm === null
+                        ? '--'
+                        : wellnessSummary.waistDeltaCm > 0
+                        ? `-${wellnessSummary.waistDeltaCm} cm`
+                        : wellnessSummary.waistDeltaCm < 0
+                        ? `+${Math.abs(wellnessSummary.waistDeltaCm)} cm`
+                        : '0.0 cm'}
+                    </Text>
+                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                      {isZh ? '累计变化' : 'Total Change'}
+                    </Text>
+                  </View>
+                </View>
+              </Card>
+              {waistRecords.map((record) => (
+                <Card key={`waist-${record.id}`} style={styles.weightRecordCard}>
+                  <View style={styles.weightRecordRow}>
+                    <Text style={[styles.weightDate, { color: colors.textSecondary }]}>{record.date}</Text>
+                    <Text style={[styles.weightValue, { color: colors.text }]}>{record.waistCm?.toFixed(1)} cm</Text>
+                  </View>
+                </Card>
+              ))}
+            </>
+          ) : (
+            <Card style={styles.emptyCard}>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                {isZh ? '暂无腰围记录，可在首页「今日身心体感」卡片一并记录腰围。' : 'No waist entries yet. Log waist cm in the Home wellness card.'}
+              </Text>
+            </Card>
+          )}
+        </>
+      )}
+
+      {viewMode === 'wellness' && (
+        <>
+          <View style={styles.statsGrid}>
+            <Card style={styles.statItem}>
+              <Text style={styles.statIcon}>⚡</Text>
+              <Text style={[styles.statValue, { color: colors.primary }]}>
+                {wellnessSummary.totalRecords > 0 ? wellnessSummary.avgEnergy : '--'}
+              </Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                {isZh ? '近7日精力 (/5)' : '7d Energy (/5)'}
+              </Text>
+            </Card>
+            <Card style={styles.statItem}>
+              <Text style={styles.statIcon}>🌙</Text>
+              <Text style={[styles.statValue, { color: colors.primary }]}>
+                {wellnessSummary.totalRecords > 0 ? wellnessSummary.avgSleep : '--'}
+              </Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                {isZh ? '近7日睡眠 (/5)' : '7d Sleep (/5)'}
+              </Text>
+            </Card>
+            <Card style={styles.statItem}>
+              <Text style={styles.statIcon}>🪷</Text>
+              <Text style={[styles.statValue, { color: colors.primary }]}>
+                {wellnessSummary.totalRecords > 0 ? wellnessSummary.avgMood : '--'}
+              </Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                {isZh ? '近7日心境 (/5)' : '7d Mood (/5)'}
+              </Text>
+            </Card>
+            <Card style={styles.statItem}>
+              <Text style={styles.statIcon}>🍃</Text>
+              <Text style={[styles.statValue, { color: colors.primary }]}>
+                {wellnessSummary.totalRecords > 0 ? wellnessSummary.avgHunger : '--'}
+              </Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                {isZh ? '近7日轻饥 (/5)' : '7d Hunger (/5)'}
+              </Text>
+            </Card>
+          </View>
+
+          {wellnessSummary.totalRecords > 0 ? (
+            <>
+              <Card style={styles.chartCard}>
+                <Text style={[styles.chartTitle, { color: colors.text }]}>
+                  {isZh ? '近7日四维体感均值' : '7-Day Wellness Averages'}
+                </Text>
+                <BarChart
+                  data={{
+                    labels: isZh ? ['精力', '睡眠', '心境', '饥饿'] : ['Energy', 'Sleep', 'Mood', 'Hunger'],
+                    datasets: [
+                      {
+                        data: [
+                          wellnessSummary.avgEnergy,
+                          wellnessSummary.avgSleep,
+                          wellnessSummary.avgMood,
+                          wellnessSummary.avgHunger,
+                        ],
+                      },
+                    ],
+                  }}
+                  width={width - 64}
+                  height={200}
+                  chartConfig={chartConfig}
+                  yAxisLabel=""
+                  yAxisSuffix=""
+                  fromZero
+                />
+              </Card>
+
+              <Card style={styles.chartCard}>
+                <Text style={[styles.chartTitle, { color: colors.text }]}>
+                  {isZh ? '断食日 vs 普通日体感对比' : 'Fasting Days vs Ordinary Days'}
+                </Text>
+                <View style={{ width: '100%', gap: 10 }}>
+                  <View style={styles.weightRecordRow}>
+                    <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+                      {isZh ? '断食打卡日 睡眠 / 精力' : 'Fasting Days Sleep / Energy'}
+                    </Text>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: colors.primary }}>
+                      {wellnessSummary.fastingDaySleepAvg ?? '--'} / {wellnessSummary.fastingDayEnergyAvg ?? '--'}
+                    </Text>
+                  </View>
+                  <View style={styles.weightRecordRow}>
+                    <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+                      {isZh ? '非断食日 睡眠 / 精力' : 'Ordinary Days Sleep / Energy'}
+                    </Text>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>
+                      {wellnessSummary.nonFastingDaySleepAvg ?? '--'} / {wellnessSummary.nonFastingDayEnergyAvg ?? '--'}
+                    </Text>
+                  </View>
+                  <View style={styles.weightRecordRow}>
+                    <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+                      {isZh ? '🌊 成功渡过抗饿冲浪' : '🌊 Hunger Waves Surfed'}
+                    </Text>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: colors.primary }}>
+                      {hungerRescueCount} {isZh ? '次' : 'times'}
+                    </Text>
+                  </View>
+                </View>
+              </Card>
+
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                {isZh ? '近期体感记录' : 'Recent Wellness Logs'}
+              </Text>
+              {wellnessRecords.slice(-7).reverse().map((rec) => (
+                <Card key={rec.id} style={styles.weightRecordCard}>
+                  <View style={styles.weightRecordRow}>
+                    <Text style={[styles.weightDate, { color: colors.textSecondary }]}>{rec.date}</Text>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>
+                      ⚡{rec.energy} · 🌙{rec.sleep} · 🪷{rec.mood} · 🍃{rec.hunger}
+                      {typeof rec.waistCm === 'number' ? ` · 📏${rec.waistCm}cm` : ''}
+                    </Text>
+                  </View>
+                  {rec.note && (
+                    <Text style={[styles.weightNote, { color: colors.textLight }]}>{rec.note}</Text>
+                  )}
+                </Card>
+              ))}
+            </>
+          ) : (
+            <Card style={styles.emptyCard}>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                {isZh
+                  ? `暂无体感记录。可在首页「今日身心体感」打分（已渡过抗饿冲浪 ${hungerRescueCount} 次）。`
+                  : `No wellness logs yet. Score daily energy & sleep on Home (${hungerRescueCount} cravings surfed).`}
+              </Text>
+            </Card>
+          )}
         </>
       )}
 

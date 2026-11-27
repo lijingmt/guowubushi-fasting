@@ -7,6 +7,8 @@ import { Card } from '../components/Card';
 import { CheckInCard } from '../components/CheckInCard';
 import { SundialCompassCard } from '../components/SundialCompassCard';
 import { DailyZenPoster } from '../components/DailyZenPoster';
+import { HungerRescueModal } from '../components/HungerRescueModal';
+import { WellnessCard } from '../components/WellnessCard';
 import * as Haptics from 'expo-haptics';
 import { responsiveSize, fs, rs, vs, layout, responsive } from '../theme/responsive';
 import { computePilgrimageProgress } from '../utils/pilgrimage';
@@ -44,6 +46,7 @@ export const HomeScreen: React.FC = () => {
   const [calorieInput, setCalorieInput] = useState(settings.dailyCalorieGoal.toString());
   const [showWaterModal, setShowWaterModal] = useState(false);
   const [waterInput, setWaterInput] = useState('2000');
+  const [showHungerRescueModal, setShowHungerRescueModal] = useState(false);
 
   const handleAddWater = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -288,9 +291,12 @@ export const HomeScreen: React.FC = () => {
       <SundialCompassCard
         onOpenFastingTimer={() => navigation.navigate('Fasting')}
         onOpenZenPoster={handleShare}
+        onOpenHungerRescue={() => setShowHungerRescueModal(true)}
       />
 
       <CheckInCard />
+
+      <WellnessCard />
 
       <TouchableOpacity
         style={[styles.retentionCard, { backgroundColor: colors.card }]}
@@ -687,6 +693,11 @@ export const HomeScreen: React.FC = () => {
     >
       {renderShareCard()}
     </View>
+
+    <HungerRescueModal
+      visible={showHungerRescueModal}
+      onClose={() => setShowHungerRescueModal(false)}
+    />
     </View>
   );
 };

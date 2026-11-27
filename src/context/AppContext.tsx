@@ -23,11 +23,14 @@ import {
   RetentionMilestone,
   DailyRewardResult,
   FriendEncouragement,
+  WellnessRecord,
 } from '../types';
+import Constants from 'expo-constants';
 import { DEFAULT_SETTINGS } from '../constants/achievements';
 import { getLocalDateString, isChineseLanguage } from '../utils/date';
-import { FASTING_TIERS } from '../utils/fastingRhythm';
+import { FASTING_TIERS, getProtectedDates } from '../utils/fastingRhythm';
 import { computeUserStats } from '../utils/stats';
+import { parseAndValidateBackupPayload, type BackupSummary } from '../utils/backup';
 import {
   getSettings,
   saveSettings,
@@ -54,6 +57,12 @@ import {
   calculateFastingStats,
   getRetentionState,
   saveRetentionState,
+  getWellnessRecords,
+  saveWellnessRecord,
+  getHungerRescueCount,
+  incrementHungerRescueCount,
+  exportAllLocalData,
+  restoreAllLocalData,
 } from '../services/storage';
 import {
   DEFAULT_RETENTION_STATE,
@@ -201,8 +210,19 @@ interface AppContextType {
   activeFasting: ActiveFastingState | null;
   fastingSessions: FastingSession[];
   startFastingSession: (durationHours: number) => Promise<void>;
+  adjustActiveFastingStartTime: (newStartTime: number) => Promise<void>;
+  logManualFastingSession: (startTime: number, endTime: number) => Promise<void>;
   cancelFastingSession: () => Promise<void>;
   completeFastingSession: () => Promise<void>;
+
+  // 身心体感 & 抗饿急救 & 备份恢复
+  wellnessRecords: WellnessRecord[];
+  todayWellness: WellnessRecord | null;
+  saveDailyWellness: (input: Omit<WellnessRecord, 'id' | 'date' | 'timestamp'>) => Promise<void>;
+  hungerRescueCount: number;
+  recordHungerRescue: () => Promise<number>;
+  exportBackupJson: () => Promise<string>;
+  importBackupJson: (rawJson: string) => Promise<{ success: boolean; message: string; summary?: BackupSummary }>;
 
   // 留存激励
   retentionState: RetentionState;
@@ -309,6 +329,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [retentionState, setRetentionState] = useState<RetentionState>(DEFAULT_RETENTION_STATE);
   const retentionStateRef = useRef<RetentionState>(DEFAULT_RETENTION_STATE);
 
+  // 身心体感与抗饿急救
+  const [wellnessRecords, setWellnessRecords] = useState<WellnessRecord[]>([]);
+  const [hungerRescueCount, setHungerRescueCount] = useState(0);
+
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -394,10 +418,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setupNotifications();
   }, []);
 
-  // 计算统计数据
+  // 计算统计数据（设置中的周休假/暂停护航变化也需重算连胜保护）
   useEffect(() => {
     calculateStats();
-  }, [checkInRecords, weightRecords, practiceRecords, fastingSessions]);
+  }, [checkInRecords, weightRecords, practiceRecords, fastingSessions, settings.pausePass, settings.weeklySchedule]);
 
   // 只在加载完成、提醒开关、提醒时间、断食阶梯或语言改变时调度一次每日提醒。
   useEffect(() => {
@@ -438,6 +462,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         savedActiveFasting,
         savedHealthSync,
         savedRetentionState,
+        savedWellness,
+        savedRescueCount,
       ] = await Promise.all([
         getCheckInRecords(),
         getMealRecords(),
@@ -448,6 +474,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         getActiveFastingState(),
         getHealthSyncStatus(),
         getRetentionState(),
+        getWellnessRecords(),
+        getHungerRescueCount(),
       ]);
       const today = getLocalDateString();
 
@@ -500,6 +528,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       // 加载留存激励状态
       retentionStateRef.current = savedRetentionState;
       setRetentionState(savedRetentionState);
+
+      // 加载身心体感与抗饿统计
+      setWellnessRecords(savedWellness);
+      setHungerRescueCount(savedRescueCount);
     } catch (error) {
       console.error('Error initializing data:', error);
     } finally {
@@ -679,13 +711,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const calculateStats = async () => {
     const fastingStats = await calculateFastingStats();
+    const today = getLocalDateString();
+    const protectedDates = getProtectedDates(settings, today, 400);
     setStats(
       computeUserStats({
         checkInRecords,
         weightRecords,
         practiceRecords,
         fastingStats,
-        today: getLocalDateString(),
+        today,
+        protectedDates,
       })
     );
   };
@@ -1020,6 +1055,110 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setFastingSessions(updatedSessions);
   };
 
+  // 补改当前活跃断食的开始时间（防忘记点击"开始断食"）
+  const adjustActiveFastingStartTime = async (newStartTime: number) => {
+    if (!activeFasting) return;
+    const now = Date.now();
+    const clampedStart = Math.min(now - 60000, newStartTime);
+    const newEnd = clampedStart + activeFasting.durationHours * 60 * 60 * 1000;
+    const updatedActive: ActiveFastingState = {
+      ...activeFasting,
+      startTime: clampedStart,
+      endTime: newEnd,
+    };
+
+    const sessions = await getFastingSessions();
+    const existing = sessions.find((s) => s.id === activeFasting.sessionId);
+    if (existing) {
+      await saveFastingSession({
+        ...existing,
+        startTime: clampedStart,
+        endTime: newEnd,
+        date: getLocalDateString(new Date(clampedStart)),
+      });
+    }
+
+    if (newEnd <= now) {
+      await updateFastingSessionStatus(activeFasting.sessionId, 'completed', now);
+      await saveActiveFastingState(null);
+      setActiveFasting(null);
+    } else {
+      await saveActiveFastingState(updatedActive);
+      setActiveFasting(updatedActive);
+    }
+    setFastingSessions(await getFastingSessions());
+  };
+
+  // 补录已完成的历史单次断食记录
+  const logManualFastingSession = async (startTime: number, endTime: number) => {
+    const safeEnd = Math.min(Date.now(), Math.max(startTime + 60000, endTime));
+    const durationMinutes = Math.round((safeEnd - startTime) / 60000);
+    const durationHours = Math.max(1, Math.round(durationMinutes / 60));
+    const session: FastingSession = {
+      id: `fasting_manual_${Date.now()}`,
+      startTime,
+      endTime: safeEnd,
+      durationHours,
+      actualDurationMinutes: durationMinutes,
+      status: 'completed',
+      completedAt: safeEnd,
+      date: getLocalDateString(new Date(safeEnd)),
+    };
+    await saveFastingSession(session);
+    setFastingSessions(await getFastingSessions());
+  };
+
+  const saveDailyWellness = async (input: Omit<WellnessRecord, 'id' | 'date' | 'timestamp'>) => {
+    const today = getLocalDateString();
+    const existing = wellnessRecords.find((r) => r.date === today);
+    const record: WellnessRecord = {
+      id: existing?.id || `wellness_${today}`,
+      date: today,
+      energy: Math.min(5, Math.max(1, Math.round(input.energy))),
+      hunger: Math.min(5, Math.max(1, Math.round(input.hunger))),
+      mood: Math.min(5, Math.max(1, Math.round(input.mood))),
+      sleep: Math.min(5, Math.max(1, Math.round(input.sleep))),
+      waistCm: typeof input.waistCm === 'number' && input.waistCm > 20 && input.waistCm < 250 ? Number(input.waistCm.toFixed(1)) : undefined,
+      note: input.note?.trim() || undefined,
+      timestamp: Date.now(),
+    };
+    const next = await saveWellnessRecord(record);
+    setWellnessRecords(next);
+  };
+
+  const recordHungerRescue = async (): Promise<number> => {
+    const next = await incrementHungerRescueCount();
+    setHungerRescueCount(next);
+    return next;
+  };
+
+  const exportBackupJson = async (): Promise<string> => {
+    const version = Constants.expoConfig?.version || '1.0.38';
+    return exportAllLocalData(version);
+  };
+
+  const importBackupJson = async (
+    rawJson: string
+  ): Promise<{ success: boolean; message: string; summary?: BackupSummary }> => {
+    const isZh = isChineseLanguage(language);
+    const parsed = parseAndValidateBackupPayload(rawJson);
+    if (!parsed.ok) {
+      return {
+        success: false,
+        message: isZh ? `备份格式无效：${parsed.error}` : `Invalid backup: ${parsed.error}`,
+      };
+    }
+    await restoreAllLocalData(parsed.payload);
+    await initializeData();
+    return {
+      success: true,
+      summary: parsed.summary,
+      message: isZh
+        ? `恢复成功：${parsed.summary.checkIns} 条打卡、${parsed.summary.fastingSessions} 条断食、${parsed.summary.wellnessRecords} 条体感记录`
+        : `Restored ${parsed.summary.checkIns} check-ins, ${parsed.summary.fastingSessions} fasts, ${parsed.summary.wellnessRecords} wellness logs.`,
+    };
+  };
+
   const updateRetentionState = async (
     updater: (current: RetentionState) => RetentionState
   ): Promise<RetentionState> => {
@@ -1254,8 +1393,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         activeFasting,
         fastingSessions,
         startFastingSession,
+        adjustActiveFastingStartTime,
+        logManualFastingSession,
         cancelFastingSession,
         completeFastingSession,
+        wellnessRecords,
+        todayWellness: wellnessRecords.find((r) => r.date === todayDate) || null,
+        saveDailyWellness,
+        hungerRescueCount,
+        recordHungerRescue,
+        exportBackupJson,
+        importBackupJson,
         retentionState,
         dailyTasks,
         dailyRating,

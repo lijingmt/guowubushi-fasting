@@ -19,22 +19,32 @@ import {
 import { calculatePeriodStats } from '../src/utils/leaderboardStats';
 import {
   FASTING_TIERS,
+  PAUSE_REASONS,
   getChineseShichen,
+  getEffectiveDaySchedule,
   getPhysiologicalStage,
+  getProtectedDates,
   getRecommendedTier,
   getSundialRhythmState,
 } from '../src/utils/fastingRhythm';
-import { SOLAR_TERMS, getSolarTermInfo } from '../src/utils/solarTerm';
+import { SOLAR_TERMS, getSeasonalNutritionGuide, getSolarTermInfo } from '../src/utils/solarTerm';
 import { PILGRIMAGE_ROUTES, calculatePilgrimageKm, computePilgrimageProgress } from '../src/utils/pilgrimage';
 import { SACRED_SITES } from '../src/data/sacredSites';
+import {
+  computeWellnessSummary,
+  parseAndValidateBackupPayload,
+  serializeBackupPayload,
+} from '../src/utils/backup';
 import FastingServer from '../partykit/server';
 import type {
   DailyCheckIn,
   FastingSession,
   MealRecord,
   PracticeRecord,
+  UserSettings,
   WaterRecord,
   WeightRecord,
+  WellnessRecord,
 } from '../src/types';
 
 function runSection(name: string, fn: () => Promise<void> | void) {
@@ -737,6 +747,149 @@ async function main() {
     assert.equal(totalCounted, 500, `Expected 500 after per-connection cooldown, got ${totalCounted}`);
     assert.equal(todayCounted, 500, `Expected today 500, got ${todayCounted}`);
     console.log(`   -> Silent Room 500-user burst + cooldown (${elapsedMs.toFixed(2)} ms): total=${totalCounted}, today=${todayCounted}, recentEvents=${server.state.recentSilentGestures.length}`);
+  });
+
+  await runSection('13. Flexible weekly schedule, Pause Pass, and streak protection', () => {
+    assert.equal(PAUSE_REASONS.length, 4);
+    const flexSettings: Pick<UserSettings, 'fastingTier' | 'weeklySchedule' | 'pausePass'> = {
+      fastingTier: 'classic',
+      weeklySchedule: {
+        0: 'rest',
+        1: 'classic',
+        2: 'intermediate',
+        3: 'rest',
+        4: 'beginner',
+        5: 'classic',
+        6: 'classic',
+      },
+      pausePass: {
+        active: true,
+        reason: 'travel',
+        startDate: '2026-11-23',
+        endDate: '2026-11-25',
+      },
+    };
+
+    const pausedDay = getEffectiveDaySchedule(parseLocalDate('2026-11-24'), flexSettings);
+    assert.equal(pausedDay.status, 'paused');
+    assert.equal(pausedDay.pauseReason, 'travel');
+
+    const sundayRest = getEffectiveDaySchedule(parseLocalDate('2026-11-22'), flexSettings);
+    assert.equal(sundayRest.status, 'rest');
+
+    const tuesdayLight = getEffectiveDaySchedule(parseLocalDate('2026-11-17'), flexSettings);
+    assert.equal(tuesdayLight.status, 'active');
+    assert.equal(tuesdayLight.tierId, 'intermediate');
+
+    const thursdayBeginner = getEffectiveDaySchedule(parseLocalDate('2026-11-19'), flexSettings);
+    assert.equal(thursdayBeginner.tierId, 'beginner');
+
+    const protectedDates = getProtectedDates(flexSettings, '2026-11-27', 14);
+    assert.ok(protectedDates.includes('2026-11-23'));
+    assert.ok(protectedDates.includes('2026-11-24'));
+    assert.ok(protectedDates.includes('2026-11-25'));
+    assert.ok(protectedDates.includes('2026-11-22')); // Sunday rest day
+
+    const records: DailyCheckIn[] = [
+      { id: 'c1', date: '2026-11-20', completed: true, brokeAfterNoon: false, checkInTime: 1 },
+      { id: 'c2', date: '2026-11-21', completed: true, brokeAfterNoon: false, checkInTime: 2 },
+      // 2026-11-22 = Sunday rest, 23..25 = travel Pause Pass (0 check-ins)
+      { id: 'c3', date: '2026-11-26', completed: true, brokeAfterNoon: false, checkInTime: 3 },
+      { id: 'c4', date: '2026-11-27', completed: true, brokeAfterNoon: false, checkInTime: 4 },
+    ];
+
+    const protectedStats = computeUserStats({
+      checkInRecords: records,
+      weightRecords: [],
+      practiceRecords: [],
+      fastingStats: {
+        totalSessions: 0,
+        totalMinutes: 0,
+        currentStreak: 0,
+        longestStreak: 0,
+      },
+      today: '2026-11-27',
+      protectedDates,
+    });
+    assert.equal(protectedStats.completedDays, 4, 'Protected days must not inflate completedDays');
+    assert.equal(protectedStats.currentStreak, 4, 'Pause Pass + weekly rest days preserve currentStreak');
+    assert.equal(protectedStats.longestStreak, 4);
+  });
+
+  await runSection('14. 4-dim wellness averages, waist delta & fasting-day comparison', () => {
+    const wellness: WellnessRecord[] = [
+      { id: 'w1', date: '2026-11-20', energy: 4, hunger: 3, mood: 4, sleep: 5, waistCm: 84.5, timestamp: 1 },
+      { id: 'w2', date: '2026-11-22', energy: 3, hunger: 2, mood: 3, sleep: 3, timestamp: 2 },
+      { id: 'w3', date: '2026-11-25', energy: 5, hunger: 4, mood: 5, sleep: 4, timestamp: 3 },
+      { id: 'w4', date: '2026-11-27', energy: 4, hunger: 5, mood: 4, sleep: 5, waistCm: 82.0, timestamp: 4 },
+    ];
+    const checkIns: DailyCheckIn[] = [
+      { id: 'f1', date: '2026-11-20', completed: true, brokeAfterNoon: false, checkInTime: 1 },
+      { id: 'f2', date: '2026-11-27', completed: true, brokeAfterNoon: false, checkInTime: 2 },
+      { id: 'f3', date: '2026-11-22', completed: false, brokeAfterNoon: true, checkInTime: 3 },
+    ];
+
+    const summary = computeWellnessSummary(wellness, checkIns, '2026-11-27');
+    assert.equal(summary.totalRecords, 4);
+    assert.equal(summary.recent7DaysCount, 3);
+    assert.equal(summary.latestWaistCm, 82);
+    assert.equal(summary.waistDeltaCm, 2.5);
+    assert.equal(summary.fastingDaySleepAvg, 5);
+    assert.equal(summary.nonFastingDaySleepAvg, 3.5);
+    assert.equal(summary.fastingDayEnergyAvg, 4);
+    assert.equal(summary.nonFastingDayEnergyAvg, 4);
+  });
+
+  await runSection('15. Seasonal Nutrition & Refeed Guide across all 24 solar terms', () => {
+    const monthSamples = Array.from({ length: 12 }, (_, m) => [5, 20].map((d) => new Date(2026, m, d))).flat();
+    const seenTerms = new Set<string>();
+    const seenSeasons = new Set<string>();
+    for (const date of monthSamples) {
+      const guide = getSeasonalNutritionGuide(date);
+      seenTerms.add(guide.solarTerm.nameZh);
+      seenSeasons.add(guide.seasonZh);
+      assert.ok(guide.mealCombosZh.length >= 2);
+      assert.ok(guide.mealCombosEn.length >= 2);
+      assert.ok(guide.refeedFirstBiteZh.length > 5);
+      assert.ok(guide.afternoonDrinksZh.length >= 3);
+    }
+    assert.equal(seenSeasons.size, 4, 'All 4 seasonal nutrition profiles must be reachable');
+    assert.ok(seenTerms.size >= 20, `Expected broad 24 solar-term coverage, got ${seenTerms.size}`);
+  });
+
+  await runSection('16. JSON Backup serialization & strict validation', () => {
+    const json = serializeBackupPayload(
+      {
+        checkInRecords: [{ id: 'c1', date: '2026-11-27', completed: true, brokeAfterNoon: false, checkInTime: 100 }],
+        mealRecords: [{ id: 'm1', date: '2026-11-27', time: '11:30', type: 'lunch', name: '杂粮饭', calories: 420 }],
+        weightRecords: [{ id: 'wt1', date: '2026-11-27', weight: 65.2 }],
+        waterRecords: [{ id: 'wa1', date: '2026-11-27', time: '15:00', amount: 250 }],
+        practiceRecords: [],
+        fastingSessions: [{ id: 'fs1', startTime: 1000, endTime: 58600000, durationHours: 16, status: 'completed', completedAt: 58600000, date: '2026-11-26' }],
+        sacredSiteCheckIns: [],
+        wellnessRecords: [{ id: 'w1', date: '2026-11-27', energy: 5, hunger: 4, mood: 5, sleep: 5, waistCm: 81.5, timestamp: 500 }],
+        hungerRescueCount: 3,
+      },
+      '1.0.38'
+    );
+
+    const valid = parseAndValidateBackupPayload(json);
+    assert.equal(valid.ok, true);
+    if (valid.ok) {
+      assert.equal(valid.summary.checkIns, 1);
+      assert.equal(valid.summary.meals, 1);
+      assert.equal(valid.summary.weights, 1);
+      assert.equal(valid.summary.fastingSessions, 1);
+      assert.equal(valid.summary.wellnessRecords, 1);
+      assert.equal(valid.payload.data.hungerRescueCount, 3);
+    }
+
+    assert.equal(parseAndValidateBackupPayload('{bad json').ok, false);
+    assert.equal(parseAndValidateBackupPayload(JSON.stringify({ schemaVersion: 99, data: {} })).ok, false);
+    assert.equal(
+      parseAndValidateBackupPayload(JSON.stringify({ schemaVersion: 1, data: { checkInRecords: 'not-array' } })).ok,
+      false
+    );
   });
 
   console.log('\nALL VERIFICATION & STRESS TESTS PASSED');

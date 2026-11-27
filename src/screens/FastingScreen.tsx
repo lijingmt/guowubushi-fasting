@@ -2,6 +2,8 @@ import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Platform, Linking } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { FastingTimerCard } from '../components/FastingTimerCard';
+import { HungerRescueModal } from '../components/HungerRescueModal';
+import { SeasonalNutritionCard } from '../components/SeasonalNutritionCard';
 import { Card } from '../components/Card';
 import { StatCard } from '../components/StatCard';
 import { responsiveSize, fs, rs, vs } from '../theme/responsive';
@@ -17,6 +19,7 @@ export const FastingScreen: React.FC = () => {
   const shareCardRef = useRef<View>(null);
   const [showSharePreview, setShowSharePreview] = useState(false);
   const [showShareCardModal, setShowShareCardModal] = useState(false);
+  const [showHungerRescue, setShowHungerRescue] = useState(false);
 
   const getScreenTitle = () => {
     if (language === 'en') return 'Single Fasting';
@@ -239,6 +242,39 @@ export const FastingScreen: React.FC = () => {
 
         {/* Fasting Timer Card */}
         <FastingTimerCard colors={colors} language={language} />
+
+        {/* Craving / Hunger Rescue Entry */}
+        <TouchableOpacity
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            backgroundColor: '#1F1B14',
+            borderColor: '#C8A96B',
+            borderWidth: 1,
+            borderRadius: 14,
+            paddingHorizontal: 16,
+            paddingVertical: 14,
+            marginBottom: 14,
+          }}
+          activeOpacity={0.85}
+          onPress={() => setShowHungerRescue(true)}
+        >
+          <View style={{ flex: 1, paddingRight: 10 }}>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: '#F5EFE6' }}>
+              {(language === 'zh' || language === 'zh-Hant') ? '🌊 此刻想吃东西？开启抗饿冲浪' : '🌊 Craving Wave? Start 15m Rescue'}
+            </Text>
+            <Text style={{ fontSize: 12, color: '#B7C7C0', marginTop: 3 }}>
+              {(language === 'zh' || language === 'zh-Hant') ? '15分钟倒计时 · 4-4-6 呼吸引导 · 雨声伴行' : '15m wave timer · 4-4-6 breathing · Rain ambience'}
+            </Text>
+          </View>
+          <Text style={{ fontSize: 14, fontWeight: '700', color: '#E2C686' }}>
+            {(language === 'zh' || language === 'zh-Hant') ? '进入 ›' : 'Open ›'}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Seasonal Refeed & Solar Term Nutrition Guide */}
+        <SeasonalNutritionCard compact />
 
         {/* Share button - only show if user has fasting data */}
         {stats.totalSingleFastingSessions > 0 && (
@@ -632,6 +668,11 @@ export const FastingScreen: React.FC = () => {
           </View>
         </LinearGradient>
       </View>
+
+      <HungerRescueModal
+        visible={showHungerRescue}
+        onClose={() => setShowHungerRescue(false)}
+      />
     </View>
   );
 };

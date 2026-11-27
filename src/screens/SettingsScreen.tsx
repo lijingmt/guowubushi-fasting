@@ -16,7 +16,9 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import Constants from 'expo-constants';
+import { File, Paths } from 'expo-file-system';
 import * as Notifications from 'expo-notifications';
+import { isAvailableAsync as isSharingAvailableAsync, shareAsync } from 'expo-sharing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useApp } from '../context/AppContext';
 import { useSocial } from '../context/SocialContext';
@@ -25,7 +27,8 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { getLocalDateString, isChineseLanguage } from '../utils/date';
 import { vs } from '../theme/responsive';
-import { FASTING_GOALS, FASTING_TIERS } from '../utils/fastingRhythm';
+import { FASTING_GOALS, FASTING_TIERS, PAUSE_REASONS } from '../utils/fastingRhythm';
+import { parseAndValidateBackupPayload } from '../utils/backup';
 import { computePilgrimageProgress } from '../utils/pilgrimage';
 import type { FastingGoal, FastingTier } from '../types';
 
@@ -63,6 +66,8 @@ export const SettingsScreen: React.FC = () => {
     stats,
     growthProfile,
     retentionState,
+    exportBackupJson,
+    importBackupJson,
   } = useApp();
   const social = useSocial();
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -72,6 +77,9 @@ export const SettingsScreen: React.FC = () => {
   const [showWeightUnitPicker, setShowWeightUnitPicker] = useState(false);
   const [showTierPicker, setShowTierPicker] = useState(false);
   const [showGoalPicker, setShowGoalPicker] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importJsonText, setImportJsonText] = useState('');
+  const [isBackupBusy, setIsBackupBusy] = useState(false);
 
   const insets = useSafeAreaInsets();
   const isZh = isChineseLanguage(language);
@@ -335,6 +343,30 @@ export const SettingsScreen: React.FC = () => {
             thumbColor="#fff"
           />
         </View>
+        {settings.pausePass && (
+          <>
+            <Divider />
+            <SettingItem
+              label={isZh ? '🛡️ 护航暂停券生效中' : '🛡️ Active Pause Pass'}
+              value={`${
+                PAUSE_REASONS.find((r) => r.id === settings.pausePass?.reason)?.[isZh ? 'labelZh' : 'labelEn'] || settings.pausePass.reason
+              } (${settings.pausePass.startDate} ~ ${settings.pausePass.endDate}) · ${isZh ? '点此解除' : 'Tap to clear'}`}
+              onPress={() => {
+                Alert.alert(
+                  isZh ? '提前结束护航暂停？' : 'End Pause Pass Early?',
+                  isZh ? '解除后将恢复正常节律判定，已保护天数继续保留连胜。' : 'Resume regular schedule while keeping protected streak days.',
+                  [
+                    { text: t.cancel, style: 'cancel' },
+                    {
+                      text: isZh ? '确认解除' : 'Clear',
+                      onPress: () => updateSettings({ pausePass: null }),
+                    },
+                  ]
+                );
+              }}
+            />
+          </>
+        )}
       </Card>
 
       {/* 打卡提醒设置 */}
@@ -478,6 +510,66 @@ export const SettingsScreen: React.FC = () => {
         </Text>
       </Card>
 
+      {/* 本地备份与迁移 */}
+      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+        {isZh ? '数据备份与恢复' : 'Backup & Restore'}
+      </Text>
+      <Card>
+        <SettingItem
+          label={isZh ? '📤 导出并分享 JSON 备份' : '📤 Export & Share JSON Backup'}
+          value={isBackupBusy ? (isZh ? '处理中…' : 'Working…') : (isZh ? '文件+剪贴板' : 'File + Clipboard')}
+          onPress={async () => {
+            if (isBackupBusy) return;
+            setIsBackupBusy(true);
+            try {
+              const json = await exportBackupJson();
+              await Clipboard.setStringAsync(json);
+              const fileName = `guowubushi-backup-${getLocalDateString()}.json`;
+              const backupFile = new File(Paths.cache, fileName);
+              backupFile.create({ overwrite: true });
+              backupFile.write(json);
+              if (await isSharingAvailableAsync()) {
+                await shareAsync(backupFile.uri, {
+                  mimeType: 'application/json',
+                  dialogTitle: isZh ? '保存或分享过午不食备份' : 'Save or Share Fasting Backup',
+                });
+              } else {
+                await Share.share({ message: json, title: fileName });
+              }
+            } catch (e) {
+              Alert.alert(isZh ? '导出失败' : 'Export Failed', e instanceof Error ? e.message : String(e));
+            } finally {
+              setIsBackupBusy(false);
+            }
+          }}
+        />
+        <Divider />
+        <SettingItem
+          label={isZh ? '📋 仅复制备份 JSON 到剪贴板' : '📋 Copy Backup JSON'}
+          onPress={async () => {
+            try {
+              const json = await exportBackupJson();
+              await Clipboard.setStringAsync(json);
+              Alert.alert(
+                isZh ? '已复制备份' : 'Backup Copied',
+                isZh ? `共 ${json.length} 字符，可粘贴到备忘录或换机恢复。` : `Copied ${json.length} chars to clipboard.`
+              );
+            } catch (e) {
+              Alert.alert(isZh ? '复制失败' : 'Copy Failed', e instanceof Error ? e.message : String(e));
+            }
+          }}
+        />
+        <Divider />
+        <SettingItem
+          label={isZh ? '📥 从 JSON 恢复数据' : '📥 Restore from JSON'}
+          value={isZh ? '严格校验覆盖本地记录' : 'Validate & restore'}
+          onPress={() => {
+            setImportJsonText('');
+            setShowImportModal(true);
+          }}
+        />
+      </Card>
+
       {/* 关于 */}
       <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t.about}</Text>
       <Card>
@@ -486,7 +578,7 @@ export const SettingsScreen: React.FC = () => {
           onPress={handleShareApp}
           rightElement={<Text style={{ fontSize: 20 }}>📤</Text>}
         />
-        <SettingItem label={t.version} value={Constants.expoConfig?.version || '1.0.37'} />
+        <SettingItem label={t.version} value={Constants.expoConfig?.version || '1.0.38'} />
         <SettingItem
           label={(language === 'zh' || language === 'zh-Hant') ? '隐私政策' : 'Privacy Policy'}
           onPress={() => {
@@ -853,6 +945,114 @@ export const SettingsScreen: React.FC = () => {
             <TouchableOpacity
               style={[styles.cancelButton, { backgroundColor: colors.divider }]}
               onPress={() => setShowGoalPicker(false)}
+            >
+              <Text style={[styles.cancelButtonText, { color: colors.text }]}>{t.cancel}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Backup Import Modal */}
+      <Modal
+        visible={showImportModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowImportModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContentLarge, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              {isZh ? '📥 从 JSON 恢复备份' : '📥 Restore from Backup JSON'}
+            </Text>
+            <TouchableOpacity
+              style={[styles.optionButton, { backgroundColor: colors.backgroundSecondary }]}
+              onPress={async () => {
+                const clip = await Clipboard.getStringAsync();
+                setImportJsonText(clip || '');
+              }}
+            >
+              <Text style={[styles.optionText, { color: colors.primary, fontWeight: '600' }]}>
+                {isZh ? '📋 从剪贴板粘贴 JSON' : '📋 Paste from Clipboard'}
+              </Text>
+            </TouchableOpacity>
+            <TextInput
+              style={{
+                borderWidth: 1,
+                borderColor: colors.divider,
+                borderRadius: 10,
+                padding: 10,
+                minHeight: 110,
+                maxHeight: 160,
+                color: colors.text,
+                backgroundColor: colors.background,
+                textAlignVertical: 'top',
+                fontSize: 12,
+                marginBottom: 10,
+              }}
+              multiline
+              placeholder={isZh ? '在此粘贴导出的 JSON 备份文本...' : 'Paste exported backup JSON here...'}
+              placeholderTextColor={colors.textLight}
+              value={importJsonText}
+              onChangeText={setImportJsonText}
+            />
+            {(() => {
+              if (!importJsonText.trim()) return null;
+              const check = parseAndValidateBackupPayload(importJsonText);
+              return (
+                <Text
+                  style={{
+                    fontSize: 12,
+                    marginBottom: 10,
+                    color: check.ok ? colors.success : '#D9534F',
+                  }}
+                >
+                  {check.ok
+                    ? isZh
+                      ? `✓ 校验通过：打卡 ${check.summary.checkIns} 天 · 断食 ${check.summary.fastingSessions} 次 · 饮食 ${check.summary.meals} · 体感 ${check.summary.wellnessRecords}`
+                      : `✓ Valid: ${check.summary.checkIns} check-ins, ${check.summary.fastingSessions} fasts, ${check.summary.wellnessRecords} wellness`
+                    : `✕ ${check.error}`}
+                </Text>
+              );
+            })()}
+            <TouchableOpacity
+              style={[
+                styles.optionButton,
+                {
+                  backgroundColor: colors.primary,
+                  justifyContent: 'center',
+                  opacity: isBackupBusy ? 0.6 : 1,
+                },
+              ]}
+              disabled={isBackupBusy}
+              onPress={async () => {
+                const check = parseAndValidateBackupPayload(importJsonText);
+                if (!check.ok) {
+                  Alert.alert(isZh ? '备份格式无效' : 'Invalid Backup', check.error);
+                  return;
+                }
+                setIsBackupBusy(true);
+                try {
+                  const res = await importBackupJson(importJsonText);
+                  Alert.alert(
+                    res.success ? (isZh ? '恢复成功' : 'Restored') : (isZh ? '恢复失败' : 'Failed'),
+                    res.message
+                  );
+                  if (res.success) {
+                    setShowImportModal(false);
+                    setImportJsonText('');
+                  }
+                } finally {
+                  setIsBackupBusy(false);
+                }
+              }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>
+                {isZh ? '确认校验并覆盖恢复' : 'Validate & Restore Now'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.cancelButton, { backgroundColor: colors.divider }]}
+              onPress={() => setShowImportModal(false)}
             >
               <Text style={[styles.cancelButtonText, { color: colors.text }]}>{t.cancel}</Text>
             </TouchableOpacity>

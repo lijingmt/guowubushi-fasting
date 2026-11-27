@@ -54,3 +54,102 @@ export function getSolarTermInfo(date: Date = new Date()): SolarTermInfo {
   }
   return matched;
 }
+
+export interface SeasonalNutritionGuide {
+  solarTerm: SolarTermInfo;
+  seasonZh: string;
+  seasonEn: string;
+  mealCombosZh: string[];
+  mealCombosEn: string[];
+  refeedFirstBiteZh: string;
+  refeedFirstBiteEn: string;
+  afternoonDrinksZh: string[];
+  afternoonDrinksEn: string[];
+}
+
+const SEASONAL_PROFILES = [
+  {
+    // Spring (terms 2..7)
+    seasonZh: '春季疏泄 · 轻盈生发',
+    seasonEn: 'Spring Renewal · Light Vitality',
+    mealCombosZh: [
+      '早餐：水煮蛋 2 个 + 全麦/杂粮馒头 + 时蔬，稳血糖不犯困',
+      '午餐：香煎鸡胸/豆腐 + 藜麦糙米半碗 + 凉拌菠菜（高蛋白配高纤最抗饿）',
+    ],
+    mealCombosEn: [
+      'Breakfast: 2 boiled eggs + whole-grain toast + sautéed greens for steady morning energy.',
+      'Lunch: Grilled chicken or tofu + quinoa bowl + steamed greens (high protein + fiber).',
+    ],
+    refeedFirstBiteZh: '复食第一口：温热蔬菜清汤或半碗蒸蛋，慢嚼 10 分钟后再吃主食，不刺激清晨血糖。',
+    refeedFirstBiteEn: 'First bite to break fast: Warm vegetable broth or steamed egg before grains.',
+    afternoonDrinksZh: ['温白水', '茉莉淡绿茶', '陈皮水（无糖）', '美式黑咖啡'],
+    afternoonDrinksEn: ['Warm water', 'Light jasmine green tea', 'Dried tangerine peel infusion', 'Black coffee'],
+  },
+  {
+    // Summer (terms 8..13)
+    seasonZh: '夏季清心 · 少油护脾',
+    seasonEn: 'Summer Calm · Cool Hydration',
+    mealCombosZh: [
+      '早餐：无糖豆浆 + 鸡蛋卷饼 + 小份黄瓜番茄，清爽无负担',
+      '午餐：清蒸鱼虾/毛豆豆腐 + 玉米紫薯 + 焯拌苦菊油麦菜',
+    ],
+    mealCombosEn: [
+      'Breakfast: Unsweetened soy milk + egg wrap + cucumber & tomato salad.',
+      'Lunch: Steamed fish or edamame tofu + sweet potato + Crisp seasonal greens.',
+    ],
+    refeedFirstBiteZh: '复食第一口：先饮半杯常温温水或冬瓜海带清汤，避免冰饮冷食直接激惹空胃。',
+    refeedFirstBiteEn: 'First bite: Room-temp water or light melon soup; avoid iced sugary drinks on an empty stomach.',
+    afternoonDrinksZh: ['柠檬温水', '淡苦荞茶', '陈皮荷叶茶', '淡乌龙'],
+    afternoonDrinksEn: ['Warm lemon water', 'Tartary buckwheat tea', 'Oolong tea', 'Sparkling water'],
+  },
+  {
+    // Autumn (terms 14..19)
+    seasonZh: '秋季润燥 · 收敛稳态',
+    seasonEn: 'Autumn Moisture · Grounded Balance',
+    mealCombosZh: [
+      '早餐：银耳百合羹（无糖）+ 水煮蛋 + 一小把原味核桃，抗饿又润秋燥',
+      '午餐：山药木耳炒瘦肉/香菇豆腐 + 杂粮饭 100g + 清炒西兰花',
+    ],
+    mealCombosEn: [
+      'Breakfast: Warm oat-egg bowl + handful of raw walnuts for lasting satiety.',
+      'Lunch: Yam & mushroom stir-fry with lean protein + brown rice + broccoli.',
+    ],
+    refeedFirstBiteZh: '复食第一口：小米山药粥米油或温豆腐汤，温和包裹胃黏膜，减少反酸不适。',
+    refeedFirstBiteEn: 'First bite: Warm millet or yam congee broth to gently awaken digestion.',
+    afternoonDrinksZh: ['温开水', '罗汉果淡淡茶', '熟普洱', '无糖红茶'],
+    afternoonDrinksEn: ['Warm water', 'Ripe Pu-erh tea', 'Unsweetened black tea', 'Herbal pear infusion'],
+  },
+  {
+    // Winter (terms 20..23, 0..1)
+    seasonZh: '冬季温藏 · 饱腹御寒',
+    seasonEn: 'Winter Nourish · Deep Warmth',
+    mealCombosZh: [
+      '早餐：牛奶燕麦鸡蛋粥 + 少许黑芝麻，晨起温热持久抗饿',
+      '午餐：萝卜炖牛肉/豆腐白菜煲 + 红薯半个 + 蒜蓉油菜，蛋白足下午不冷不饿',
+    ],
+    mealCombosEn: [
+      'Breakfast: Warm oatmeal cooked with egg & sesame for long morning fullness.',
+      'Lunch: Radish beef or tofu cabbage stew + roasted sweet potato + greens.',
+    ],
+    refeedFirstBiteZh: '复食第一口：一杯温姜枣水（不加糖）或热萝卜蛋花汤，护住脾阳后再进干粮。',
+    refeedFirstBiteEn: 'First bite: Warm ginger water or hot egg-drop radish soup before solid food.',
+    afternoonDrinksZh: ['热水/温茶', '熟普/红茶', '无糖肉桂热美式', '干姜陈皮汤水'],
+    afternoonDrinksEn: ['Hot water', 'Roasted barley or Pu-erh tea', 'Hot Americano', 'Ginger peel infusion'],
+  },
+];
+
+/**
+ * Returns seasonal fasting meal & gentle refeeding recommendations aligned with the active Solar Term.
+ */
+export function getSeasonalNutritionGuide(date: Date = new Date()): SeasonalNutritionGuide {
+  const solarTerm = getSolarTermInfo(date);
+  let profileIdx = 3; // Winter default (0,1,20,21,22,23)
+  if (solarTerm.index >= 2 && solarTerm.index <= 7) profileIdx = 0;
+  else if (solarTerm.index >= 8 && solarTerm.index <= 13) profileIdx = 1;
+  else if (solarTerm.index >= 14 && solarTerm.index <= 19) profileIdx = 2;
+
+  return {
+    solarTerm,
+    ...SEASONAL_PROFILES[profileIdx],
+  };
+}

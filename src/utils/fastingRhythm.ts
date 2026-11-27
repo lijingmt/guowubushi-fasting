@@ -1,4 +1,5 @@
-import type { ActiveFastingState, FastingGoal, FastingTier } from '../types';
+import type { ActiveFastingState, FastingGoal, FastingTier, PauseReason, UserSettings } from '../types';
+import { addLocalDays, getLocalDateString, isValidDateString, parseLocalDate } from './date';
 
 export interface FastingTierMeta {
   id: FastingTier;
@@ -345,4 +346,112 @@ export function formatMinutesHm(totalMinutes: number, zh: boolean): string {
     return `${h}小时${String(m).padStart(2, '0')}分`;
   }
   return `${h}h ${String(m).padStart(2, '0')}m`;
+}
+
+export interface PauseReasonMeta {
+  id: PauseReason;
+  icon: string;
+  labelZh: string;
+  labelEn: string;
+}
+
+export const PAUSE_REASONS: PauseReasonMeta[] = [
+  { id: 'social', icon: '🍲', labelZh: '聚餐应酬', labelEn: 'Social Meal' },
+  { id: 'period', icon: '🌸', labelZh: '生理期休养', labelEn: 'Cycle Rest' },
+  { id: 'travel', icon: '🧳', labelZh: '差旅奔波', labelEn: 'Travel' },
+  { id: 'recovery', icon: '🌿', labelZh: '身体调养', labelEn: 'Recovery' },
+];
+
+export interface EffectiveDaySchedule {
+  status: 'paused' | 'rest' | 'active';
+  tierId: FastingTier;
+  pauseReason?: PauseReason;
+}
+
+/**
+ * Resolves whether a given calendar day is under a Pause Pass, scheduled Rest Day, or active Fasting Tier.
+ */
+export function getEffectiveDaySchedule(
+  date: Date,
+  settings: Pick<UserSettings, 'fastingTier' | 'weeklySchedule' | 'pausePass'>
+): EffectiveDaySchedule {
+  const fallbackTier: FastingTier = settings.fastingTier || 'classic';
+  const dateStr = getLocalDateString(date);
+
+  const pausePass = settings.pausePass;
+  if (
+    pausePass &&
+    pausePass.active &&
+    isValidDateString(pausePass.startDate) &&
+    isValidDateString(pausePass.endDate) &&
+    dateStr >= pausePass.startDate &&
+    dateStr <= pausePass.endDate
+  ) {
+    return {
+      status: 'paused',
+      tierId: fallbackTier,
+      pauseReason: pausePass.reason,
+    };
+  }
+
+  const weekday = date.getDay();
+  const scheduled = settings.weeklySchedule?.[weekday];
+  if (scheduled === 'rest') {
+    return { status: 'rest', tierId: fallbackTier };
+  }
+  if (scheduled === 'beginner' || scheduled === 'intermediate' || scheduled === 'classic') {
+    return { status: 'active', tierId: scheduled };
+  }
+
+  return { status: 'active', tierId: fallbackTier };
+}
+
+/**
+ * Expands active Pause Pass date range and scheduled weekly 'rest' weekdays into YYYY-MM-DD protected dates.
+ */
+export function getProtectedDates(
+  settings: Pick<UserSettings, 'pausePass' | 'weeklySchedule'>,
+  referenceToday: string = getLocalDateString(),
+  lookbackDays: number = 400
+): string[] {
+  const protectedSet = new Set<string>();
+  const startBoundary = addLocalDays(referenceToday, -Math.max(1, lookbackDays));
+
+  const pausePass = settings.pausePass;
+  if (
+    pausePass &&
+    pausePass.active &&
+    isValidDateString(pausePass.startDate) &&
+    isValidDateString(pausePass.endDate) &&
+    pausePass.startDate <= pausePass.endDate
+  ) {
+    let cur = pausePass.startDate < startBoundary ? startBoundary : pausePass.startDate;
+    const cap = pausePass.endDate > referenceToday ? referenceToday : pausePass.endDate;
+    let guard = 0;
+    while (cur <= cap && guard < 420) {
+      protectedSet.add(cur);
+      cur = addLocalDays(cur, 1);
+      guard += 1;
+    }
+  }
+
+  const weekly = settings.weeklySchedule;
+  if (weekly) {
+    const restWeekdays = new Set<number>(
+      Object.entries(weekly)
+        .filter(([, val]) => val === 'rest')
+        .map(([k]) => Number(k))
+    );
+    if (restWeekdays.size > 0) {
+      for (let i = 0; i <= lookbackDays; i++) {
+        const dStr = addLocalDays(referenceToday, -i);
+        const day = parseLocalDate(dStr).getDay();
+        if (restWeekdays.has(day)) {
+          protectedSet.add(dStr);
+        }
+      }
+    }
+  }
+
+  return Array.from(protectedSet).sort();
 }

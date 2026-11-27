@@ -6,6 +6,28 @@ export type FastingGoal =
   | 'traditional_practice';
 
 export type FastingTier = 'beginner' | 'intermediate' | 'classic';
+export type PauseReason = 'social' | 'period' | 'travel' | 'recovery';
+
+export interface PausePass {
+  active: boolean;
+  reason: PauseReason;
+  startDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD
+}
+
+export type WeeklySchedule = Record<number, FastingTier | 'rest'>; // 0=Sun..6=Sat
+
+export interface WellnessRecord {
+  id: string;
+  date: string; // YYYY-MM-DD
+  energy: number; // 1..5
+  hunger: number; // 1..5
+  mood: number; // 1..5
+  sleep: number; // 1..5
+  waistCm?: number;
+  note?: string;
+  timestamp: number;
+}
 
 // 用户设置类型
 export interface UserSettings {
@@ -21,6 +43,8 @@ export interface UserSettings {
   traditionalMode?: boolean;
   selectedPilgrimageRouteId?: string;
   selectedStampId?: string;
+  weeklySchedule?: WeeklySchedule;
+  pausePass?: PausePass | null;
 }
 
 // 打坐类型
@@ -414,6 +438,25 @@ export interface RepairCardGift {
   fromNickname: string;
   toUserId: string;
   timestamp: number;
+}
+
+export interface BackupPayload {
+  schemaVersion: 1;
+  exportedAt: number;
+  appVersion: string;
+  data: {
+    settings?: UserSettings;
+    checkInRecords?: DailyCheckIn[];
+    mealRecords?: MealRecord[];
+    weightRecords?: WeightRecord[];
+    waterRecords?: WaterRecord[];
+    practiceRecords?: PracticeRecord[];
+    fastingSessions?: FastingSession[];
+    retentionState?: RetentionState;
+    sacredSiteCheckIns?: SacredSiteCheckIn[];
+    wellnessRecords?: WellnessRecord[];
+    hungerRescueCount?: number;
+  };
 }
 
 // 导航类型
