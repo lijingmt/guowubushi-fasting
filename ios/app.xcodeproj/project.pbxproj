@@ -16,7 +16,49 @@
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 		B2C3D4E52F02000100223344 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E52F02000200223344 /* SceneDelegate.swift */; };
 		FAA641F568907E4B10B3D6D4 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1332D14891951E0B7F6D2FE7 /* ExpoModulesProvider.swift */; };
+		E01000012F04000100112233 /* GuowuFastingAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000012F04000100112233 /* GuowuFastingAttributes.swift */; };
+		E01000022F04000100112233 /* GuowuHealthKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000022F04000100112233 /* GuowuHealthKit.swift */; };
+		E01000032F04000100112233 /* GuowuCloudSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000032F04000100112233 /* GuowuCloudSync.swift */; };
+		E01000042F04000100112233 /* GuowuWidgetBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000042F04000100112233 /* GuowuWidgetBridge.swift */; };
+		E01000052F04000100112233 /* GuowuNativeBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = E02000052F04000100112233 /* GuowuNativeBridge.m */; };
+		E01000112F05000100112233 /* GuowuStoreKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000112F05000100112233 /* GuowuStoreKit.swift */; };
+		E01000122F05000100112233 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E02000122F05000100112233 /* StoreKit.framework */; };
+		E01000062F04000100112233 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E02000062F04000100112233 /* HealthKit.framework */; };
+		E01000072F04000100112233 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E02000072F04000100112233 /* WidgetKit.framework */; settings = {ATTRIBUTES = (Weak, ); }; };
+		E01000082F04000100112233 /* ActivityKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E02000082F04000100112233 /* ActivityKit.framework */; settings = {ATTRIBUTES = (Weak, ); }; };
+		E01000092F04000100112233 /* GuowuWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E020000F2F04000100112233 /* GuowuWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		E010000A2F04000100112233 /* GuowuFastingAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000012F04000100112233 /* GuowuFastingAttributes.swift */; };
+		E010000B2F04000100112233 /* GuowuWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = E020000A2F04000100112233 /* GuowuWidget.swift */; };
+		E010000C2F04000100112233 /* GuowuLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = E020000B2F04000100112233 /* GuowuLiveActivity.swift */; };
+		E010000D2F04000100112233 /* GuowuWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = E020000C2F04000100112233 /* GuowuWidgetBundle.swift */; };
+		E010000E2F04000100112233 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E02000072F04000100112233 /* WidgetKit.framework */; };
+		E010000F2F04000100112233 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E02000092F04000100112233 /* SwiftUI.framework */; };
+		E01000102F04000100112233 /* ActivityKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E02000082F04000100112233 /* ActivityKit.framework */; settings = {ATTRIBUTES = (Weak, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		E04000032F04000100112233 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E04000052F04000100112233;
+			remoteInfo = GuowuWidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		E04000022F04000100112233 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				E01000092F04000100112233 /* GuowuWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		077D1639D2C63CADE0A3086E /* Pods-app.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-app.release.xcconfig"; path = "Target Support Files/Pods-app/Pods-app.release.xcconfig"; sourceTree = "<group>"; };
@@ -37,6 +79,23 @@
 		B2C3D4E52F02000200223344 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SceneDelegate.swift; path = app/SceneDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* app-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "app-Bridging-Header.h"; path = "app/app-Bridging-Header.h"; sourceTree = "<group>"; };
 		FB5E22F8BDD4A4AF52A8C181 /* Pods-app.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-app.debug.xcconfig"; path = "Target Support Files/Pods-app/Pods-app.debug.xcconfig"; sourceTree = "<group>"; };
+		E02000012F04000100112233 /* GuowuFastingAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GuowuFastingAttributes.swift; path = app/GuowuFastingAttributes.swift; sourceTree = "<group>"; };
+		E02000022F04000100112233 /* GuowuHealthKit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GuowuHealthKit.swift; path = app/GuowuHealthKit.swift; sourceTree = "<group>"; };
+		E02000032F04000100112233 /* GuowuCloudSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GuowuCloudSync.swift; path = app/GuowuCloudSync.swift; sourceTree = "<group>"; };
+		E02000042F04000100112233 /* GuowuWidgetBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GuowuWidgetBridge.swift; path = app/GuowuWidgetBridge.swift; sourceTree = "<group>"; };
+		E02000052F04000100112233 /* GuowuNativeBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = GuowuNativeBridge.m; path = app/GuowuNativeBridge.m; sourceTree = "<group>"; };
+		E02000112F05000100112233 /* GuowuStoreKit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GuowuStoreKit.swift; path = app/GuowuStoreKit.swift; sourceTree = "<group>"; };
+		E02000122F05000100112233 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
+		E02000062F04000100112233 /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
+		E02000072F04000100112233 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		E02000082F04000100112233 /* ActivityKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ActivityKit.framework; path = System/Library/Frameworks/ActivityKit.framework; sourceTree = SDKROOT; };
+		E02000092F04000100112233 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		E020000A2F04000100112233 /* GuowuWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuowuWidget.swift; sourceTree = "<group>"; };
+		E020000B2F04000100112233 /* GuowuLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuowuLiveActivity.swift; sourceTree = "<group>"; };
+		E020000C2F04000100112233 /* GuowuWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuowuWidgetBundle.swift; sourceTree = "<group>"; };
+		E020000D2F04000100112233 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		E020000E2F04000100112233 /* GuowuWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = GuowuWidget.entitlements; sourceTree = "<group>"; };
+		E020000F2F04000100112233 /* GuowuWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = GuowuWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -45,6 +104,20 @@
 			buildActionMask = 2147483647;
 			files = (
 				AE66213A3E92EAC8B54BFEAB /* libPods-app.a in Frameworks */,
+				E01000062F04000100112233 /* HealthKit.framework in Frameworks */,
+				E01000072F04000100112233 /* WidgetKit.framework in Frameworks */,
+				E01000082F04000100112233 /* ActivityKit.framework in Frameworks */,
+				E01000122F05000100112233 /* StoreKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E04000072F04000100112233 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E010000E2F04000100112233 /* WidgetKit.framework in Frameworks */,
+				E010000F2F04000100112233 /* SwiftUI.framework in Frameworks */,
+				E01000102F04000100112233 /* ActivityKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -56,6 +129,12 @@
 			children = (
 				F11748412D0307B40044C1D9 /* AppDelegate.swift */,
 				B2C3D4E52F02000200223344 /* SceneDelegate.swift */,
+				E02000012F04000100112233 /* GuowuFastingAttributes.swift */,
+				E02000022F04000100112233 /* GuowuHealthKit.swift */,
+				E02000032F04000100112233 /* GuowuCloudSync.swift */,
+				E02000042F04000100112233 /* GuowuWidgetBridge.swift */,
+				E02000052F04000100112233 /* GuowuNativeBridge.m */,
+				E02000112F05000100112233 /* GuowuStoreKit.swift */,
 				F11748442D0722820044C1D9 /* app-Bridging-Header.h */,
 				BB2F792B24A3F905000567C9 /* Supporting */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
@@ -67,10 +146,26 @@
 			name = app;
 			sourceTree = "<group>";
 		};
+		E04000012F04000100112233 /* GuowuWidget */ = {
+			isa = PBXGroup;
+			children = (
+				E020000A2F04000100112233 /* GuowuWidget.swift */,
+				E020000B2F04000100112233 /* GuowuLiveActivity.swift */,
+				E020000C2F04000100112233 /* GuowuWidgetBundle.swift */,
+				E020000D2F04000100112233 /* Info.plist */,
+				E020000E2F04000100112233 /* GuowuWidget.entitlements */,
+			);
+			path = GuowuWidget;
+			sourceTree = "<group>";
+		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
+				E02000062F04000100112233 /* HealthKit.framework */,
+				E02000072F04000100112233 /* WidgetKit.framework */,
+				E02000082F04000100112233 /* ActivityKit.framework */,
+				E02000122F05000100112233 /* StoreKit.framework */,
 				0F1A708BADA63F8550DAD7DD /* libPods-app.a */,
 			);
 			name = Frameworks;
@@ -95,6 +190,7 @@
 			isa = PBXGroup;
 			children = (
 				13B07FAE1A68108700A75B9A /* app */,
+				E04000012F04000100112233 /* GuowuWidget */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
@@ -110,6 +206,7 @@
 			isa = PBXGroup;
 			children = (
 				13B07F961A680F5B00A75B9A /* app.app */,
+				E020000F2F04000100112233 /* GuowuWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -155,15 +252,34 @@
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
 				1F3782179E580F257DC75CAB /* [CP] Embed Pods Frameworks */,
+				E04000022F04000100112233 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				E04000042F04000100112233 /* PBXTargetDependency */,
 			);
 			name = app;
 			productName = app;
 			productReference = 13B07F961A680F5B00A75B9A /* app.app */;
 			productType = "com.apple.product-type.application";
+		};
+		E04000052F04000100112233 /* GuowuWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E040000B2F04000100112233 /* Build configuration list for PBXNativeTarget "GuowuWidgetExtension" */;
+			buildPhases = (
+				E04000062F04000100112233 /* Sources */,
+				E04000072F04000100112233 /* Frameworks */,
+				E04000082F04000100112233 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = GuowuWidgetExtension;
+			productName = GuowuWidgetExtension;
+			productReference = E020000F2F04000100112233 /* GuowuWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -175,6 +291,11 @@
 				TargetAttributes = {
 					13B07F861A680F5B00A75B9A = {
 						LastSwiftMigration = 1250;
+						ProvisioningStyle = Manual;
+					};
+					E04000052F04000100112233 = {
+						CreatedOnToolsVersion = 15.0;
+						ProvisioningStyle = Manual;
 					};
 				};
 			};
@@ -195,6 +316,7 @@
 			projectRoot = "";
 			targets = (
 				13B07F861A680F5B00A75B9A /* app */,
+				E04000052F04000100112233 /* GuowuWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -209,6 +331,13 @@
 				D1E2F3A42F03000200112233 /* InfoPlist.strings in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
 				8B6F42416DB444B62007151F /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E04000082F04000100112233 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -351,11 +480,36 @@
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
 				B2C3D4E52F02000100223344 /* SceneDelegate.swift in Sources */,
+				E01000012F04000100112233 /* GuowuFastingAttributes.swift in Sources */,
+				E01000022F04000100112233 /* GuowuHealthKit.swift in Sources */,
+				E01000032F04000100112233 /* GuowuCloudSync.swift in Sources */,
+				E01000042F04000100112233 /* GuowuWidgetBridge.swift in Sources */,
+				E01000052F04000100112233 /* GuowuNativeBridge.m in Sources */,
+				E01000112F05000100112233 /* GuowuStoreKit.swift in Sources */,
 				FAA641F568907E4B10B3D6D4 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E04000062F04000100112233 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E010000A2F04000100112233 /* GuowuFastingAttributes.swift in Sources */,
+				E010000B2F04000100112233 /* GuowuWidget.swift in Sources */,
+				E010000C2F04000100112233 /* GuowuLiveActivity.swift in Sources */,
+				E010000D2F04000100112233 /* GuowuWidgetBundle.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		E04000042F04000100112233 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E04000052F04000100112233 /* GuowuWidgetExtension */;
+			targetProxy = E04000032F04000100112233 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		D1E2F3A42F03000100112233 /* InfoPlist.strings */ = {
@@ -379,7 +533,9 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = app/app.entitlements;
-				CURRENT_PROJECT_VERSION = 28;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 29;
 				DEVELOPMENT_TEAM = JDNC3D9869;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -392,7 +548,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.44;
+				MARKETING_VERSION = 1.0.45;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -401,6 +557,7 @@
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.guowu.fasting;
 				PRODUCT_NAME = app;
+				PROVISIONING_PROFILE_SPECIFIER = "guowu_main_dev_appgroup";
 				SWIFT_OBJC_BRIDGING_HEADER = "app/app-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -416,7 +573,9 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = app/app.entitlements;
-				CURRENT_PROJECT_VERSION = 28;
+				CODE_SIGN_IDENTITY = "Apple Distribution";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 29;
 				DEVELOPMENT_TEAM = JDNC3D9869;
 				INFOPLIST_FILE = app/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
@@ -424,7 +583,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.44;
+				MARKETING_VERSION = 1.0.45;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -433,6 +592,7 @@
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.guowu.fasting;
 				PRODUCT_NAME = app;
+				PROVISIONING_PROFILE_SPECIFIER = "guowu_main_appstore_v28";
 				SWIFT_OBJC_BRIDGING_HEADER = "app/app-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -468,7 +628,6 @@
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -531,7 +690,6 @@
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = YES;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -558,6 +716,67 @@
 			};
 			name = Release;
 		};
+		E04000092F04000100112233 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = GuowuWidget/GuowuWidget.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 29;
+				DEVELOPMENT_TEAM = JDNC3D9869;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = GuowuWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.45;
+				PRODUCT_BUNDLE_IDENTIFIER = com.guowu.fasting.GuowuWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "guowu_widget_dev_appgroup";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		E040000A2F04000100112233 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = GuowuWidget/GuowuWidget.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Distribution";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 29;
+				DEVELOPMENT_TEAM = JDNC3D9869;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = GuowuWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.45;
+				PRODUCT_BUNDLE_IDENTIFIER = com.guowu.fasting.GuowuWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "guowu_widget_appstore_v28";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -566,6 +785,15 @@
 			buildConfigurations = (
 				13B07F941A680F5B00A75B9A /* Debug */,
 				13B07F951A680F5B00A75B9A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E040000B2F04000100112233 /* Build configuration list for PBXNativeTarget "GuowuWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E04000092F04000100112233 /* Debug */,
+				E040000A2F04000100112233 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

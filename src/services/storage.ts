@@ -13,6 +13,7 @@ import {
   RetentionState,
   SacredSiteCheckIn,
   WellnessRecord,
+  CravingEvent,
   BackupPayload,
 } from '../types';
 import { DEFAULT_SETTINGS } from '../constants/achievements';
@@ -39,6 +40,7 @@ const KEYS = {
   RETENTION_STATE: '@guowu_retention_state', // 留存激励状态
   SACRED_SITE_CHECKINS: '@guowu_sacred_site_checkins', // 寺观地图打卡记录
   WELLNESS_RECORDS: '@guowu_wellness_records', // 身心体感与腰围记录
+  CRAVING_EVENTS: '@guowu_craving_events', // 十二时辰欲念潮汐记录
   HUNGER_RESCUE_COUNT: '@guowu_hunger_rescue_count', // 抗饿急救成功次数
 };
 
@@ -393,6 +395,7 @@ export const clearAllData = async (): Promise<void> => {
       KEYS.RETENTION_STATE,
       KEYS.SACRED_SITE_CHECKINS,
       KEYS.WELLNESS_RECORDS,
+      KEYS.CRAVING_EVENTS,
       KEYS.HUNGER_RESCUE_COUNT,
     ];
     for (const key of keys) {
@@ -786,6 +789,28 @@ export const saveWellnessRecord = async (record: WellnessRecord): Promise<Wellne
   }
 };
 
+export const getCravingEvents = async (): Promise<CravingEvent[]> => {
+  try {
+    const data = await AsyncStorage.getItem(KEYS.CRAVING_EVENTS);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Error getting craving events:', error);
+    return [];
+  }
+};
+
+export const saveCravingEvent = async (event: CravingEvent): Promise<CravingEvent[]> => {
+  try {
+    const existing = await getCravingEvents();
+    const next = [...existing, event].slice(-400);
+    await AsyncStorage.setItem(KEYS.CRAVING_EVENTS, JSON.stringify(next));
+    return next;
+  } catch (error) {
+    console.error('Error saving craving event:', error);
+    return getCravingEvents();
+  }
+};
+
 export const getHungerRescueCount = async (): Promise<number> => {
   try {
     const val = await AsyncStorage.getItem(KEYS.HUNGER_RESCUE_COUNT);
@@ -815,6 +840,7 @@ export const exportAllLocalData = async (appVersion: string): Promise<string> =>
     retentionState,
     sacredSiteCheckIns,
     wellnessRecords,
+    cravingEvents,
     hungerRescueCount,
   ] = await Promise.all([
     getSettings(),
@@ -827,6 +853,7 @@ export const exportAllLocalData = async (appVersion: string): Promise<string> =>
     getRetentionState(),
     getSacredSiteCheckIns(),
     getWellnessRecords(),
+    getCravingEvents(),
     getHungerRescueCount(),
   ]);
 
@@ -842,6 +869,7 @@ export const exportAllLocalData = async (appVersion: string): Promise<string> =>
       retentionState,
       sacredSiteCheckIns,
       wellnessRecords,
+      cravingEvents,
       hungerRescueCount,
     },
     appVersion
@@ -880,6 +908,9 @@ export const restoreAllLocalData = async (payload: BackupPayload): Promise<void>
   }
   if (d.wellnessRecords) {
     writes.push(AsyncStorage.setItem(KEYS.WELLNESS_RECORDS, JSON.stringify(d.wellnessRecords)));
+  }
+  if (d.cravingEvents) {
+    writes.push(AsyncStorage.setItem(KEYS.CRAVING_EVENTS, JSON.stringify(d.cravingEvents)));
   }
   if (typeof d.hungerRescueCount === 'number') {
     writes.push(AsyncStorage.setItem(KEYS.HUNGER_RESCUE_COUNT, String(Math.max(0, Math.floor(d.hungerRescueCount)))));

@@ -1,2 +1,4 @@
 "CFBundleDisplayName" = "Guowu Ayuno";
 "CFBundleName" = "Guowu Ayuno";
+"NSHealthShareUsageDescription" = "Sincroniza tu sueño, peso y pasos diarios para comparar días de ayuno en tu dispositivo.";
+"NSHealthUpdateUsageDescription" = "Guarda tus sesiones de meditación completadas como Minutos de Atención Plena en Salud.";

@@ -1,8 +1,10 @@
-import React, { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { useApp } from '../context/AppContext';
 import { isChineseLanguage } from '../utils/date';
 import { getSeasonalNutritionGuide } from '../utils/solarTerm';
+import { RefeedRitualModal } from './RefeedRitualModal';
 import { fs, rs, vs } from '../theme/responsive';
 
 interface SeasonalNutritionCardProps {
@@ -14,6 +16,7 @@ interface SeasonalNutritionCardProps {
  */
 export const SeasonalNutritionCard: React.FC<SeasonalNutritionCardProps> = ({ compact = false }) => {
   const { colors, language } = useApp();
+  const [showRefeed, setShowRefeed] = useState(false);
   const isZh = isChineseLanguage(language);
   const isEs = language === 'es';
   const guide = useMemo(() => getSeasonalNutritionGuide(new Date()), []);
@@ -54,7 +57,24 @@ export const SeasonalNutritionCard: React.FC<SeasonalNutritionCardProps> = ({ co
         <Text style={[styles.bodyText, { color: colors.text }]}>
           {isZh ? guide.refeedFirstBiteZh : guide.refeedFirstBiteEn}
         </Text>
+        <TouchableOpacity
+          style={[styles.ritualBtn, { backgroundColor: colors.primary + '16', borderColor: colors.primary + '44' }]}
+          onPress={() => {
+            Haptics.selectionAsync();
+            setShowRefeed(true);
+          }}
+        >
+          <Text style={[styles.ritualBtnText, { color: colors.primary }]}>
+            {isZh ? '🍵 开启 3 步温润开食仪式 →' : isEs ? '🍵 Ritual de Reapertura (3 Pasos) →' : '🍵 Start 3-Step Mindful Refeed Ritual →'}
+          </Text>
+        </TouchableOpacity>
       </View>
+
+      <RefeedRitualModal
+        visible={showRefeed}
+        fastingHours={16}
+        onClose={() => setShowRefeed(false)}
+      />
 
       <View style={styles.drinksRow}>
         <Text style={[styles.drinksLabel, { color: colors.textSecondary }]}>
@@ -134,5 +154,17 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: fs(11),
     fontWeight: '700',
+  },
+  ritualBtn: {
+    marginTop: vs(6),
+    borderRadius: rs(10),
+    borderWidth: 1,
+    paddingHorizontal: rs(10),
+    paddingVertical: vs(7),
+    alignItems: 'center',
+  },
+  ritualBtnText: {
+    fontSize: fs(11.5),
+    fontWeight: '800',
   },
 });

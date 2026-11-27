@@ -13,6 +13,8 @@ import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import { useApp } from '../context/AppContext';
 import { isChineseLanguage } from '../utils/date';
+import { CRAVING_TRIGGERS } from '../utils/cravingTide';
+import type { CravingTrigger } from '../types';
 import { fs, rs, vs } from '../theme/responsive';
 
 interface HungerRescueModalProps {
@@ -34,7 +36,7 @@ function getBreathPhase(secInCycle: number, isZh: boolean, isEs: boolean): strin
  * 15 分钟饥饿波峰倒计时 + 4-4-6 正念呼吸 + 无缝雨声 + 磬音 + 一键饮温水 + 抗饿成就记录
  */
 export const HungerRescueModal: React.FC<HungerRescueModalProps> = ({ visible, onClose }) => {
-  const { language, addWater, recordHungerRescue, hungerRescueCount, addPractice } = useApp();
+  const { language, addWater, recordHungerRescue, recordCravingEvent, hungerRescueCount, addPractice, openProStore } = useApp();
   const isZh = isChineseLanguage(language);
   const isEs = language === 'es';
 
@@ -42,6 +44,8 @@ export const HungerRescueModal: React.FC<HungerRescueModalProps> = ({ visible, o
   const [breathTick, setBreathTick] = useState(0);
   const [rainPlaying, setRainPlaying] = useState(false);
   const [waterAdded, setWaterAdded] = useState(false);
+  const [selectedTrigger, setSelectedTrigger] = useState<CravingTrigger>('habit');
+  const [hapticBreath, setHapticBreath] = useState(true);
 
   const rainSoundRef = useRef<Audio.Sound | null>(null);
   const bellSoundRef = useRef<Audio.Sound | null>(null);
@@ -76,7 +80,20 @@ export const HungerRescueModal: React.FC<HungerRescueModalProps> = ({ visible, o
 
     const timer = setInterval(() => {
       setSecondsLeft((prev) => (prev > 0 ? prev - 1 : 0));
-      setBreathTick((prev) => prev + 1);
+      setBreathTick((prev) => {
+        const nextTick = prev + 1;
+        if (hapticBreath) {
+          const sec = nextTick % CYCLE_SECONDS;
+          if (sec === 0 || sec === 2) {
+            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          } else if (sec === 4) {
+            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          } else if (sec === 8 || sec === 11) {
+            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
+          }
+        }
+        return nextTick;
+      });
     }, 1000);
 
     const breathLoop = Animated.loop(
@@ -93,7 +110,7 @@ export const HungerRescueModal: React.FC<HungerRescueModalProps> = ({ visible, o
       breathLoop.stop();
       void stopAllAudio();
     };
-  }, [visible, breathScale]);
+  }, [visible, breathScale, hapticBreath]);
 
   const toggleRainSound = async () => {
     Haptics.selectionAsync();
@@ -139,7 +156,13 @@ export const HungerRescueModal: React.FC<HungerRescueModalProps> = ({ visible, o
   const handleOvercameCraving = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const nextCount = await recordHungerRescue();
-    const elapsedMin = Math.floor((TOTAL_SECONDS - secondsLeft) / 60);
+    const durationSec = Math.max(0, TOTAL_SECONDS - secondsLeft);
+    await recordCravingEvent({
+      trigger: selectedTrigger,
+      survived: true,
+      durationSec,
+    });
+    const elapsedMin = Math.floor(durationSec / 60);
     if (elapsedMin >= 3) {
       await addPractice('meditation', elapsedMin, 'single_leg');
     }
@@ -148,10 +171,10 @@ export const HungerRescueModal: React.FC<HungerRescueModalProps> = ({ visible, o
     Alert.alert(
       isZh ? '🪷 念起即觉 · 成功稳住' : isEs ? '🪷 ¡Antojo Superado!' : 'Craving Surfed!',
       isZh
-        ? `你又熬过了一轮饥饿波峰！已累计成功抗饿 ${nextCount} 次。`
+        ? `你又熬过了一轮饥饿波峰！已累计成功抗饿 ${nextCount} 次，本次触发源已绘入「十二时辰欲念潮汐」。`
         : isEs
         ? `¡Pasaste otra ola de hambre! Total superadas: ${nextCount}.`
-        : `Another hunger wave passed! Total rescues: ${nextCount}.`
+        : `Another hunger wave passed! Total rescues: ${nextCount}. Logged to your 12-Shichen Craving Tide.`
     );
   };
 
@@ -225,6 +248,31 @@ export const HungerRescueModal: React.FC<HungerRescueModalProps> = ({ visible, o
             </View>
           </View>
 
+          <View style={styles.triggerSection}>
+            <Text style={styles.triggerHeading}>
+              {isZh ? '觉察念头（一键标记原因）' : isEs ? '¿Qué detonó el antojo?' : 'Spot the trigger'}
+            </Text>
+            <View style={styles.triggerRow}>
+              {CRAVING_TRIGGERS.map((tr) => {
+                const active = selectedTrigger === tr.id;
+                return (
+                  <TouchableOpacity
+                    key={tr.id}
+                    style={[styles.triggerChip, active && styles.triggerChipActive]}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setSelectedTrigger(tr.id);
+                    }}
+                  >
+                    <Text style={[styles.triggerText, active && styles.triggerTextActive]}>
+                      {tr.icon} {isZh ? tr.zh : isEs ? tr.es : tr.en}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
           <View style={styles.toolsRow}>
             <TouchableOpacity
               style={[styles.toolBtn, rainPlaying && styles.toolBtnActive]}
@@ -232,13 +280,24 @@ export const HungerRescueModal: React.FC<HungerRescueModalProps> = ({ visible, o
             >
               <Text style={styles.toolBtnText}>
                 {rainPlaying
-                  ? isZh ? '🌧️ 停止雨声' : isEs ? '🌧️ Parar Lluvia' : '🌧️ Stop Rain'
-                  : isZh ? '🌧️ 播放无缝雨声' : isEs ? '🌧️ Oír Lluvia' : '🌧️ Play Rain'}
+                  ? isZh ? '🌧️ 停止雨声' : isEs ? '🌧️ Lluvia Off' : '🌧️ Rain Off'
+                  : isZh ? '🌧️ 听雨声' : isEs ? '🌧️ Lluvia' : '🌧️ Rain'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.toolBtn, hapticBreath && styles.toolBtnActive]}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setHapticBreath((prev) => !prev);
+              }}
+            >
+              <Text style={styles.toolBtnText}>
+                {isZh ? (hapticBreath ? '🪷 闭眼触振开' : '🪷 闭眼触振关') : isEs ? '🪷 Vibración' : '🪷 Haptic Guide'}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.toolBtn} onPress={playBell}>
               <Text style={styles.toolBtnText}>
-                {isZh ? '🔔 轻敲一磬' : isEs ? '🔔 Campana Zen' : '🔔 Ring Bell'}
+                {isZh ? '🔔 一磬' : '🔔 Bell'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -258,6 +317,24 @@ export const HungerRescueModal: React.FC<HungerRescueModalProps> = ({ visible, o
           <TouchableOpacity style={styles.winBtn} onPress={handleOvercameCraving}>
             <Text style={styles.winBtnText}>
               {isZh ? '🪷 我稳住了！（完成本轮急救）' : isEs ? '🪷 ¡Antojo Superado! (Registrar)' : '🪷 Craving Passed! (Log Win)'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={{ marginTop: vs(10), paddingVertical: vs(4) }}
+            onPress={() => {
+              Haptics.selectionAsync();
+              void stopAllAudio();
+              onClose();
+              openProStore();
+            }}
+          >
+            <Text style={{ fontSize: fs(11.5), color: '#D4B475', textAlign: 'center', fontWeight: '600' }}>
+              {isZh
+                ? '如觉有帮助，欢迎随喜请作者喝杯清茶 →'
+                : isEs
+                ? '¿Te ayudó? Invita un té al autor →'
+                : 'Helpful? Buy the indie developer a cup of tea →'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -355,6 +432,43 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#73BC9E',
     marginTop: vs(4),
+  },
+  triggerSection: {
+    width: '100%',
+    marginBottom: vs(10),
+  },
+  triggerHeading: {
+    fontSize: fs(11),
+    fontWeight: '700',
+    color: '#A8B8B0',
+    marginBottom: vs(6),
+    textAlign: 'center',
+  },
+  triggerRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: rs(6),
+    justifyContent: 'center',
+  },
+  triggerChip: {
+    paddingHorizontal: rs(9),
+    paddingVertical: vs(5),
+    borderRadius: rs(10),
+    backgroundColor: '#20332D',
+    borderWidth: 1,
+    borderColor: '#345047',
+  },
+  triggerChipActive: {
+    backgroundColor: '#C68B3330',
+    borderColor: '#E0A84E',
+  },
+  triggerText: {
+    fontSize: fs(11),
+    fontWeight: '700',
+    color: '#C7D3CD',
+  },
+  triggerTextActive: {
+    color: '#FFE3B0',
   },
   toolsRow: {
     flexDirection: 'row',

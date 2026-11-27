@@ -1,2 +1,4 @@
 "CFBundleDisplayName" = "Guowu Fasting";
 "CFBundleName" = "Guowu Fasting";
+"NSHealthShareUsageDescription" = "Sync your sleep, weight and daily steps to compare fasting days with regular days on your device.";
+"NSHealthUpdateUsageDescription" = "Save completed meditation sessions as Mindful Minutes in Apple Health.";

@@ -7,6 +7,20 @@ export type FastingGoal =
 
 export type FastingTier = 'beginner' | 'intermediate' | 'classic';
 export type PauseReason = 'social' | 'period' | 'travel' | 'recovery';
+export type ThemeSkinId = 'bamboo' | 'celadon' | 'dunhuang' | 'ink';
+export type PosterStyleId = 'xuan_paper' | 'song_celadon' | 'vermilion_gilt' | 'midnight_ink';
+export type CravingTrigger = 'physical' | 'stress' | 'habit' | 'social';
+
+export interface CravingEvent {
+  id: string;
+  date: string; // YYYY-MM-DD
+  hour: number; // 0..23
+  shichenIndex: number; // 0..11
+  trigger: CravingTrigger;
+  survived: boolean;
+  durationSec: number;
+  timestamp: number;
+}
 
 export interface PausePass {
   active: boolean;
@@ -39,6 +53,10 @@ export interface UserSettings {
   theme: 'light' | 'dark' | 'auto'; // 主题
   language: 'zh' | 'zh-Hant' | 'en' | 'es' | 'ja' | 'ko' | 'fr' | 'de' | 'pt' | 'ru' | 'ar' | 'it' | 'hi' | 'vi' | 'th'; // 语言
   languageManuallySelected?: boolean;
+  themeSkin?: ThemeSkinId;
+  posterStyle?: PosterStyleId;
+  iCloudAutoSync?: boolean;
+  appleHealthEnabled?: boolean;
   fastingGoal?: FastingGoal;
   fastingTier?: FastingTier;
   traditionalMode?: boolean;
@@ -456,6 +474,7 @@ export interface BackupPayload {
     retentionState?: RetentionState;
     sacredSiteCheckIns?: SacredSiteCheckIn[];
     wellnessRecords?: WellnessRecord[];
+    cravingEvents?: CravingEvent[];
     hungerRescueCount?: number;
   };
 }

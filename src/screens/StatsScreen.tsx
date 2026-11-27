@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -6,14 +6,19 @@ import {
   ScrollView,
   TouchableOpacity,
   Modal,
+  Platform,
 } from 'react-native';
 import { LineChart, BarChart } from 'react-native-chart-kit';
+import Svg, { Circle as SvgCircle, Line as SvgLine, Path as SvgPath, Text as SvgText } from 'react-native-svg';
+import * as Haptics from 'expo-haptics';
 import { useApp } from '../context/AppContext';
 import { Card } from '../components/Card';
 import { AchievementShareCard } from '../components/AchievementShareCard';
 import { ACHIEVEMENTS } from '../constants/achievements';
 import { getLocalDateString, isChineseLanguage, parseLocalDate } from '../utils/date';
 import { computeWellnessSummary } from '../utils/backup';
+import { analyzeCravingTide } from '../utils/cravingTide';
+import { isProWellnessWindow } from '../utils/proCatalog';
 import { useResponsiveLayout } from '../theme/responsive';
 
 function colorWithOpacity(color: string, opacity: number): string {
@@ -36,7 +41,22 @@ function colorWithOpacity(color: string, opacity: number): string {
 }
 
 export const StatsScreen: React.FC = () => {
-  const { t, stats, settings, checkInRecords, weightRecords, wellnessRecords, hungerRescueCount, colors, language } = useApp();
+  const {
+    t,
+    stats,
+    settings,
+    checkInRecords,
+    weightRecords,
+    wellnessRecords,
+    cravingEvents,
+    hungerRescueCount,
+    healthMetrics,
+    syncAppleHealth,
+    colors,
+    language,
+    isProUnlocked,
+    openProStore,
+  } = useApp();
   const rl = useResponsiveLayout();
   const isZh = isChineseLanguage(language);
   const isEs = language === 'es';
@@ -50,7 +70,14 @@ export const StatsScreen: React.FC = () => {
     return `0.0 ${unit}`;
   };
   const [viewMode, setViewMode] = useState<'overview' | 'weight' | 'wellness' | 'achievements'>('overview');
+  const [wellnessWindow, setWellnessWindow] = useState<7 | 30 | 90>(7);
   const [showShareModal, setShowShareModal] = useState(false);
+
+  useEffect(() => {
+    if (!isProUnlocked && isProWellnessWindow(wellnessWindow)) {
+      setWellnessWindow(7);
+    }
+  }, [isProUnlocked, wellnessWindow]);
 
   // 准备图表数据 - 最近7天的打卡记录
   const getLast7DaysData = () => {
@@ -85,7 +112,26 @@ export const StatsScreen: React.FC = () => {
 
   const weekData = getLast7DaysData();
   const weightData = getWeightData();
-  const wellnessSummary = computeWellnessSummary(wellnessRecords, checkInRecords);
+  const wellnessSummary = useMemo(
+    () => computeWellnessSummary(wellnessRecords, checkInRecords, undefined, wellnessWindow),
+    [wellnessRecords, checkInRecords, wellnessWindow]
+  );
+  const cravingTide = useMemo(() => analyzeCravingTide(cravingEvents), [cravingEvents]);
+  const appleHealthSleepComparison = useMemo(() => {
+    const map = healthMetrics?.sleepByDate || {};
+    const entries = Object.entries(map);
+    if (entries.length === 0) return null;
+    const completed = new Set(checkInRecords.filter((c) => c.completed).map((c) => c.date));
+    const fastHrs: number[] = [];
+    const restHrs: number[] = [];
+    for (const [d, h] of entries) {
+      if (completed.has(d)) fastHrs.push(h);
+      else restHrs.push(h);
+    }
+    const avgArr = (arr: number[]) =>
+      arr.length > 0 ? Number((arr.reduce((s, n) => s + n, 0) / arr.length).toFixed(1)) : null;
+    return { fastingAvg: avgArr(fastHrs), ordinaryAvg: avgArr(restHrs) };
+  }, [healthMetrics, checkInRecords]);
   const waistRecords = wellnessRecords
     .filter((r) => typeof r.waistCm === 'number' && Number.isFinite(r.waistCm) && r.waistCm > 0)
     .slice(-10)
@@ -353,6 +399,38 @@ export const StatsScreen: React.FC = () => {
 
       {viewMode === 'wellness' && (
         <>
+          <View style={[styles.tabContainer, { backgroundColor: colors.card, marginBottom: 12 }]}>
+            {([7, 30, 90] as const).map((days) => {
+              const locked = !isProUnlocked && isProWellnessWindow(days);
+              const active = !locked && wellnessWindow === days;
+              return (
+                <TouchableOpacity
+                  key={days}
+                  style={[styles.tab, active && [styles.tabActive, { backgroundColor: colors.primary }]]}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    if (locked) {
+                      openProStore(
+                        isZh
+                          ? `近 ${days} 日深度身心与腰围趋势对比为清修 Pro 功能`
+                          : isEs
+                          ? `Tendencias de ${days} días requieren Guowu Pro.`
+                          : `${days}-day wellness & waist trend analytics require Guowu Pro.`
+                      );
+                      return;
+                    }
+                    setWellnessWindow(days);
+                  }}
+                >
+                  <Text style={[styles.tabText, { color: colors.textSecondary }, active && styles.tabTextActive]}>
+                    {isZh ? `近 ${days} 日` : `${days}D`}
+                    {locked ? ' 🔒' : ''}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
           <View style={styles.statsGrid}>
             <Card style={styles.statItem}>
               <Text style={styles.statIcon}>⚡</Text>
@@ -360,7 +438,7 @@ export const StatsScreen: React.FC = () => {
                 {wellnessSummary.totalRecords > 0 ? wellnessSummary.avgEnergy : '--'}
               </Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                {isZh ? '近7日精力 (/5)' : '7d Energy (/5)'}
+                {isZh ? `近${wellnessWindow}日精力 (/5)` : `${wellnessWindow}d Energy (/5)`}
               </Text>
             </Card>
             <Card style={styles.statItem}>
@@ -369,7 +447,7 @@ export const StatsScreen: React.FC = () => {
                 {wellnessSummary.totalRecords > 0 ? wellnessSummary.avgSleep : '--'}
               </Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                {isZh ? '近7日睡眠 (/5)' : '7d Sleep (/5)'}
+                {isZh ? `近${wellnessWindow}日睡眠 (/5)` : `${wellnessWindow}d Sleep (/5)`}
               </Text>
             </Card>
             <Card style={styles.statItem}>
@@ -378,7 +456,7 @@ export const StatsScreen: React.FC = () => {
                 {wellnessSummary.totalRecords > 0 ? wellnessSummary.avgMood : '--'}
               </Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                {isZh ? '近7日心境 (/5)' : '7d Mood (/5)'}
+                {isZh ? `近${wellnessWindow}日心境 (/5)` : `${wellnessWindow}d Mood (/5)`}
               </Text>
             </Card>
             <Card style={styles.statItem}>
@@ -387,16 +465,130 @@ export const StatsScreen: React.FC = () => {
                 {wellnessSummary.totalRecords > 0 ? wellnessSummary.avgHunger : '--'}
               </Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                {isZh ? '近7日轻饥 (/5)' : '7d Hunger (/5)'}
+                {isZh ? `近${wellnessWindow}日轻饥 (/5)` : `${wellnessWindow}d Hunger (/5)`}
               </Text>
             </Card>
           </View>
+
+          {Platform.OS === 'ios' && (
+            <Card style={styles.chartCard}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 10 }}>
+                <Text style={[styles.chartTitle, { color: colors.text, marginBottom: 0 }]}>
+                  {isZh ? '❤️ Apple Health 体征联动' : isEs ? '❤️ Apple Health' : '❤️ Apple Health'}
+                </Text>
+                <TouchableOpacity
+                  style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: colors.primary + '1A' }}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    void syncAppleHealth();
+                  }}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primary }}>
+                    {isZh ? '同步健康数据' : isEs ? 'Sincronizar' : 'Sync Now'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <View style={{ width: '100%', gap: 8 }}>
+                <View style={styles.weightRecordRow}>
+                  <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+                    {isZh ? '昨夜睡眠 / 今日步数' : 'Last Night Sleep / Steps'}
+                  </Text>
+                  <Text style={{ fontSize: 13.5, fontWeight: '700', color: colors.text }}>
+                    {healthMetrics?.lastNightSleepHours != null ? `${healthMetrics.lastNightSleepHours.toFixed(1)}h` : '--'} ·{' '}
+                    {healthMetrics?.todaySteps != null ? `${healthMetrics.todaySteps} steps` : '--'}
+                  </Text>
+                </View>
+                {appleHealthSleepComparison && (
+                  <View style={styles.weightRecordRow}>
+                    <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+                      {isZh ? '断食日 vs 普通日睡眠' : 'Fasting vs Regular Sleep'}
+                    </Text>
+                    <Text style={{ fontSize: 13.5, fontWeight: '700', color: colors.primary }}>
+                      {appleHealthSleepComparison.fastingAvg ?? '--'}h / {appleHealthSleepComparison.ordinaryAvg ?? '--'}h
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </Card>
+          )}
+
+          {wellnessSummary.waistSeries.length >= 2 && (
+            <Card style={styles.chartCard}>
+              <Text style={[styles.chartTitle, { color: colors.text }]}>
+                {isZh ? `近 ${wellnessWindow} 日腰围变化趋势` : `${wellnessWindow}-Day Waist Trend`}
+              </Text>
+              <LineChart
+                data={{
+                  labels: wellnessSummary.waistSeries.slice(-7).map((w) => w.date.slice(5)),
+                  datasets: [
+                    {
+                      data: wellnessSummary.waistSeries
+                        .slice(-7)
+                        .map((w) => (useInches ? Number((w.waistCm / 2.54).toFixed(1)) : w.waistCm)),
+                    },
+                  ],
+                }}
+                width={rl.chartWidth}
+                height={180}
+                chartConfig={chartConfig}
+                bezier
+                withInnerLines={false}
+                withOuterLines={false}
+              />
+            </Card>
+          )}
+
+          <Card style={styles.chartCard}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 8 }}>
+              <Text style={[styles.chartTitle, { color: colors.text, marginBottom: 0 }]}>
+                {isZh ? '🌊 十二时辰欲念潮汐图' : isEs ? '🌊 Marea de Antojos (12 Horas)' : '🌊 12-Shichen Craving Tide'}
+              </Text>
+              <Text style={{ fontSize: 12, fontWeight: '800', color: colors.primary }}>
+                {cravingTide.totalEvents > 0
+                  ? `${cravingTide.survivalRatePct}% ${isZh ? '稳住' : 'kept'}`
+                  : `${hungerRescueCount} ${isZh ? '次' : 'wins'}`}
+              </Text>
+            </View>
+            {(() => {
+              const svgW = Math.min(320, rl.chartWidth);
+              const svgH = 92;
+              const maxCount = Math.max(1, ...cravingTide.buckets.map((b) => b.count));
+              const pts = cravingTide.buckets.map((b, i) => {
+                const x = 14 + (i / 11) * (svgW - 28);
+                const y = 66 - (b.count / maxCount) * 48;
+                return { x, y, count: b.count, short: isZh ? b.nameZh[0] : b.shortEn.slice(0, 2) };
+              });
+              const pathD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+              return (
+                <Svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`}>
+                  <SvgLine x1="12" y1="68" x2={svgW - 12} y2="68" stroke={colors.divider} strokeWidth="1" />
+                  <SvgPath d={pathD} stroke={colors.primary} strokeWidth="2.2" fill="none" />
+                  {pts.map((p, idx) => (
+                    <React.Fragment key={idx}>
+                      <SvgCircle
+                        cx={p.x}
+                        cy={p.y}
+                        r={p.count > 0 ? 4 : 2}
+                        fill={p.count > 0 ? colors.warning : colors.border}
+                      />
+                      <SvgText x={p.x} y="84" fontSize="8.5" textAnchor="middle" fill={colors.textSecondary}>
+                        {p.short}
+                      </SvgText>
+                    </React.Fragment>
+                  ))}
+                </Svg>
+              );
+            })()}
+            <Text style={{ fontSize: 12, lineHeight: 18, color: colors.textSecondary, marginTop: 6, width: '100%' }}>
+              {isZh ? cravingTide.insightZh : isEs ? cravingTide.insightEs : cravingTide.insightEn}
+            </Text>
+          </Card>
 
           {wellnessSummary.totalRecords > 0 ? (
             <>
               <Card style={styles.chartCard}>
                 <Text style={[styles.chartTitle, { color: colors.text }]}>
-                  {isZh ? '近7日四维体感均值' : '7-Day Wellness Averages'}
+                  {isZh ? `近${wellnessWindow}日四维体感均值` : `${wellnessWindow}-Day Wellness Averages`}
                 </Text>
                 <BarChart
                   data={{

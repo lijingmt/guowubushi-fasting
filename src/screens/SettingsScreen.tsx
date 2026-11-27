@@ -27,9 +27,12 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { getLocalDateString, isChineseLanguage } from '../utils/date';
 import { vs, useResponsiveLayout } from '../theme/responsive';
+import { THEME_SKINS } from '../theme/colors';
 import { FASTING_GOALS, FASTING_TIERS, PAUSE_REASONS } from '../utils/fastingRhythm';
+import { getTeaSupporterBadge, isProSkin } from '../utils/proCatalog';
 import { parseAndValidateBackupPayload } from '../utils/backup';
 import { computePilgrimageProgress } from '../utils/pilgrimage';
+import * as Haptics from 'expo-haptics';
 import type { FastingGoal, FastingTier } from '../types';
 
 // 开发者模式
@@ -66,8 +69,17 @@ export const SettingsScreen: React.FC = () => {
     stats,
     growthProfile,
     retentionState,
+    healthMetrics,
+    syncAppleHealth,
+    cloudSyncStatus,
+    syncToICloud,
+    restoreFromICloud,
     exportBackupJson,
     importBackupJson,
+    proState,
+    isProUnlocked,
+    openProStore,
+    restoreProPurchases,
   } = useApp();
   const social = useSocial();
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -91,6 +103,7 @@ export const SettingsScreen: React.FC = () => {
     () => computePilgrimageProgress(stats, settings.selectedPilgrimageRouteId),
     [stats, settings.selectedPilgrimageRouteId]
   );
+  const teaBadge = getTeaSupporterBadge(proState.teaTipsCount);
 
   const handleToggleNotifications = async (value: boolean) => {
     if (value) {
@@ -279,9 +292,27 @@ export const SettingsScreen: React.FC = () => {
             <Text style={[styles.profileSealText, { color: colors.primary }]}>Lv.{growthProfile.level}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.profileName, { color: colors.text }]}>
-              {social.nickname || (isZh ? '清修同修' : 'Mindful Practitioner')}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+              <Text style={[styles.profileName, { color: colors.text }]}>
+                {social.nickname || (isZh ? '清修同修' : 'Mindful Practitioner')}
+              </Text>
+              {teaBadge && (
+                <View
+                  style={{
+                    backgroundColor: '#B93A321A',
+                    borderColor: '#B93A32',
+                    borderWidth: 1,
+                    borderRadius: 8,
+                    paddingHorizontal: 7,
+                    paddingVertical: 2,
+                  }}
+                >
+                  <Text style={{ fontSize: 10.5, fontWeight: '800', color: '#B93A32' }}>
+                    {isZh ? teaBadge.titleZh : isEs ? teaBadge.titleEs : teaBadge.titleEn}
+                  </Text>
+                </View>
+              )}
+            </View>
             <Text style={[styles.profileMeta, { color: colors.textSecondary }]}>
               {isZh
                 ? `${growthProfile.title} · 连胜 ${stats.currentStreak} 天 · 行脚 ${pilgrimage.totalKm} km`
@@ -320,6 +351,39 @@ export const SettingsScreen: React.FC = () => {
           ))}
         </View>
       </Card>
+
+      {Platform.OS === 'ios' && (
+        <>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+            {isZh ? '清修 Pro 与随喜奉茶' : isEs ? 'Guowu Pro y Apoyo' : 'Guowu Pro & Tea Support'}
+          </Text>
+          <Card>
+            <SettingItem
+              label={
+                isProUnlocked
+                  ? isZh ? '🪷 清修 Pro 生效中' : isEs ? '🪷 Guowu Pro Activo' : '🪷 Guowu Pro Active'
+                  : isZh ? '🪷 解锁清修 Pro（7 天免费试用）' : isEs ? '🪷 Guowu Pro (7 días gratis)' : '🪷 Unlock Guowu Pro (7-Day Trial)'
+              }
+              value={isProUnlocked ? (isZh ? '管理与茶礼' : 'Manage') : isZh ? '¥48/年起' : 'Skins · Stats'}
+              onPress={() => openProStore()}
+            />
+            <Divider />
+            <SettingItem
+              label={isZh ? '🍵 随喜奉茶 · 支持独立开发' : isEs ? '🍵 Invitar un Té al Autor' : '🍵 Voluntary Tea Tip'}
+              value={proState.teaTipsCount > 0 ? `×${proState.teaTipsCount}` : isZh ? '不锁功能' : 'Optional'}
+              onPress={() => openProStore()}
+            />
+            <Divider />
+            <SettingItem
+              label={isZh ? '🔄 恢复购买' : isEs ? '🔄 Restaurar Compras' : '🔄 Restore Purchases'}
+              onPress={() => {
+                Haptics.selectionAsync();
+                void restoreProPurchases();
+              }}
+            />
+          </Card>
+        </>
+      )}
 
       {/* 节律与模式 */}
       <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
@@ -514,22 +578,160 @@ export const SettingsScreen: React.FC = () => {
             setShowWeightUnitPicker(true);
           }}
         />
+        <Divider />
+        <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+          <Text style={[styles.settingLabel, { color: colors.text, marginBottom: 8 }]}>
+            {isZh ? '🎨 东方美学皮肤' : isEs ? '🎨 Tema Oriental' : '🎨 Eastern Aesthetic Skin'}
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            {THEME_SKINS.map((skin) => {
+              const locked = !isProUnlocked && isProSkin(skin.id);
+              const active = !locked && (settings.themeSkin || 'bamboo') === skin.id;
+              return (
+                <TouchableOpacity
+                  key={skin.id}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    if (locked) {
+                      openProStore(
+                        isZh
+                          ? `「${skin.nameZh}」属于清修 Pro 东方美学皮肤（可先 7 天免费试用）`
+                          : isEs
+                          ? `El tema "${skin.nameEs}" es exclusivo de Guowu Pro.`
+                          : `"${skin.nameEn}" is included in Guowu Pro (7-day free trial).`
+                      );
+                      return;
+                    }
+                    void updateSettings({ themeSkin: skin.id });
+                  }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    paddingHorizontal: 10,
+                    paddingVertical: 7,
+                    borderRadius: 12,
+                    borderWidth: 1.5,
+                    borderColor: active ? skin.swatchPrimary : colors.border,
+                    backgroundColor: active ? skin.swatchPrimary + '1A' : colors.backgroundSecondary,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 14,
+                      height: 14,
+                      borderRadius: 7,
+                      backgroundColor: skin.swatchPrimary,
+                      borderWidth: 2,
+                      borderColor: skin.swatchBg,
+                    }}
+                  />
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: active ? colors.primary : colors.text }}>
+                    {isZh ? skin.nameZh : isEs ? skin.nameEs : skin.nameEn}
+                    {locked ? ' 🔒' : ''}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
       </Card>
 
-      {/* 轻享 Pro 路线预告（核心功能永久免费） */}
+      {Platform.OS === 'ios' && (
+        <>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+            {isZh ? 'Apple 生态联动' : isEs ? 'Ecosistema Apple' : 'Apple Ecosystem Sync'}
+          </Text>
+          <Card>
+            <SettingItem
+              label={isZh ? '❤️ Apple Health 健康同步' : isEs ? '❤️ Apple Health' : '❤️ Apple Health Sync'}
+              value={
+                healthMetrics?.authorized
+                  ? isZh
+                    ? `已连接 · 睡眠 ${healthMetrics.lastNightSleepHours?.toFixed(1) ?? '--'}h`
+                    : `Connected · ${healthMetrics.lastNightSleepHours?.toFixed(1) ?? '--'}h`
+                  : isZh
+                  ? '点击授权读取'
+                  : 'Tap to connect'
+              }
+              onPress={async () => {
+                Haptics.selectionAsync();
+                const res = await syncAppleHealth();
+                Alert.alert(
+                  isZh ? 'Apple Health' : 'Apple Health',
+                  res.authorized
+                    ? isZh
+                      ? `已同步：昨夜睡眠 ${res.lastNightSleepHours?.toFixed(1) ?? '--'}h · 今日步数 ${res.todaySteps ?? '--'}`
+                      : `Synced sleep: ${res.lastNightSleepHours?.toFixed(1) ?? '--'}h · steps: ${res.todaySteps ?? '--'}`
+                    : isZh
+                    ? '未能获取健康权限，可在 iPhone「健康」中开启授权。'
+                    : 'Health access not granted. Enable in iPhone Health app.'
+                );
+              }}
+            />
+            <Divider />
+            <View style={{ paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flex: 1, paddingRight: 10 }}>
+                <Text style={[styles.settingLabel, { color: colors.text }]}>
+                  {isZh ? '☁️ iCloud 私有自动备份' : isEs ? '☁️ Copia en iCloud' : '☁️ iCloud Auto Backup'}
+                </Text>
+                <Text style={[styles.settingDesc, { color: colors.textSecondary, marginTop: 2 }]}>
+                  {cloudSyncStatus.lastSyncedAt
+                    ? `${isZh ? '上次同步：' : 'Last synced: '}${new Date(cloudSyncStatus.lastSyncedAt).toLocaleString()}`
+                    : isZh
+                    ? '换机无感恢复所有打卡与记录'
+                    : 'Private iCloud sync across your iPhones'}
+                </Text>
+              </View>
+              <Switch
+                value={Boolean(settings.iCloudAutoSync)}
+                onValueChange={(val) => {
+                  Haptics.selectionAsync();
+                  void updateSettings({ iCloudAutoSync: val });
+                  if (val) {
+                    void syncToICloud();
+                  }
+                }}
+                trackColor={{ false: colors.divider, true: colors.primary + '80' }}
+                thumbColor={settings.iCloudAutoSync ? colors.primary : colors.textLight}
+              />
+            </View>
+            <Divider />
+            <SettingItem
+              label={isZh ? '⬆️ 立即同步至 iCloud' : isEs ? '⬆️ Sincronizar a iCloud' : '⬆️ Sync to iCloud Now'}
+              onPress={async () => {
+                Haptics.selectionAsync();
+                const res = await syncToICloud();
+                Alert.alert('iCloud', res.message);
+              }}
+            />
+            <Divider />
+            <SettingItem
+              label={isZh ? '⬇️ 从 iCloud 恢复备份' : isEs ? '⬇️ Restaurar de iCloud' : '⬇️ Restore from iCloud'}
+              onPress={async () => {
+                Haptics.selectionAsync();
+                const res = await restoreFromICloud();
+                Alert.alert('iCloud', res.message);
+              }}
+            />
+          </Card>
+        </>
+      )}
+
+      {/* 已上线亮点 & 永久免费承诺 */}
       <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-        {isZh ? '未来计划 · 轻享 Pro' : isEs ? 'Próximamente · Guowu Plus' : 'Roadmap · Guowu Plus'}
+        {isZh ? '清净修行体验' : isEs ? 'Experiencia Consciente' : 'Mindful Experience'}
       </Text>
       <Card>
         <Text style={[styles.settingLabel, { color: colors.primary, fontWeight: '700', marginBottom: 6 }]}>
-          {isZh ? '当前核心功能 100% 免费开放' : isEs ? 'Todas las funciones principales son 100% gratis' : 'All Core Features Are 100% Free'}
+          {isZh ? '零广告 · 本地隐私优先 · 核心永久免费' : isEs ? 'Cero Anuncios · Privacidad Local · Núcleo Gratis' : 'Zero Ads · Local Privacy First · Core Always Free'}
         </Text>
         <Text style={[styles.settingDesc, { color: colors.textSecondary, lineHeight: 19 }]}>
           {isZh
-            ? '后续规划：二十四节气限定日签模板、白噪音混音台、更多国内外云行脚路线，以及加密 iCloud 自动备份。'
+            ? '支持东方美学 4 套皮肤、双轨白噪音混音、闭眼触觉观息、节气日签、十二时辰欲念潮汐分析，以及 iOS 桌面小组件/灵动岛与 Apple Health / iCloud 同步。'
             : isEs
-            ? 'Próximas mejoras: plantillas de los 24 términos solares, mezclador de sonido, más rutas de peregrinaje y copia en iCloud.'
-            : 'Upcoming perks: full 24-solar-term poster themes, ambient sound mixer, extended pilgrimage routes & iCloud sync.'}
+            ? 'Incluye 4 temas orientales, mezclador dual, respiración táctil, marea de antojos y sincronización con Apple Health, iCloud y Widgets.'
+            : 'Includes 4 Eastern skins, dual ambient mixer, eyes-closed haptic breathwork, 12-Shichen Craving Tide, plus Apple Health, iCloud & Widgets.'}
         </Text>
       </Card>
 
@@ -601,7 +803,7 @@ export const SettingsScreen: React.FC = () => {
           onPress={handleShareApp}
           rightElement={<Text style={{ fontSize: 20 }}>📤</Text>}
         />
-        <SettingItem label={t.version} value={Constants.expoConfig?.version || '1.0.44'} />
+        <SettingItem label={t.version} value={Constants.expoConfig?.version || '1.0.45'} />
         <SettingItem
           label={(language === 'zh' || language === 'zh-Hant') ? '隐私政策' : 'Privacy Policy'}
           onPress={() => {

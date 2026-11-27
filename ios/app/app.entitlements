@@ -4,5 +4,13 @@
   <dict>
     <key>aps-environment</key>
     <string>development</string>
+    <key>com.apple.developer.healthkit</key>
+    <true/>
+    <key>com.apple.developer.ubiquity-kvstore-identifier</key>
+    <string>$(TeamIdentifierPrefix)$(CFBundleIdentifier)</string>
+    <key>com.apple.security.application-groups</key>
+    <array>
+      <string>group.com.guowu.fasting</string>
+    </array>
   </dict>
 </plist>

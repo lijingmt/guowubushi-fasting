@@ -38,6 +38,21 @@ import { SOLAR_TERMS, getSeasonalNutritionGuide, getSolarTermInfo } from '../src
 import { PILGRIMAGE_ROUTES, calculatePilgrimageKm, computePilgrimageProgress } from '../src/utils/pilgrimage';
 import { SACRED_SITES } from '../src/data/sacredSites';
 import {
+  ALL_IAP_PRODUCT_IDS,
+  PRO_MONTHLY_ID,
+  PRO_PRODUCT_FALLBACKS,
+  PRO_YEARLY_ID,
+  TEA_TIP_FALLBACKS,
+  TEA_TIP_IDS,
+  canUsePausePassThisMonth,
+  getTeaSupporterBadge,
+  isProPosterStyle,
+  isProSkin,
+  isProWellnessWindow,
+  resolveEffectivePosterStyle,
+  resolveEffectiveThemeSkin,
+} from '../src/utils/proCatalog';
+import {
   MAP_WIDTH,
   MAP_HEIGHT,
   projectLonLat,
@@ -49,6 +64,10 @@ import {
   parseAndValidateBackupPayload,
   serializeBackupPayload,
 } from '../src/utils/backup';
+import { getThemeColors, THEME_SKINS } from '../src/theme/colors';
+import { POSTER_STYLES } from '../src/utils/posterStyles';
+import { buildRefeedRitual } from '../src/utils/refeedRitual';
+import { analyzeCravingTide } from '../src/utils/cravingTide';
 import { computeResponsiveLayout } from '../src/utils/responsiveLayout';
 import {
   CHALDEAN_ORDER,
@@ -1126,6 +1145,127 @@ async function main() {
     assert.equal(templeMapSrc.includes('DEFAULT_CHINA_MAP_ZOOM = 20'), false, 'Must not force 20x default zoom');
     assert.ok(templeMapSrc.includes('DEFAULT_MAP_ZOOM = MIN_MAP_ZOOM'), 'Default map zoom must be 1x');
     assert.ok(templeMapSrc.includes("useState<MapRegionFilter>('all')"), 'Default region filter must show global world view');
+  });
+
+  await runSection('22. 4 Eastern aesthetic skins (light & dark) and 4 solar-term poster styles', () => {
+    assert.equal(THEME_SKINS.length, 4);
+    for (const skin of THEME_SKINS) {
+      const light = getThemeColors('light', skin.id);
+      const dark = getThemeColors('dark', skin.id);
+      assert.ok(light.background && light.primary && light.card && light.text);
+      assert.ok(dark.background && dark.primary && dark.card && dark.text);
+      assert.notEqual(light.background, dark.background);
+    }
+
+    assert.equal(POSTER_STYLES.length, 4);
+    for (const st of POSTER_STYLES) {
+      assert.ok(st.nameZh && st.nameEn && st.nameEs && st.paperBg && st.titleColor);
+    }
+  });
+
+  await runSection('23. 7/30/90-day wellness windowing, waist series & cravingEvents backup round-trip', () => {
+    const records = [
+      { id: 'w1', date: '2026-09-10', energy: 2, hunger: 4, mood: 3, sleep: 2, waistCm: 84.0, timestamp: 1 },
+      { id: 'w2', date: '2026-11-10', energy: 4, hunger: 2, mood: 4, sleep: 4, waistCm: 81.5, timestamp: 2 },
+      { id: 'w3', date: '2026-11-26', energy: 5, hunger: 1, mood: 5, sleep: 5, waistCm: 80.0, timestamp: 3 },
+    ];
+    const checkIns = [
+      { id: 'c1', date: '2026-11-26', completed: true, brokeAfterNoon: false, checkInTime: 3 },
+    ];
+    const w7 = computeWellnessSummary(records, checkIns, '2026-11-27', 7);
+    const w30 = computeWellnessSummary(records, checkIns, '2026-11-27', 30);
+    const w90 = computeWellnessSummary(records, checkIns, '2026-11-27', 90);
+
+    assert.equal(w7.windowCount, 1);
+    assert.equal(w30.windowCount, 2);
+    assert.equal(w90.windowCount, 3);
+    assert.equal(w30.waistSeries.length, 2);
+    assert.equal(w90.waistDeltaCm, 4.0);
+
+    const json = serializeBackupPayload(
+      {
+        wellnessRecords: records,
+        cravingEvents: [
+          { id: 'ce1', date: '2026-11-27', hour: 20, shichenIndex: 10, trigger: 'habit', survived: true, durationSec: 900, timestamp: 4 },
+        ],
+      },
+      '1.0.44'
+    );
+    const parsed = parseAndValidateBackupPayload(json);
+    assert.equal(parsed.ok, true);
+    if (parsed.ok) {
+      assert.equal(parsed.summary.cravingEvents, 1);
+      assert.equal(parsed.payload.data.cravingEvents?.[0].trigger, 'habit');
+    }
+  });
+
+  await runSection('24. Mindful Refeed Ritual across durations & 12-Shichen Craving Tide analytics', () => {
+    const cjkRegex = /[\u4e00-\u9fff]/;
+    for (const hrs of [12, 16, 20]) {
+      for (let m = 0; m < 12; m++) {
+        const dt = new Date(2026, m, 15, 12, 0, 0);
+        const plan = buildRefeedRitual(hrs, dt);
+        assert.equal(plan.steps.length, 3);
+        assert.ok(plan.headlineZh && plan.headlineEn && plan.headlineEs);
+        assert.equal(cjkRegex.test(plan.headlineEn), false);
+        assert.equal(cjkRegex.test(plan.headlineEs), false);
+        for (const step of plan.steps) {
+          assert.equal(cjkRegex.test(step.titleEn), false);
+          assert.equal(cjkRegex.test(step.descEn), false);
+          assert.equal(cjkRegex.test(step.titleEs), false);
+          assert.equal(cjkRegex.test(step.descEs), false);
+        }
+      }
+    }
+
+    const tide = analyzeCravingTide([
+      { id: 'a', date: '2026-11-25', hour: 20, shichenIndex: 10, trigger: 'habit', survived: true, durationSec: 900, timestamp: 1 },
+      { id: 'b', date: '2026-11-26', hour: 19, shichenIndex: 10, trigger: 'habit', survived: true, durationSec: 800, timestamp: 2 },
+      { id: 'c', date: '2026-11-27', hour: 15, shichenIndex: 8, trigger: 'stress', survived: false, durationSec: 120, timestamp: 3 },
+    ]);
+    assert.equal(tide.totalEvents, 3);
+    assert.equal(tide.survivedCount, 2);
+    assert.equal(tide.survivalRatePct, 67);
+    assert.equal(tide.peakBucket?.shichenIndex, 10);
+    assert.equal(tide.dominantTrigger?.id, 'habit');
+    assert.ok(tide.insightZh.includes('戌时'));
+    assert.ok(tide.insightEn.includes('Pericardium (Xu)'));
+  });
+
+  await runSection('25. StoreKit 2 Pro Catalog IDs, description <= 55 chars & entitlement fallback guards', () => {
+    assert.equal(ALL_IAP_PRODUCT_IDS.length, 5);
+    assert.equal(ALL_IAP_PRODUCT_IDS.includes('com.guowu.fasting.pro.lifetime' as any), false);
+    assert.ok(ALL_IAP_PRODUCT_IDS.includes(PRO_MONTHLY_ID));
+    assert.ok(ALL_IAP_PRODUCT_IDS.includes(PRO_YEARLY_ID));
+    assert.equal(TEA_TIP_IDS.length, 3);
+
+    for (const item of [...Object.values(PRO_PRODUCT_FALLBACKS), ...TEA_TIP_FALLBACKS]) {
+      assert.ok(item.descZh.length <= 55, `descZh too long for ${item.id}: ${item.descZh.length}`);
+      assert.ok(item.descEn.length <= 55, `descEn too long for ${item.id}: ${item.descEn.length}`);
+    }
+
+    assert.equal(isProSkin('bamboo'), false);
+    assert.equal(isProSkin('celadon'), true);
+    assert.equal(isProPosterStyle('xuan_paper'), false);
+    assert.equal(isProPosterStyle('midnight_ink'), true);
+    assert.equal(isProWellnessWindow(7), false);
+    assert.equal(isProWellnessWindow(30), true);
+    assert.equal(isProWellnessWindow(90), true);
+
+    assert.equal(resolveEffectiveThemeSkin('celadon', false), 'bamboo');
+    assert.equal(resolveEffectiveThemeSkin('celadon', true), 'celadon');
+    assert.equal(resolveEffectivePosterStyle('vermilion_gilt', false), 'xuan_paper');
+    assert.equal(resolveEffectivePosterStyle('vermilion_gilt', true), 'vermilion_gilt');
+
+    const now = new Date(2026, 10, 27);
+    assert.equal(canUsePausePassThisMonth({ isProUnlocked: false, usageMonth: '2026-11', monthlyCount: 0, now }), true);
+    assert.equal(canUsePausePassThisMonth({ isProUnlocked: false, usageMonth: '2026-11', monthlyCount: 1, now }), false);
+    assert.equal(canUsePausePassThisMonth({ isProUnlocked: false, usageMonth: '2026-10', monthlyCount: 3, now }), true);
+    assert.equal(canUsePausePassThisMonth({ isProUnlocked: true, usageMonth: '2026-11', monthlyCount: 99, now }), true);
+
+    assert.equal(getTeaSupporterBadge(0), null);
+    assert.equal(getTeaSupporterBadge(1)?.titleZh, '🍵 清茶知音');
+    assert.equal(getTeaSupporterBadge(3)?.titleZh, '🍵 同修护持');
   });
 
   console.log('\nALL VERIFICATION & STRESS TESTS PASSED');

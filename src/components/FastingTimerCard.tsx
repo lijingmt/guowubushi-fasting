@@ -10,6 +10,7 @@ import {
   saveLastFastingDuration,
 } from '../services/storage';
 import { getPhysiologicalStage } from '../utils/fastingRhythm';
+import { RefeedRitualModal } from './RefeedRitualModal';
 import type { Language } from '../i18n/translations';
 
 interface FastingTimerCardProps {
@@ -30,6 +31,8 @@ export const FastingTimerCard: React.FC<FastingTimerCardProps> = ({ colors, lang
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
   const [showBackfillModal, setShowBackfillModal] = useState(false);
+  const [showRefeedModal, setShowRefeedModal] = useState(false);
+  const [refeedHours, setRefeedHours] = useState(16);
   const [backfillHours, setBackfillHours] = useState(16);
   const [backfillEndedHoursAgo, setBackfillEndedHoursAgo] = useState(0);
   const [pendingQuickStart, setPendingQuickStart] = useState(false); // 是否在同意免责声明后快速开始
@@ -92,8 +95,13 @@ export const FastingTimerCard: React.FC<FastingTimerCardProps> = ({ colors, lang
   // 检查是否完成
   useEffect(() => {
     if (initialized && activeFasting && timeLeft.hours === 0 && timeLeft.minutes === 0 && timeLeft.seconds === 0) {
+      const completedHours = Math.max(1, (Date.now() - activeFasting.startTime) / (1000 * 60 * 60));
       completeFastingSession();
       setInitialized(false);
+      if (completedHours >= 8) {
+        setRefeedHours(Math.round(completedHours * 10) / 10);
+        setShowRefeedModal(true);
+      }
     }
   }, [timeLeft, activeFasting, initialized]);
 
@@ -422,6 +430,12 @@ export const FastingTimerCard: React.FC<FastingTimerCardProps> = ({ colors, lang
         colors={colors}
         language={language}
         initialHours={lastFastingDuration}
+      />
+
+      <RefeedRitualModal
+        visible={showRefeedModal}
+        fastingHours={refeedHours}
+        onClose={() => setShowRefeedModal(false)}
       />
     </>
   );

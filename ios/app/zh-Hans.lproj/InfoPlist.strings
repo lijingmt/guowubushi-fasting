@@ -1,2 +1,4 @@
 "CFBundleDisplayName" = "过午不食";
 "CFBundleName" = "过午不食";
+"NSHealthShareUsageDescription" = "读取睡眠、体重与今日步数，用于本地对比断食日与普通日的身心恢复差异。";
+"NSHealthUpdateUsageDescription" = "将您完成的静坐打坐时长写入 Apple「健康」正念分钟。";

@@ -8,6 +8,7 @@ import { SocialProvider } from './src/context/SocialContext';
 import { AppNavigator } from './src/navigation/Tabs';
 import { WelcomeScreen, checkTermsAgreed } from './src/components/WelcomeScreen';
 import { SplashScreen } from './src/components/SplashScreen';
+import { ProStoreModal } from './src/components/ProStoreModal';
 
 // 开发模式：加载模拟数据脚本
 if (__DEV__) {
@@ -60,7 +61,12 @@ const AppContent: React.FC = () => {
   }
 
   // 显示主应用
-  return <AppNavigator />;
+  return (
+    <>
+      <AppNavigator />
+      <ProStoreModal />
+    </>
+  );
 };
 
 export default function App() {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, createContext, useContext, ReactNode } from 'react';
-import { useColorScheme, Platform } from 'react-native';
+import { Alert, AppState, useColorScheme, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { getLocales } from 'expo-localization';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -24,12 +24,14 @@ import {
   DailyRewardResult,
   FriendEncouragement,
   WellnessRecord,
+  CravingEvent,
+  CravingTrigger,
 } from '../types';
 import Constants from 'expo-constants';
 import { DEFAULT_SETTINGS } from '../constants/achievements';
 import { getLocalDateString, isChineseLanguage } from '../utils/date';
 import { resolveDeviceLocale, type DeviceLocaleInput } from '../utils/locale';
-import { FASTING_TIERS, getProtectedDates } from '../utils/fastingRhythm';
+import { FASTING_TIERS, getChineseShichen, getProtectedDates } from '../utils/fastingRhythm';
 import { computeUserStats } from '../utils/stats';
 import { parseAndValidateBackupPayload, type BackupSummary } from '../utils/backup';
 import {
@@ -60,11 +62,23 @@ import {
   saveRetentionState,
   getWellnessRecords,
   saveWellnessRecord,
+  getCravingEvents,
+  saveCravingEvent,
   getHungerRescueCount,
   incrementHungerRescueCount,
   exportAllLocalData,
   restoreAllLocalData,
 } from '../services/storage';
+import {
+  syncAppleHealthMetrics,
+  type NativeHealthMetrics,
+} from '../services/nativeHealth';
+import {
+  getICloudStatus,
+  pullBackupFromICloud,
+  pushBackupToICloud,
+  type CloudSyncStatus,
+} from '../services/cloudSync';
 import {
   DEFAULT_RETENTION_STATE,
   buildDailyTasks,
@@ -78,8 +92,24 @@ import {
   normalizeRetentionState,
 } from '../utils/retention';
 import { getTranslations, type Language, type TranslationStrings } from '../i18n/translations';
-import { Colors, lightColors, darkColors } from '../theme/colors';
+import { Colors, getThemeColors } from '../theme/colors';
 import { saveWidgetSnapshot } from '../utils/widgetSnapshot';
+import {
+  DEFAULT_PRO_STATE,
+  fetchStoreKitProducts,
+  incrementMonthlyPausePassUsage,
+  loadProState,
+  purchaseNativeProduct,
+  restoreNativePurchases,
+  syncNativeEntitlements,
+  type ProEntitlementState,
+  type StoreKitProductInfo,
+} from '../services/iap';
+import {
+  canUsePausePassThisMonth,
+  resolveEffectiveThemeSkin,
+  TEA_TIP_IDS,
+} from '../utils/proCatalog';
 
 const DAILY_REMINDER_NOTIFICATION_ID_KEY = '@guowu_daily_reminder_notification_id';
 const CUTOFF_REMINDER_NOTIFICATION_ID_KEY = '@guowu_cutoff_reminder_notification_id';
@@ -182,12 +212,19 @@ interface AppContextType {
   cancelFastingSession: () => Promise<void>;
   completeFastingSession: () => Promise<void>;
 
-  // 身心体感 & 抗饿急救 & 备份恢复
+  // 身心体感与抗饿急救 & 原生健康/iCloud 同步
   wellnessRecords: WellnessRecord[];
   todayWellness: WellnessRecord | null;
   saveDailyWellness: (input: Omit<WellnessRecord, 'id' | 'date' | 'timestamp'>) => Promise<void>;
+  cravingEvents: CravingEvent[];
+  recordCravingEvent: (input: { trigger: CravingTrigger; survived: boolean; durationSec?: number }) => Promise<void>;
   hungerRescueCount: number;
   recordHungerRescue: () => Promise<number>;
+  healthMetrics: NativeHealthMetrics | null;
+  syncAppleHealth: () => Promise<NativeHealthMetrics>;
+  cloudSyncStatus: CloudSyncStatus;
+  syncToICloud: () => Promise<{ success: boolean; message: string }>;
+  restoreFromICloud: () => Promise<{ success: boolean; message: string }>;
   exportBackupJson: () => Promise<string>;
   importBackupJson: (rawJson: string) => Promise<{ success: boolean; message: string; summary?: BackupSummary }>;
 
@@ -206,6 +243,23 @@ interface AppContextType {
   recordReceivedFriendEncouragement: (encouragement: FriendEncouragement) => Promise<void>;
   consumeRepairCardForGift: () => Promise<boolean>;
   receiveRepairCardGifts: (count: number) => Promise<void>;
+
+  // Pro 会员与随喜奉茶
+  proState: ProEntitlementState;
+  isProUnlocked: boolean;
+  proProducts: StoreKitProductInfo[];
+  proStoreVisible: boolean;
+  proStoreHint: string | null;
+  proBusy: boolean;
+  teaThankYouProductId: string | null;
+  openProStore: (hint?: string) => void;
+  closeProStore: () => void;
+  dismissTeaThankYou: () => void;
+  refreshProEntitlements: () => Promise<void>;
+  purchaseProProduct: (productId: string) => Promise<void>;
+  restoreProPurchases: () => Promise<void>;
+  canActivatePausePassThisMonth: boolean;
+  recordPausePassUsage: () => Promise<void>;
 
   // 加载状态
   isLoading: boolean;
@@ -229,13 +283,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [language, setLanguage] = useState<Language>(initialDeviceLocale.language);
   const dailyReminderScheduleTokenRef = useRef(0);
 
-  // 根据主题设置确定颜色
-  const colors: Colors = (() => {
-    if (settings.theme === 'auto') {
-      return systemColorScheme === 'dark' ? darkColors : lightColors;
-    }
-    return settings.theme === 'dark' ? darkColors : lightColors;
-  })();
+  const [proState, setProState] = useState<ProEntitlementState>(DEFAULT_PRO_STATE);
+  const proStateRef = useRef<ProEntitlementState>(DEFAULT_PRO_STATE);
+  const [proProducts, setProProducts] = useState<StoreKitProductInfo[]>([]);
+  const [proStoreVisible, setProStoreVisible] = useState(false);
+  const [proStoreHint, setProStoreHint] = useState<string | null>(null);
+  const [proBusy, setProBusy] = useState(false);
+  const [teaThankYouProductId, setTeaThankYouProductId] = useState<string | null>(null);
+  const isProUnlocked = Platform.OS === 'ios' ? proState.isPro : true;
+
+  // 根据主题设置 + 东方美学皮肤确定颜色（非 Pro 平滑回落默认青竹主题）
+  const resolvedScheme: 'light' | 'dark' =
+    settings.theme === 'auto'
+      ? systemColorScheme === 'dark'
+        ? 'dark'
+        : 'light'
+      : settings.theme === 'dark'
+      ? 'dark'
+      : 'light';
+  const colors: Colors = getThemeColors(
+    resolvedScheme,
+    resolveEffectiveThemeSkin(settings.themeSkin || 'bamboo', isProUnlocked)
+  );
 
   // 打卡
   const [checkInRecords, setCheckInRecords] = useState<DailyCheckIn[]>([]);
@@ -302,9 +371,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [retentionState, setRetentionState] = useState<RetentionState>(DEFAULT_RETENTION_STATE);
   const retentionStateRef = useRef<RetentionState>(DEFAULT_RETENTION_STATE);
 
-  // 身心体感与抗饿急救
+  // 身心体感与抗饿急救 & Apple Health / iCloud 状态
   const [wellnessRecords, setWellnessRecords] = useState<WellnessRecord[]>([]);
+  const [cravingEvents, setCravingEvents] = useState<CravingEvent[]>([]);
   const [hungerRescueCount, setHungerRescueCount] = useState(0);
+  const [healthMetrics, setHealthMetrics] = useState<NativeHealthMetrics | null>(null);
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<CloudSyncStatus>({
+    available: false,
+    hasBackup: false,
+    lastSyncedAt: null,
+  });
 
   const [isLoading, setIsLoading] = useState(true);
 
@@ -447,7 +523,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         savedHealthSync,
         savedRetentionState,
         savedWellness,
+        savedCravings,
         savedRescueCount,
+        initialCloudStatus,
+        savedProState,
       ] = await Promise.all([
         getCheckInRecords(),
         getMealRecords(),
@@ -459,7 +538,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         getHealthSyncStatus(),
         getRetentionState(),
         getWellnessRecords(),
+        getCravingEvents(),
         getHungerRescueCount(),
+        getICloudStatus(),
+        loadProState(),
       ]);
       const today = getLocalDateString();
 
@@ -515,7 +597,29 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       // 加载身心体感与抗饿统计
       setWellnessRecords(savedWellness);
+      setCravingEvents(savedCravings);
       setHungerRescueCount(savedRescueCount);
+      setCloudSyncStatus(initialCloudStatus);
+      proStateRef.current = savedProState;
+      setProState(savedProState);
+
+      if (Platform.OS === 'ios') {
+        void fetchStoreKitProducts().then((items) => {
+          if (items.length > 0) setProProducts(items);
+        });
+        void syncNativeEntitlements(savedProState).then((synced) => {
+          proStateRef.current = synced;
+          setProState(synced);
+        });
+      }
+
+      if (savedSettings.appleHealthEnabled && Platform.OS === 'ios') {
+        void syncAppleHealthMetrics().then((metrics) => {
+          if (metrics.authorized) {
+            setHealthMetrics(metrics);
+          }
+        });
+      }
     } catch (error) {
       console.error('Error initializing data:', error);
     } finally {
@@ -1110,15 +1214,88 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setWellnessRecords(next);
   };
 
+  const recordCravingEvent = async (input: {
+    trigger: CravingTrigger;
+    survived: boolean;
+    durationSec?: number;
+  }): Promise<void> => {
+    const now = new Date();
+    const shichen = getChineseShichen(now.getHours());
+    const event: CravingEvent = {
+      id: `craving_${Date.now()}`,
+      date: getLocalDateString(now),
+      hour: now.getHours(),
+      shichenIndex: shichen.index,
+      trigger: input.trigger,
+      survived: input.survived,
+      durationSec: Math.max(0, Math.round(input.durationSec || 0)),
+      timestamp: Date.now(),
+    };
+    const next = await saveCravingEvent(event);
+    setCravingEvents(next);
+  };
+
   const recordHungerRescue = async (): Promise<number> => {
     const next = await incrementHungerRescueCount();
     setHungerRescueCount(next);
     return next;
   };
 
+  const syncAppleHealth = async (): Promise<NativeHealthMetrics> => {
+    const metrics = await syncAppleHealthMetrics();
+    setHealthMetrics(metrics);
+    if (metrics.authorized) {
+      await updateHealthSync({ healthKitEnabled: true });
+      await updateSettings({ appleHealthEnabled: true });
+    }
+    return metrics;
+  };
+
   const exportBackupJson = async (): Promise<string> => {
-    const version = Constants.expoConfig?.version || '1.0.38';
+    const version = Constants.expoConfig?.version || '1.0.44';
     return exportAllLocalData(version);
+  };
+
+  const syncToICloud = async (): Promise<{ success: boolean; message: string }> => {
+    const isZh = isChineseLanguage(language);
+    const json = await exportBackupJson();
+    const res = await pushBackupToICloud(json);
+    if (res.success) {
+      const nextStatus: CloudSyncStatus = {
+        available: true,
+        hasBackup: true,
+        lastSyncedAt: res.lastSyncedAt || Date.now(),
+      };
+      setCloudSyncStatus(nextStatus);
+      return {
+        success: true,
+        message: isZh ? '已加密同步至您的 iCloud 私有账户。' : 'Encrypted backup synced to your iCloud.',
+      };
+    }
+    return {
+      success: false,
+      message: isZh ? '当前设备暂未开启 iCloud 云同步或处于离线状态。' : 'iCloud sync is unavailable or offline on this device.',
+    };
+  };
+
+  const restoreFromICloud = async (): Promise<{ success: boolean; message: string }> => {
+    const isZh = isChineseLanguage(language);
+    const pulled = await pullBackupFromICloud();
+    if (!pulled.found || !pulled.jsonString) {
+      return {
+        success: false,
+        message: isZh ? '您的 iCloud 中暂无可恢复的过午不食备份。' : 'No Guowu Fasting backup found in iCloud.',
+      };
+    }
+    const res = await importBackupJson(pulled.jsonString);
+    if (res.success && pulled.lastSyncedAt) {
+      setCloudSyncStatus({
+        available: true,
+        hasBackup: true,
+        lastSyncedAt: pulled.lastSyncedAt,
+      });
+    }
+    return { success: res.success, message: res.message };
   };
 
   const importBackupJson = async (
@@ -1332,13 +1509,180 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   useEffect(() => {
+    proStateRef.current = proState;
+  }, [proState]);
+
+  const refreshProEntitlements = async (): Promise<void> => {
+    if (Platform.OS !== 'ios') return;
+    const synced = await syncNativeEntitlements(proStateRef.current);
+    proStateRef.current = synced;
+    setProState(synced);
+    if (proProducts.length === 0) {
+      const items = await fetchStoreKitProducts();
+      if (items.length > 0) setProProducts(items);
+    }
+  };
+
+  useEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        void refreshProEntitlements();
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
+  const openProStore = (hint?: string) => {
+    setProStoreHint(hint || null);
+    setProStoreVisible(true);
+    if (Platform.OS === 'ios' && proProducts.length === 0) {
+      void fetchStoreKitProducts().then((items) => {
+        if (items.length > 0) setProProducts(items);
+      });
+    }
+  };
+
+  const closeProStore = () => {
+    setProStoreVisible(false);
+    setProStoreHint(null);
+  };
+
+  const dismissTeaThankYou = () => setTeaThankYouProductId(null);
+
+  const purchaseProProduct = async (productId: string): Promise<void> => {
+    const isZhLang = isChineseLanguage(language);
+    if (Platform.OS !== 'ios') {
+      Alert.alert(
+        isZhLang ? '提示' : 'Notice',
+        isZhLang
+          ? 'Android 版所有功能目前完全免费开放，无需内购。'
+          : 'All features are currently unlocked for free on this platform.'
+      );
+      return;
+    }
+    setProBusy(true);
+    try {
+      const { result, state } = await purchaseNativeProduct(productId, proStateRef.current);
+      proStateRef.current = state;
+      setProState(state);
+
+      if (result.status === 'purchased') {
+        const isTeaTip = (TEA_TIP_IDS as readonly string[]).includes(productId);
+        if (isTeaTip) {
+          setProStoreVisible(false);
+          setTeaThankYouProductId(productId);
+        } else {
+          setProStoreVisible(false);
+          setProStoreHint(null);
+          Alert.alert(
+            isZhLang ? '🪷 已解锁清修 Pro' : '🪷 Guowu Pro Unlocked',
+            isZhLang
+              ? '感谢支持！已解锁全部东方美学皮肤、节气日签、双轨混音、30/90日深析与无限护航暂停券。'
+              : 'Thank you! All themes, poster templates, dual sound mixer, 30/90d charts, and unlimited Pause Passes are now unlocked.'
+          );
+        }
+      } else if (result.status === 'pending') {
+        Alert.alert(
+          isZhLang ? '等待确认' : 'Purchase Pending',
+          isZhLang
+            ? '您的购买正在等待家庭或系统授权，批准后将自动生效。'
+            : 'Your purchase is awaiting approval and will unlock automatically.'
+        );
+      } else if (result.status === 'unavailable') {
+        Alert.alert(
+          isZhLang ? '商品暂未就绪' : 'Product Unavailable',
+          isZhLang
+            ? '未从 App Store 获取到此商品信息，请确认网络及沙盒账号后重试。'
+            : 'Unable to load product from App Store. Check network or Sandbox account and try again.'
+        );
+      } else if (result.status === 'error' || result.status === 'unverified') {
+        Alert.alert(
+          isZhLang ? '购买未完成' : 'Purchase Failed',
+          result.errorMessage || (isZhLang ? '交易验证未通过，请稍后重试。' : 'Transaction could not be verified.')
+        );
+      }
+    } finally {
+      setProBusy(false);
+    }
+  };
+
+  const restoreProPurchases = async (): Promise<void> => {
+    const isZhLang = isChineseLanguage(language);
+    if (Platform.OS !== 'ios') return;
+    setProBusy(true);
+    try {
+      const { state, ok, error } = await restoreNativePurchases(proStateRef.current);
+      proStateRef.current = state;
+      setProState(state);
+      if (!ok) {
+        Alert.alert(
+          isZhLang ? '恢复失败' : 'Restore Failed',
+          error || (isZhLang ? '无法连接 App Store，请稍后重试。' : 'Could not sync with App Store.')
+        );
+        return;
+      }
+      if (state.isPro) {
+        setProStoreVisible(false);
+        Alert.alert(
+          isZhLang ? '✓ 恢复成功' : '✓ Restored',
+          isZhLang ? '已为您恢复「清修 Pro」订阅权益。' : 'Your Guowu Pro subscription has been restored.'
+        );
+      } else {
+        Alert.alert(
+          isZhLang ? '未发现有效订阅' : 'No Active Subscription',
+          isZhLang
+            ? '当前 Apple ID 名下暂无生效中的「清修 Pro」订阅。'
+            : 'No active Guowu Pro subscription was found for this Apple ID.'
+        );
+      }
+    } finally {
+      setProBusy(false);
+    }
+  };
+
+  const canActivatePausePassThisMonth = useMemo(
+    () =>
+      canUsePausePassThisMonth({
+        isProUnlocked,
+        usageMonth: proState.pausePassUsageMonth,
+        monthlyCount: proState.pausePassMonthlyCount,
+      }),
+    [isProUnlocked, proState.pausePassUsageMonth, proState.pausePassMonthlyCount]
+  );
+
+  const recordPausePassUsage = async (): Promise<void> => {
+    const next = await incrementMonthlyPausePassUsage(proStateRef.current);
+    proStateRef.current = next;
+    setProState(next);
+  };
+
+  useEffect(() => {
     void saveWidgetSnapshot({
       tier: settings.fastingTier || 'classic',
       activeFasting,
       currentStreak: stats.currentStreak,
       hasCheckedToday,
+      language,
+      themeSkin: resolveEffectiveThemeSkin(settings.themeSkin || 'bamboo', isProUnlocked),
     });
-  }, [settings.fastingTier, activeFasting, stats.currentStreak, hasCheckedToday]);
+  }, [settings.fastingTier, settings.themeSkin, isProUnlocked, activeFasting, stats.currentStreak, hasCheckedToday, language]);
+
+  useEffect(() => {
+    if (isLoading || !settings.iCloudAutoSync || Platform.OS !== 'ios') return;
+    const timer = setTimeout(() => {
+      void syncToICloud();
+    }, 3500);
+    return () => clearTimeout(timer);
+  }, [
+    isLoading,
+    settings.iCloudAutoSync,
+    checkInRecords.length,
+    fastingSessions.length,
+    wellnessRecords.length,
+    weightRecords.length,
+    practiceRecords.length,
+  ]);
 
   const t = getTranslations(language);
 
@@ -1384,8 +1728,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         wellnessRecords,
         todayWellness: wellnessRecords.find((r) => r.date === todayDate) || null,
         saveDailyWellness,
+        cravingEvents,
+        recordCravingEvent,
         hungerRescueCount,
         recordHungerRescue,
+        healthMetrics,
+        syncAppleHealth,
+        cloudSyncStatus,
+        syncToICloud,
+        restoreFromICloud,
         exportBackupJson,
         importBackupJson,
         retentionState,
@@ -1402,6 +1753,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         recordReceivedFriendEncouragement,
         consumeRepairCardForGift,
         receiveRepairCardGifts,
+        proState,
+        isProUnlocked,
+        proProducts,
+        proStoreVisible,
+        proStoreHint,
+        proBusy,
+        teaThankYouProductId,
+        openProStore,
+        closeProStore,
+        dismissTeaThankYou,
+        refreshProEntitlements,
+        purchaseProProduct,
+        restoreProPurchases,
+        canActivatePausePassThisMonth,
+        recordPausePassUsage,
         isLoading,
       }}
     >

@@ -67,6 +67,12 @@
     <string>$(CURRENT_PROJECT_VERSION)</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
+    <key>NSHealthShareUsageDescription</key>
+    <string>Sync your sleep, weight and daily steps to compare fasting days with regular days on your device.</string>
+    <key>NSHealthUpdateUsageDescription</key>
+    <string>Save completed meditation sessions as Mindful Minutes in Apple Health.</string>
+    <key>NSSupportsLiveActivities</key>
+    <true/>
     <key>LSMinimumSystemVersion</key>
     <string>12.0</string>
     <key>LSRequiresIPhoneOS</key>

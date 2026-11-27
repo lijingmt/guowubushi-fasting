@@ -6,12 +6,13 @@ import { StatCard } from '../components/StatCard';
 import { Card } from '../components/Card';
 import { CheckInCard } from '../components/CheckInCard';
 import { SundialCompassCard } from '../components/SundialCompassCard';
-import { DailyZenPoster } from '../components/DailyZenPoster';
+import { DailyZenPoster, POSTER_STYLES } from '../components/DailyZenPoster';
 import { HungerRescueModal } from '../components/HungerRescueModal';
 import { WellnessCard } from '../components/WellnessCard';
 import * as Haptics from 'expo-haptics';
 import { responsiveSize, fs, rs, vs, layout, responsive } from '../theme/responsive';
 import { computePilgrimageProgress } from '../utils/pilgrimage';
+import { isProPosterStyle, resolveEffectivePosterStyle } from '../utils/proCatalog';
 import { isChineseLanguage } from '../utils/date';
 import { captureRef } from 'react-native-view-shot';
 import { shareAsync } from 'expo-sharing';
@@ -36,6 +37,8 @@ export const HomeScreen: React.FC = () => {
     dailyTasks,
     growthProfile,
     recordShareAction,
+    isProUnlocked,
+    openProStore,
   } = useApp();
 
   const navigation = useNavigation<any>();
@@ -264,6 +267,7 @@ export const HomeScreen: React.FC = () => {
       stats={stats}
       language={language}
       selectedStampId={settings.selectedStampId}
+      posterStyle={resolveEffectivePosterStyle(settings.posterStyle || 'xuan_paper', isProUnlocked)}
     />
   );
 
@@ -677,6 +681,64 @@ export const HomeScreen: React.FC = () => {
             >
               {renderShareCard()}
             </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ maxHeight: vs(38), marginBottom: vs(8) }}
+              contentContainerStyle={{ gap: rs(6), paddingHorizontal: rs(4) }}
+            >
+              {POSTER_STYLES.map((st) => {
+                const locked = !isProUnlocked && isProPosterStyle(st.id);
+                const active = !locked && (settings.posterStyle || 'xuan_paper') === st.id;
+                return (
+                  <TouchableOpacity
+                    key={st.id}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      if (locked) {
+                        setShowShareCardModal(false);
+                        openProStore(
+                          isZh
+                            ? `切换「${st.nameZh}」等 3 套限定节气日签需清修 Pro`
+                            : isEs
+                            ? `El estilo "${st.nameEs}" requiere Guowu Pro.`
+                            : `Unlock "${st.nameEn}" and all Solar-Term poster styles with Pro.`
+                        );
+                        return;
+                      }
+                      void updateSettings({ posterStyle: st.id });
+                    }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: rs(5),
+                      paddingHorizontal: rs(10),
+                      paddingVertical: vs(6),
+                      borderRadius: rs(10),
+                      borderWidth: 1,
+                      borderColor: active ? colors.primary : colors.border,
+                      backgroundColor: active ? colors.primary + '1C' : colors.backgroundSecondary,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: rs(10),
+                        height: rs(10),
+                        borderRadius: rs(5),
+                        backgroundColor: st.paperBg,
+                        borderWidth: 1,
+                        borderColor: st.titleColor,
+                      }}
+                    />
+                    <Text style={{ fontSize: fs(11), fontWeight: '700', color: active ? colors.primary : colors.text }}>
+                      {isZh ? st.nameZh : isEs ? st.nameEs : st.nameEn}
+                      {locked ? ' 🔒' : ''}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
 
             {pilgrimage.unlockedStamps.length > 0 && (
               <ScrollView

@@ -1,4 +1,4 @@
-import type { BackupPayload, DailyCheckIn, WellnessRecord } from '../types';
+import type { BackupPayload, CravingEvent, DailyCheckIn, WellnessRecord } from '../types';
 import { addLocalDays, getLocalDateString } from './date';
 
 export interface BackupSummary {
@@ -8,6 +8,7 @@ export interface BackupSummary {
   practices: number;
   fastingSessions: number;
   wellnessRecords: number;
+  cravingEvents: number;
   sacredCheckIns: number;
 }
 
@@ -68,6 +69,7 @@ export function parseAndValidateBackupPayload(rawJson: string): BackupParseResul
     'fastingSessions',
     'sacredSiteCheckIns',
     'wellnessRecords',
+    'cravingEvents',
   ];
   for (const field of arrayFields) {
     if (d[field] !== undefined && !Array.isArray(d[field])) {
@@ -78,7 +80,7 @@ export function parseAndValidateBackupPayload(rawJson: string): BackupParseResul
   const payload: BackupPayload = {
     schemaVersion: 1,
     exportedAt: typeof candidate.exportedAt === 'number' ? candidate.exportedAt : Date.now(),
-    appVersion: typeof candidate.appVersion === 'string' ? candidate.appVersion.slice(0, 32) : '1.0.38',
+    appVersion: typeof candidate.appVersion === 'string' ? candidate.appVersion.slice(0, 32) : '1.0.44',
     data: {
       settings: d.settings,
       checkInRecords: d.checkInRecords || [],
@@ -90,6 +92,7 @@ export function parseAndValidateBackupPayload(rawJson: string): BackupParseResul
       retentionState: d.retentionState,
       sacredSiteCheckIns: d.sacredSiteCheckIns || [],
       wellnessRecords: d.wellnessRecords || [],
+      cravingEvents: (d.cravingEvents || []) as CravingEvent[],
       hungerRescueCount: typeof d.hungerRescueCount === 'number' ? Math.max(0, Math.floor(d.hungerRescueCount)) : 0,
     },
   };
@@ -101,6 +104,7 @@ export function parseAndValidateBackupPayload(rawJson: string): BackupParseResul
     practices: payload.data.practiceRecords?.length || 0,
     fastingSessions: payload.data.fastingSessions?.length || 0,
     wellnessRecords: payload.data.wellnessRecords?.length || 0,
+    cravingEvents: payload.data.cravingEvents?.length || 0,
     sacredCheckIns: payload.data.sacredSiteCheckIns?.length || 0,
   };
 
@@ -110,12 +114,15 @@ export function parseAndValidateBackupPayload(rawJson: string): BackupParseResul
 export interface WellnessSummary {
   totalRecords: number;
   recent7DaysCount: number;
+  windowDays: 7 | 30 | 90;
+  windowCount: number;
   avgEnergy: number;
   avgHunger: number;
   avgMood: number;
   avgSleep: number;
   latestWaistCm: number | null;
   waistDeltaCm: number | null; // Positive means waist reduced (firstWaist - latestWaist)
+  waistSeries: Array<{ date: string; waistCm: number }>;
   fastingDaySleepAvg: number | null;
   nonFastingDaySleepAvg: number | null;
   fastingDayEnergyAvg: number | null;
@@ -126,23 +133,27 @@ const avg = (nums: number[]): number =>
   nums.length === 0 ? 0 : Number((nums.reduce((s, n) => s + n, 0) / nums.length).toFixed(1));
 
 /**
- * Computes 7-day wellness averages, waist delta, and fasting-day vs ordinary-day comparison.
+ * Computes 7/30/90-day wellness averages, waist delta & series, and fasting-day comparison.
  */
 export function computeWellnessSummary(
   records: WellnessRecord[],
   checkIns: DailyCheckIn[],
-  today: string = getLocalDateString()
+  today: string = getLocalDateString(),
+  windowDays: 7 | 30 | 90 = 7
 ): WellnessSummary {
   if (!records || records.length === 0) {
     return {
       totalRecords: 0,
       recent7DaysCount: 0,
+      windowDays,
+      windowCount: 0,
       avgEnergy: 0,
       avgHunger: 0,
       avgMood: 0,
       avgSleep: 0,
       latestWaistCm: null,
       waistDeltaCm: null,
+      waistSeries: [],
       fastingDaySleepAvg: null,
       nonFastingDaySleepAvg: null,
       fastingDayEnergyAvg: null,
@@ -152,15 +163,25 @@ export function computeWellnessSummary(
 
   const cutoff7d = addLocalDays(today, -6);
   const recent7 = records.filter((r) => r.date >= cutoff7d && r.date <= today);
-  const sample = recent7.length > 0 ? recent7 : records;
+  const cutoffWindow = addLocalDays(today, -(windowDays - 1));
+  const inWindow = records.filter((r) => r.date >= cutoffWindow && r.date <= today);
+  const sample = inWindow.length > 0 ? inWindow : records;
 
-  const waistRecords = [...records]
+  const allWaistRecords = [...records]
     .filter((r) => typeof r.waistCm === 'number' && Number.isFinite(r.waistCm) && r.waistCm > 0)
     .sort((a, b) => a.date.localeCompare(b.date));
-  const latestWaistCm = waistRecords.length > 0 ? Number(waistRecords[waistRecords.length - 1].waistCm!.toFixed(1)) : null;
+  const windowWaistRecords = [...sample]
+    .filter((r) => typeof r.waistCm === 'number' && Number.isFinite(r.waistCm) && r.waistCm > 0)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const waistSeries = windowWaistRecords.map((r) => ({
+    date: r.date,
+    waistCm: Number(r.waistCm!.toFixed(1)),
+  }));
+  const latestWaistCm =
+    allWaistRecords.length > 0 ? Number(allWaistRecords[allWaistRecords.length - 1].waistCm!.toFixed(1)) : null;
   const waistDeltaCm =
-    waistRecords.length >= 2
-      ? Number((waistRecords[0].waistCm! - waistRecords[waistRecords.length - 1].waistCm!).toFixed(1))
+    allWaistRecords.length >= 2
+      ? Number((allWaistRecords[0].waistCm! - allWaistRecords[allWaistRecords.length - 1].waistCm!).toFixed(1))
       : null;
 
   const completedDates = new Set(checkIns.filter((c) => c.completed).map((c) => c.date));
@@ -170,12 +191,15 @@ export function computeWellnessSummary(
   return {
     totalRecords: records.length,
     recent7DaysCount: recent7.length,
+    windowDays,
+    windowCount: inWindow.length,
     avgEnergy: avg(sample.map((r) => r.energy)),
     avgHunger: avg(sample.map((r) => r.hunger)),
     avgMood: avg(sample.map((r) => r.mood)),
     avgSleep: avg(sample.map((r) => r.sleep)),
     latestWaistCm,
     waistDeltaCm,
+    waistSeries,
     fastingDaySleepAvg: fastingWellness.length > 0 ? avg(fastingWellness.map((r) => r.sleep)) : null,
     nonFastingDaySleepAvg: nonFastingWellness.length > 0 ? avg(nonFastingWellness.map((r) => r.sleep)) : null,
     fastingDayEnergyAvg: fastingWellness.length > 0 ? avg(fastingWellness.map((r) => r.energy)) : null,
