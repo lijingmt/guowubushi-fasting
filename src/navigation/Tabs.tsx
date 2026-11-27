@@ -18,6 +18,7 @@ import { LeaderboardScreen } from '../screens/LeaderboardScreen';
 import { RetentionScreen } from '../screens/RetentionScreen';
 import { TempleMapScreen } from '../screens/TempleMapScreen';
 import { JourneyScreen } from '../screens/JourneyScreen';
+import { QiZhengScreen } from '../screens/QiZhengScreen';
 import { SundialTabIcon, LotusTabIcon, MountainTabIcon, SealTabIcon } from '../components/TabIcons';
 import { responsiveSize, fs, vs, rs, layout, responsive, useResponsiveLayout } from '../theme/responsive';
 
@@ -164,6 +165,11 @@ export const AppNavigator = () => {
           name="Fasting"
           component={FastingScreen}
           options={{ title: isZh ? '单次轻断食' : language === 'es' ? 'Ayuno' : 'Fasting Timer' }}
+        />
+        <Stack.Screen
+          name="QiZheng"
+          component={QiZhengScreen}
+          options={{ title: isZh ? '七政流注 · 24h' : '7 Luminaries 24h' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

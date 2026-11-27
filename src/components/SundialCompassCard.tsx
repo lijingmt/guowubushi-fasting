@@ -14,12 +14,14 @@ import {
 } from '../utils/fastingRhythm';
 import { addLocalDays, getLocalDateString, isChineseLanguage } from '../utils/date';
 import { getSolarTermInfo } from '../utils/solarTerm';
+import { getQiZhengHourSnapshot } from '../utils/qizheng';
 import { fs, rs, vs } from '../theme/responsive';
 
 interface SundialCompassCardProps {
   onOpenFastingTimer: () => void;
   onOpenZenPoster: () => void;
   onOpenHungerRescue: () => void;
+  onOpenQiZheng?: () => void;
 }
 
 const STAGE_ORDER = [
@@ -43,6 +45,7 @@ export const SundialCompassCard: React.FC<SundialCompassCardProps> = ({
   onOpenFastingTimer,
   onOpenZenPoster,
   onOpenHungerRescue,
+  onOpenQiZheng,
 }) => {
   const { colors, settings, updateSettings, activeFasting, stats, language } = useApp();
   const [now, setNow] = useState(() => new Date());
@@ -61,6 +64,7 @@ export const SundialCompassCard: React.FC<SundialCompassCardProps> = ({
   const currentTierId: FastingTier = daySchedule.tierId;
   const rhythm = getSundialRhythmState(now, currentTierId, activeFasting);
   const solarTerm = getSolarTermInfo(now);
+  const qiZheng = getQiZhengHourSnapshot(now);
   const recommendedTier = getRecommendedTier(stats.completedDays);
 
   const size = rs(126);
@@ -275,6 +279,37 @@ export const SundialCompassCard: React.FC<SundialCompassCardProps> = ({
             );
           })}
         </View>
+
+        {onOpenQiZheng && (
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginTop: vs(10),
+              paddingHorizontal: rs(10),
+              paddingVertical: vs(8),
+              borderRadius: rs(10),
+              borderWidth: 1,
+              borderColor: qiZheng.luminary.color + '44',
+              backgroundColor: qiZheng.luminary.color + '12',
+            }}
+            onPress={() => {
+              Haptics.selectionAsync();
+              onOpenQiZheng();
+            }}
+            activeOpacity={0.8}
+          >
+            <Text style={{ fontSize: fs(11.5), fontWeight: '700', color: colors.text, flex: 1 }} numberOfLines={1}>
+              {isZh
+                ? `🪐 七政值时：${qiZheng.luminary.shortZh}（${qiZheng.wangXiang.labelZh}） · ${qiZheng.meridian.shichenZh}${qiZheng.meridian.organShortZh}`
+                : `🪐 ${qiZheng.luminary.shortEn} (${qiZheng.wangXiang.labelEn}) · ${qiZheng.meridian.organEn}`}
+            </Text>
+            <Text style={{ fontSize: fs(11), fontWeight: '800', color: qiZheng.luminary.color, marginLeft: rs(6) }}>
+              {isZh ? '24h流注 ›' : '24h ›'}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <Modal

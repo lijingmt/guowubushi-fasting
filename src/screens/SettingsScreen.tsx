@@ -425,6 +425,12 @@ export const SettingsScreen: React.FC = () => {
           label={(language === 'zh' || language === 'zh-Hant') ? '🍽️ 饮食记录' : language === 'es' ? '🍽️ Comidas' : '🍽️ Meals'}
           onPress={() => navigation.navigate('Meals')}
         />
+        <Divider />
+        <SettingItem
+          label={isZh ? '🪐 七政流注 · 24h 经络盘' : '🪐 7 Luminaries 24h Flow'}
+          value={isZh ? '七政值时 · 旺相 · 脏腑' : 'Planets & Meridians'}
+          onPress={() => navigation.navigate('QiZheng')}
+        />
       </Card>
 
       {/* Social / Community */}

@@ -36,6 +36,15 @@ import {
   serializeBackupPayload,
 } from '../src/utils/backup';
 import { computeResponsiveLayout } from '../src/utils/responsiveLayout';
+import {
+  CHALDEAN_ORDER,
+  WEEKDAY_RULER,
+  getQiZheng24HourSchedule,
+  getQiZhengHourSnapshot,
+  getSeasonalElement,
+  getWangXiangStatus,
+  type FiveElement,
+} from '../src/utils/qizheng';
 import FastingServer from '../partykit/server';
 import type {
   DailyCheckIn,
@@ -927,6 +936,42 @@ async function main() {
     assert.equal(ipad.formFactor, 'tablet');
     assert.equal(ipad.isDualColumn, true);
     assert.equal(ipad.hingeGutter, 20);
+  });
+
+  await runSection('18. Seven Luminaries 24h duty cycle, WangXiang & 12-Shichen meridian flow', () => {
+    for (const origin of ['sunrise_6', 'midnight_0'] as const) {
+      const seenHours: string[] = [];
+      for (let d = 0; d < 7; d++) {
+        for (let h = 0; h < 24; h++) {
+          const dt = new Date(2026, 10, 22 + d, h, 0, 0); // 2026-11-22 is Sunday
+          const snap = getQiZhengHourSnapshot(dt, origin);
+          seenHours.push(snap.luminary.id);
+          if ((origin === 'sunrise_6' && h === 6) || (origin === 'midnight_0' && h === 0)) {
+            assert.equal(
+              snap.luminary.id,
+              WEEKDAY_RULER[dt.getDay()],
+              `Day ${dt.getDay()} start hour must belong to weekday ruler (${origin})`
+            );
+          }
+        }
+      }
+      // Every consecutive hour across 168h advances strictly by +1 mod 7 in CHALDEAN_ORDER
+      for (let i = 1; i < seenHours.length; i++) {
+        const prevIdx = CHALDEAN_ORDER.indexOf(seenHours[i - 1] as any);
+        const curIdx = CHALDEAN_ORDER.indexOf(seenHours[i] as any);
+        assert.equal(curIdx, (prevIdx + 1) % 7, `Continuity broken at step ${i} (${origin})`);
+      }
+    }
+
+    const season = getSeasonalElement(new Date(2026, 10, 27, 15, 0, 0));
+    const allElements: FiveElement[] = ['wood', 'fire', 'earth', 'metal', 'water'];
+    const states = new Set(allElements.map((el) => getWangXiangStatus(el, season.element).state));
+    assert.equal(states.size, 5, 'All 5 Wang/Xiang/Xiu/Qiu/Si states must exist in every season');
+
+    const schedule24 = getQiZheng24HourSchedule(new Date(2026, 10, 27), 'sunrise_6');
+    assert.equal(schedule24.length, 24);
+    const uniqueMeridians = new Set(schedule24.map((s) => s.meridian.organZh));
+    assert.equal(uniqueMeridians.size, 12, '24h schedule must traverse all 12 meridian organs');
   });
 
   console.log('\nALL VERIFICATION & STRESS TESTS PASSED');

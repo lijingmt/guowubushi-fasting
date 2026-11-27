@@ -279,6 +279,7 @@ export const HomeScreen: React.FC = () => {
         onOpenFastingTimer={() => navigation.navigate('Fasting')}
         onOpenZenPoster={handleShare}
         onOpenHungerRescue={() => setShowHungerRescueModal(true)}
+        onOpenQiZheng={() => navigation.navigate('QiZheng')}
       />
 
       <CheckInCard />
