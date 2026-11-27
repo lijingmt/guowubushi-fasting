@@ -6,13 +6,14 @@ import { useApp } from '../context/AppContext';
 import { TempleMapScreen } from './TempleMapScreen';
 import { LeaderboardScreen } from './LeaderboardScreen';
 import { FriendsScreen } from './FriendsScreen';
-import { fs, rs, vs } from '../theme/responsive';
+import { fs, rs, vs, useResponsiveLayout } from '../theme/responsive';
 
 type JourneyTab = 'pilgrimage' | 'leaderboard' | 'buddies';
 
 export const JourneyScreen: React.FC = () => {
   const { colors, language } = useApp();
   const insets = useSafeAreaInsets();
+  const rl = useResponsiveLayout();
   const [activeTab, setActiveTab] = useState<JourneyTab>('pilgrimage');
   const isZh = language === 'zh' || language === 'zh-Hant';
 
@@ -37,13 +38,25 @@ export const JourneyScreen: React.FC = () => {
         style={[
           styles.segmentWrapper,
           {
-            paddingTop: Math.max(insets.top + vs(8), vs(18)),
+            paddingTop: Math.max(insets.top + (rl.isCompactHeight ? 4 : vs(8)), rl.isCompactHeight ? 10 : vs(18)),
+            paddingHorizontal: rl.horizontalPadding,
             backgroundColor: colors.background,
             borderBottomColor: colors.divider,
           },
         ]}
       >
-        <View style={[styles.segmentBar, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}>
+        <View
+          style={[
+            styles.segmentBar,
+            {
+              backgroundColor: colors.backgroundSecondary,
+              borderColor: colors.border,
+              maxWidth: rl.singleColumnMaxWidth - rl.horizontalPadding * 2,
+              width: '100%',
+              alignSelf: 'center',
+            },
+          ]}
+        >
           {tabs.map((tab) => {
             const active = activeTab === tab.id;
             return (

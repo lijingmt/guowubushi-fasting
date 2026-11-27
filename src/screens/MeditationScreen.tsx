@@ -14,7 +14,7 @@ import {
 import { Audio } from 'expo-av';
 import { useApp } from '../context/AppContext';
 import { useSocial } from '../context/SocialContext';
-import { fs, rs, vs, layout } from '../theme/responsive';
+import { fs, rs, vs, layout, useResponsiveLayout } from '../theme/responsive';
 import { calculatePeriodStats } from '../utils/leaderboardStats';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -47,6 +47,7 @@ const BACKGROUND_SOUNDS: Record<BackgroundSound, LocalizedSoundLabel> = {
 
 export const MeditationScreen = () => {
   const { t, addPractice, stats, checkInRecords, practiceRecords, colors, language } = useApp();
+  const rl = useResponsiveLayout();
   const social = useSocial();
   const [selectedDuration, setSelectedDuration] = useState(15);
   const [backgroundSound, setBackgroundSound] = useState<BackgroundSound>('none');
@@ -537,7 +538,19 @@ export const MeditationScreen = () => {
   };
 
   return (
-    <ScrollView ref={scrollRef} style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
+    <ScrollView
+      ref={scrollRef}
+      style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={[
+        styles.content,
+        {
+          maxWidth: rl.singleColumnMaxWidth,
+          width: '100%',
+          alignSelf: 'center',
+          ...(rl.isCompactHeight ? { paddingTop: vs(20), paddingBottom: vs(24) } : {}),
+        },
+      ]}
+    >
       {/* 标题和统计 */}
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>{getScreenTitle()}</Text>

@@ -12,8 +12,10 @@ import { useApp } from '../context/AppContext';
 import { Card } from '../components/Card';
 import { SeasonalNutritionCard } from '../components/SeasonalNutritionCard';
 import { CALORIE_REFERENCES } from '../constants/achievements';
+import { useResponsiveLayout } from '../theme/responsive';
 
 export const MealsScreen: React.FC = () => {
+  const rl = useResponsiveLayout();
   const {
     t,
     todayMeals,
@@ -88,7 +90,19 @@ export const MealsScreen: React.FC = () => {
   const isOverGoal = todayCalories > settings.dailyCalorieGoal;
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      contentContainerStyle={[
+        styles.content,
+        {
+          maxWidth: rl.singleColumnMaxWidth,
+          width: '100%',
+          alignSelf: 'center',
+          paddingHorizontal: rl.horizontalPadding,
+          ...(rl.isCompactHeight ? { paddingTop: 12, paddingBottom: 24 } : {}),
+        },
+      ]}
+    >
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>{t.meals}</Text>
         <Text style={[styles.date, { color: colors.textSecondary }]}>

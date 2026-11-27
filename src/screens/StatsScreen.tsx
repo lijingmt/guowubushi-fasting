@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Dimensions,
   TouchableOpacity,
   Modal,
 } from 'react-native';
@@ -15,8 +14,7 @@ import { AchievementShareCard } from '../components/AchievementShareCard';
 import { ACHIEVEMENTS } from '../constants/achievements';
 import { getLocalDateString, isChineseLanguage, parseLocalDate } from '../utils/date';
 import { computeWellnessSummary } from '../utils/backup';
-
-const { width } = Dimensions.get('window');
+import { useResponsiveLayout } from '../theme/responsive';
 
 function colorWithOpacity(color: string, opacity: number): string {
   const safeOpacity = Number.isFinite(opacity) ? Math.max(0, Math.min(1, opacity)) : 1;
@@ -39,6 +37,7 @@ function colorWithOpacity(color: string, opacity: number): string {
 
 export const StatsScreen: React.FC = () => {
   const { t, stats, checkInRecords, weightRecords, wellnessRecords, hungerRescueCount, colors, language } = useApp();
+  const rl = useResponsiveLayout();
   const isZh = isChineseLanguage(language);
   const [viewMode, setViewMode] = useState<'overview' | 'weight' | 'wellness' | 'achievements'>('overview');
   const [showShareModal, setShowShareModal] = useState(false);
@@ -106,7 +105,18 @@ export const StatsScreen: React.FC = () => {
   };
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      contentContainerStyle={[
+        styles.content,
+        {
+          maxWidth: rl.singleColumnMaxWidth,
+          width: '100%',
+          alignSelf: 'center',
+          paddingHorizontal: rl.horizontalPadding,
+        },
+      ]}
+    >
       <Text style={[styles.title, { color: colors.text }]}>{t.statistics}</Text>
 
       <View style={[styles.tabContainer, { backgroundColor: colors.card }]}>
@@ -181,7 +191,7 @@ export const StatsScreen: React.FC = () => {
                   },
                 ],
               }}
-              width={width - 64}
+              width={rl.chartWidth}
               height={200}
               chartConfig={chartConfig}
               yAxisLabel=""
@@ -248,7 +258,7 @@ export const StatsScreen: React.FC = () => {
                     },
                   ],
                 }}
-                width={width - 64}
+                width={rl.chartWidth}
                 height={220}
                 chartConfig={chartConfig}
                 bezier
@@ -390,7 +400,7 @@ export const StatsScreen: React.FC = () => {
                       },
                     ],
                   }}
-                  width={width - 64}
+                  width={rl.chartWidth}
                   height={200}
                   chartConfig={chartConfig}
                   yAxisLabel=""

@@ -6,7 +6,7 @@ import { HungerRescueModal } from '../components/HungerRescueModal';
 import { SeasonalNutritionCard } from '../components/SeasonalNutritionCard';
 import { Card } from '../components/Card';
 import { StatCard } from '../components/StatCard';
-import { responsiveSize, fs, rs, vs } from '../theme/responsive';
+import { responsiveSize, fs, rs, vs, useResponsiveLayout } from '../theme/responsive';
 import { LinearGradient } from 'expo-linear-gradient';
 import { captureRef } from 'react-native-view-shot';
 import QRCode from 'react-native-qrcode-svg';
@@ -16,6 +16,7 @@ import * as Haptics from 'expo-haptics';
 
 export const FastingScreen: React.FC = () => {
   const { colors, language, stats } = useApp();
+  const rl = useResponsiveLayout();
   const shareCardRef = useRef<View>(null);
   const [showSharePreview, setShowSharePreview] = useState(false);
   const [showShareCardModal, setShowShareCardModal] = useState(false);
@@ -230,7 +231,16 @@ export const FastingScreen: React.FC = () => {
     <View style={{ flex: 1 }}>
       <ScrollView
         style={{ flex: 1, backgroundColor: colors.background }}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          {
+            maxWidth: rl.singleColumnMaxWidth,
+            width: '100%',
+            alignSelf: 'center',
+            paddingHorizontal: rl.horizontalPadding,
+            ...(rl.isCompactHeight ? { paddingTop: 20, paddingBottom: 24 } : {}),
+          },
+        ]}
       >
         {/* Header */}
         <View style={styles.header}>

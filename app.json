@@ -3,7 +3,7 @@
     "name": "过午不食",
     "slug": "guowubushifasting",
     "version": "1.0.38",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,

@@ -19,7 +19,7 @@ import { RetentionScreen } from '../screens/RetentionScreen';
 import { TempleMapScreen } from '../screens/TempleMapScreen';
 import { JourneyScreen } from '../screens/JourneyScreen';
 import { SundialTabIcon, LotusTabIcon, MountainTabIcon, SealTabIcon } from '../components/TabIcons';
-import { responsiveSize, fs, vs, rs, layout, responsive } from '../theme/responsive';
+import { responsiveSize, fs, vs, rs, layout, responsive, useResponsiveLayout } from '../theme/responsive';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -27,7 +27,10 @@ const Stack = createNativeStackNavigator();
 const TabNavigator = () => {
   const { t, colors, language } = useApp();
   const insets = useSafeAreaInsets();
+  const rl = useResponsiveLayout();
   const isZh = language === 'zh' || language === 'zh-Hant';
+  const baseHeight = rl.isCompactHeight ? 54 : 60;
+  const bottomPad = Math.max(insets.bottom, Platform.OS === 'ios' ? (rl.isCompactHeight ? 8 : 18) : 10);
 
   return (
     <Tab.Navigator
@@ -37,9 +40,10 @@ const TabNavigator = () => {
           backgroundColor: colors.tabBar,
           borderTopWidth: 1,
           borderTopColor: colors.border,
-          height: Platform.OS === 'ios' ? 84 : 68 + insets.bottom,
-          paddingBottom: Platform.OS === 'ios' ? 22 : Math.max(10, insets.bottom),
-          paddingTop: 8,
+          height: baseHeight + bottomPad,
+          paddingBottom: bottomPad,
+          paddingTop: rl.isCompactHeight ? 6 : 8,
+          paddingHorizontal: rl.isDualColumn ? Math.max(24, Math.floor((rl.width - 720) / 2)) : 0,
         },
         tabBarActiveTintColor: colors.tabBarActive,
         tabBarInactiveTintColor: colors.tabBarInactive,

@@ -1,4 +1,12 @@
-import { Dimensions, Platform, PixelRatio } from 'react-native';
+import { useMemo } from 'react';
+import { Dimensions, Platform, PixelRatio, useWindowDimensions } from 'react-native';
+import {
+  computeResponsiveLayout,
+  type LayoutFormFactor,
+  type ResponsiveLayoutMetrics,
+} from '../utils/responsiveLayout';
+
+export { computeResponsiveLayout, type LayoutFormFactor, type ResponsiveLayoutMetrics };
 
 // 获取设备尺寸
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -73,7 +81,8 @@ const horizontalScale = (size: number): number => {
 };
 
 const verticalScale = (size: number): number => {
-  return PixelRatio.roundToNearestPixel(size * getScaleFactor());
+  const heightFactor = Math.max(0.82, Math.min(SCREEN_HEIGHT / BASE_HEIGHT, 1.15));
+  return PixelRatio.roundToNearestPixel(size * heightFactor);
 };
 
 const fontScale = (size: number): number => {
@@ -228,8 +237,17 @@ export const deviceInfo = {
   isWatch: deviceType === DeviceType.Watch,
 };
 
+/**
+ * Live hook reacting immediately to fold/unfold, Split View, and orientation changes.
+ */
+export const useResponsiveLayout = (): ResponsiveLayoutMetrics => {
+  const { width, height } = useWindowDimensions();
+  return useMemo(() => computeResponsiveLayout(width, height), [width, height]);
+};
+
 // 监听尺寸变化
 Dimensions.addEventListener('change', ({ window }) => {
-  // 这里可以添加尺寸变化处理逻辑
-  // 比如重新计算布局等
+  layout.screenWidth = window.width;
+  layout.screenHeight = window.height;
+  layout.isLandscape = window.width > window.height;
 });

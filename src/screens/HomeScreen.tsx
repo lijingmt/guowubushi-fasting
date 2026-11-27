@@ -16,8 +16,10 @@ import { isChineseLanguage } from '../utils/date';
 import { captureRef } from 'react-native-view-shot';
 import { shareAsync } from 'expo-sharing';
 import { useNavigation } from '@react-navigation/native';
+import { useResponsiveLayout } from '../theme/responsive';
 
 export const HomeScreen: React.FC = () => {
+  const rl = useResponsiveLayout();
   const {
     t,
     stats,
@@ -271,23 +273,8 @@ export const HomeScreen: React.FC = () => {
   // 响应式样式
   const styles = createResponsiveStyles();
 
-  return (
-    <View style={{ flex: 1 }}>
-      <ScrollView
-        style={{ flex: 1, backgroundColor: colors.background }}
-        contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top + vs(10), vs(20)) }]}
-      >
-      <View style={styles.header}>
-        <Text style={[styles.greeting, { color: colors.text }]}>{t.welcome}</Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          {settings.traditionalMode
-            ? t.appName
-            : isZh
-            ? '东方节律轻断食 · 减负又静心'
-            : t.appName}
-        </Text>
-      </View>
-
+  const primaryColumnContent = (
+    <>
       <SundialCompassCard
         onOpenFastingTimer={() => navigation.navigate('Fasting')}
         onOpenZenPoster={handleShare}
@@ -297,7 +284,11 @@ export const HomeScreen: React.FC = () => {
       <CheckInCard />
 
       <WellnessCard />
+    </>
+  );
 
+  const secondaryColumnContent = (
+    <>
       <TouchableOpacity
         style={[styles.retentionCard, { backgroundColor: colors.card }]}
         onPress={() => navigation.navigate('Retention')}
@@ -468,6 +459,46 @@ export const HomeScreen: React.FC = () => {
           />
         </View>
       </Card>
+    </>
+  );
+
+  return (
+    <View style={{ flex: 1 }}>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: colors.background }}
+        contentContainerStyle={[
+          styles.content,
+          {
+            paddingTop: Math.max(insets.top + (rl.isCompactHeight ? 6 : vs(10)), rl.isCompactHeight ? 12 : vs(20)),
+            maxWidth: rl.contentMaxWidth,
+            width: '100%',
+            alignSelf: 'center',
+            paddingHorizontal: rl.horizontalPadding,
+          },
+        ]}
+      >
+      <View style={styles.header}>
+        <Text style={[styles.greeting, { color: colors.text }]}>{t.welcome}</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          {settings.traditionalMode
+            ? t.appName
+            : isZh
+            ? '东方节律轻断食 · 减负又静心'
+            : t.appName}
+        </Text>
+      </View>
+
+      {rl.isDualColumn ? (
+        <View style={{ flexDirection: 'row', gap: rl.hingeGutter, alignItems: 'flex-start' }}>
+          <View style={{ flex: 1, minWidth: 0 }}>{primaryColumnContent}</View>
+          <View style={{ flex: 1, minWidth: 0 }}>{secondaryColumnContent}</View>
+        </View>
+      ) : (
+        <>
+          {primaryColumnContent}
+          {secondaryColumnContent}
+        </>
+      )}
 
       {/* Calorie Goal Edit Modal */}
       <Modal

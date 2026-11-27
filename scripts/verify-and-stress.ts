@@ -35,6 +35,7 @@ import {
   parseAndValidateBackupPayload,
   serializeBackupPayload,
 } from '../src/utils/backup';
+import { computeResponsiveLayout } from '../src/utils/responsiveLayout';
 import FastingServer from '../partykit/server';
 import type {
   DailyCheckIn,
@@ -890,6 +891,42 @@ async function main() {
       parseAndValidateBackupPayload(JSON.stringify({ schemaVersion: 1, data: { checkInRecords: 'not-array' } })).ok,
       false
     );
+  });
+
+  await runSection('17. iPhone Duo cover/unfolded & multi-form-factor responsive layout', () => {
+    const standardPhone = computeResponsiveLayout(390, 844);
+    assert.equal(standardPhone.formFactor, 'compact');
+    assert.equal(standardPhone.isDualColumn, false);
+    assert.equal(standardPhone.hingeGutter, 0);
+
+    const proMax = computeResponsiveLayout(440, 956);
+    assert.equal(proMax.formFactor, 'compact');
+    assert.equal(proMax.isCompactHeight, false);
+
+    // iPhone Duo Outer Cover Display (~466x678 pt, passport 1:1.45)
+    const duoCover = computeResponsiveLayout(466, 678);
+    assert.equal(duoCover.formFactor, 'duo_cover');
+    assert.equal(duoCover.isDuoCover, true);
+    assert.equal(duoCover.isDualColumn, false);
+    assert.equal(duoCover.isCompactHeight, true);
+    assert.equal(duoCover.hingeGutter, 0);
+    assert.ok(duoCover.verticalScale < 1, 'Short cover screen should compact vertical rhythm');
+
+    // iPhone Duo Unfolded Inner Display (~890x626 pt landscape foldable canvas)
+    const duoUnfolded = computeResponsiveLayout(890, 626);
+    assert.equal(duoUnfolded.formFactor, 'duo_unfolded');
+    assert.equal(duoUnfolded.isDuoUnfolded, true);
+    assert.equal(duoUnfolded.isFoldableExpanded, true);
+    assert.equal(duoUnfolded.isDualColumn, true);
+    assert.equal(duoUnfolded.isCompactHeight, true);
+    assert.equal(duoUnfolded.hingeGutter, 28);
+    assert.ok(duoUnfolded.columnWidth >= 380 && duoUnfolded.columnWidth < 460);
+    assert.ok(duoUnfolded.chartWidth <= 720);
+
+    const ipad = computeResponsiveLayout(820, 1180);
+    assert.equal(ipad.formFactor, 'tablet');
+    assert.equal(ipad.isDualColumn, true);
+    assert.equal(ipad.hingeGutter, 20);
   });
 
   console.log('\nALL VERIFICATION & STRESS TESTS PASSED');

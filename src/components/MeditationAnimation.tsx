@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { View, StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -9,15 +9,13 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-
 interface MeditationAnimationProps {
   soundType: 'rain' | 'ocean' | 'insects' | 'birds';
   color?: string;
 }
 
 // 雨滴动画组件
-const RainDrop = ({ index, color }: { index: number; color?: string }) => {
+const RainDrop = ({ index, color, screenHeight }: { index: number; color?: string; screenHeight: number }) => {
   const translateY = useSharedValue(-50);
   const opacity = useSharedValue(0);
 
@@ -28,7 +26,7 @@ const RainDrop = ({ index, color }: { index: number; color?: string }) => {
     setTimeout(() => {
       opacity.value = withTiming(1, { duration: 300 });
       translateY.value = withRepeat(
-        withTiming(SCREEN_HEIGHT + 50, {
+        withTiming(screenHeight + 50, {
           duration,
           easing: Easing.linear,
         }),
@@ -36,7 +34,7 @@ const RainDrop = ({ index, color }: { index: number; color?: string }) => {
         false
       );
     }, delay);
-  }, []);
+  }, [screenHeight]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
@@ -104,8 +102,8 @@ const OceanWave = ({ index, color }: { index: number; color?: string }) => {
 };
 
 // 萤火虫动画组件（虫鸣）
-const Firefly = ({ index }: { index: number }) => {
-  const x = useSharedValue(Math.random() * SCREEN_WIDTH);
+const Firefly = ({ index, screenWidth }: { index: number; screenWidth: number }) => {
+  const x = useSharedValue(Math.random() * screenWidth);
   const y = useSharedValue(100 + Math.random() * 200);
   const opacity = useSharedValue(0.3);
   const scale = useSharedValue(0.5);
@@ -117,8 +115,8 @@ const Firefly = ({ index }: { index: number }) => {
     // 移动动画
     x.value = withRepeat(
       withSequence(
-        withTiming(Math.random() * SCREEN_WIDTH, { duration: moveDuration, easing: Easing.inOut(Easing.ease) }),
-        withTiming(Math.random() * SCREEN_WIDTH, { duration: moveDuration, easing: Easing.inOut(Easing.ease) })
+        withTiming(Math.random() * screenWidth, { duration: moveDuration, easing: Easing.inOut(Easing.ease) }),
+        withTiming(Math.random() * screenWidth, { duration: moveDuration, easing: Easing.inOut(Easing.ease) })
       ),
       -1,
       false
@@ -169,11 +167,13 @@ const Firefly = ({ index }: { index: number }) => {
 };
 
 export const MeditationAnimation: React.FC<MeditationAnimationProps> = ({ soundType, color }) => {
+  const { width, height } = useWindowDimensions();
+
   if (soundType === 'rain') {
     return (
       <View style={styles.container}>
         {Array.from({ length: 20 }).map((_, i) => (
-          <RainDrop key={i} index={i} color={color} />
+          <RainDrop key={i} index={i} color={color} screenHeight={height} />
         ))}
       </View>
     );
@@ -193,7 +193,7 @@ export const MeditationAnimation: React.FC<MeditationAnimationProps> = ({ soundT
     return (
       <View style={styles.container}>
         {Array.from({ length: 15 }).map((_, i) => (
-          <Firefly key={i} index={i} />
+          <Firefly key={i} index={i} screenWidth={width} />
         ))}
       </View>
     );

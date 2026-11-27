@@ -26,7 +26,7 @@ import { Card } from '../components/Card';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { getLocalDateString, isChineseLanguage } from '../utils/date';
-import { vs } from '../theme/responsive';
+import { vs, useResponsiveLayout } from '../theme/responsive';
 import { FASTING_GOALS, FASTING_TIERS, PAUSE_REASONS } from '../utils/fastingRhythm';
 import { parseAndValidateBackupPayload } from '../utils/backup';
 import { computePilgrimageProgress } from '../utils/pilgrimage';
@@ -82,6 +82,7 @@ export const SettingsScreen: React.FC = () => {
   const [isBackupBusy, setIsBackupBusy] = useState(false);
 
   const insets = useSafeAreaInsets();
+  const rl = useResponsiveLayout();
   const isZh = isChineseLanguage(language);
   const currentTier = FASTING_TIERS[settings.fastingTier || 'classic'];
   const currentGoal = FASTING_GOALS.find((g) => g.id === (settings.fastingGoal || 'mindful_discipline')) || FASTING_GOALS[2];
@@ -257,7 +258,16 @@ export const SettingsScreen: React.FC = () => {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
-      contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top + vs(10), vs(20)) }]}
+      contentContainerStyle={[
+        styles.content,
+        {
+          paddingTop: Math.max(insets.top + (rl.isCompactHeight ? 6 : vs(10)), rl.isCompactHeight ? 12 : vs(20)),
+          maxWidth: rl.singleColumnMaxWidth,
+          width: '100%',
+          alignSelf: 'center',
+          paddingHorizontal: rl.horizontalPadding,
+        },
+      ]}
     >
       <Text style={[styles.title, { color: colors.text }]}>{isZh ? '我的修行档案' : t.settings}</Text>
 
