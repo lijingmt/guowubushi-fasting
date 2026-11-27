@@ -16,10 +16,12 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import Svg, {
   Circle,
+  ClipPath,
   Defs,
   G,
   LinearGradient as SvgLinearGradient,
   Path,
+  RadialGradient,
   Rect,
   Stop,
   Text as SvgText,
@@ -32,6 +34,19 @@ import {
   SACRED_SITES,
   TRADITION_LABELS,
 } from '../data/sacredSites';
+import {
+  MAP_HEIGHT,
+  MAP_WIDTH,
+  projectLonLat,
+  WORLD_ANTARCTICA_PATHS,
+  WORLD_EQUATOR_PATH,
+  WORLD_GLOBE_PATH,
+  WORLD_GRATICULE_LAT_PATHS,
+  WORLD_GRATICULE_LON_PATHS,
+  WORLD_LAKE_PATHS,
+  WORLD_LAND_PATHS,
+  WORLD_TROPIC_PATHS,
+} from '../data/worldMapPaths';
 import { getSacredSiteCheckIns, saveSacredSiteCheckIn } from '../services/storage';
 import { useApp } from '../context/AppContext';
 import { getLocalDateString } from '../utils/date';
@@ -40,96 +55,16 @@ import { fs, layout, responsiveSize, rs, vs } from '../theme/responsive';
 import { SacredRegion, SacredRite, SacredSite, SacredSiteCheckIn, SacredTradition } from '../types';
 
 type FilterTradition = 'all' | SacredTradition;
+type MapRegionFilter = 'all' | SacredRegion;
 
-const MAP_WIDTH = 720;
-const MAP_HEIGHT = 500;
-const MIN_MARKER_DISTANCE = 10;
+const MIN_MARKER_DISTANCE = 3.2;
 const MIN_MAP_ZOOM = 1;
+const DEFAULT_MAP_ZOOM = MIN_MAP_ZOOM;
 const MAX_MAP_ZOOM = 20;
-const DEFAULT_CHINA_MAP_ZOOM = 20;
-const SITE_LABEL_MIN_ZOOM = 6;
+const SITE_LABEL_MIN_ZOOM = 5;
 const PINCH_SENSITIVITY = 1.22;
 
 const RITE_OPTIONS: SacredRite[] = ['visit', 'bow', 'lamp', 'meditation', 'chant'];
-type GeoPoint = [number, number];
-
-const projectLonLat = (longitude: number, latitude: number) => ({
-  x: ((longitude + 180) / 360) * MAP_WIDTH,
-  y: ((90 - latitude) / 180) * MAP_HEIGHT,
-});
-
-const buildGeoPath = (points: GeoPoint[]) =>
-  points
-    .map(([longitude, latitude], index) => {
-      const point = projectLonLat(longitude, latitude);
-      return `${index === 0 ? 'M' : 'L'}${point.x.toFixed(1)} ${point.y.toFixed(1)}`;
-    })
-    .join(' ') + ' Z';
-
-const WORLD_LANDMASS_POINTS: GeoPoint[][] = [
-  [
-    [-168, 71], [-150, 66], [-136, 70], [-118, 71], [-98, 68], [-82, 62], [-64, 56],
-    [-56, 49], [-72, 43], [-88, 45], [-104, 49], [-121, 47], [-132, 55], [-154, 58],
-  ],
-  [
-    [-124, 46], [-108, 44], [-96, 38], [-90, 30], [-100, 22], [-112, 24], [-118, 34],
-  ],
-  [
-    [-96, 23], [-84, 21], [-77, 16], [-79, 9], [-88, 13],
-  ],
-  [
-    [-81, 12], [-68, 10], [-55, 1], [-47, -10], [-39, -23], [-45, -38],
-    [-54, -55], [-69, -54], [-75, -38], [-73, -20], [-80, -5],
-  ],
-  [
-    [-52, 83], [-30, 80], [-18, 72], [-34, 62], [-52, 60], [-66, 70],
-  ],
-  [
-    [-11, 72], [22, 72], [55, 70], [86, 72], [118, 67], [151, 63], [179, 61],
-    [172, 50], [150, 45], [137, 37], [123, 33], [113, 23], [100, 14],
-    [93, 21], [82, 26], [75, 33], [64, 31], [56, 25], [45, 30], [35, 42],
-    [23, 39], [12, 44], [2, 43], [-8, 50], [-25, 57],
-  ],
-  [
-    [-17, 36], [6, 37], [29, 32], [43, 12], [38, -7], [30, -31],
-    [18, -35], [6, -19], [-7, -4], [-16, 13],
-  ],
-  [
-    [36, 31], [52, 27], [59, 18], [52, 12], [43, 13], [37, 22],
-  ],
-  [
-    [68, 24], [79, 26], [88, 21], [84, 8], [77, 6], [71, 16],
-  ],
-  [
-    [96, 18], [110, 14], [120, 6], [118, -7], [104, -5], [99, 7],
-  ],
-  [
-    [112, -11], [133, -10], [154, -22], [146, -39], [124, -37], [112, -25],
-  ],
-  [
-    [130, 45], [146, 42], [143, 32], [132, 31],
-  ],
-  [
-    [120, 24], [122, 22], [121, 20], [119, 22],
-  ],
-  [
-    [102, 2], [116, 1], [126, -5], [118, -8], [106, -5],
-  ],
-  [
-    [138, -35], [151, -36], [177, -44], [168, -47], [145, -42],
-  ],
-  [
-    [47, -13], [51, -21], [49, -26], [43, -24], [43, -16],
-  ],
-  [
-    [-8, 58], [2, 56], [1, 50], [-7, 51],
-  ],
-  [
-    [-180, -68], [-120, -66], [-60, -69], [0, -66], [60, -69], [120, -66], [180, -68], [180, -82], [-180, -82],
-  ],
-];
-
-const WORLD_LANDMASSES = WORLD_LANDMASS_POINTS.map((points) => buildGeoPath(points));
 
 const getTodayString = () => getLocalDateString();
 
@@ -214,8 +149,13 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
   const insets = useSafeAreaInsets();
   const { colors, language, recordShareAction, stats, settings, updateSettings } = useApp();
   const isZh = language === 'zh' || language === 'zh-Hant';
+  const isEs = language === 'es';
+  const isDarkTheme =
+    colors.background.toLowerCase().startsWith('#0') ||
+    colors.background.toLowerCase().startsWith('#1') ||
+    colors.background.toLowerCase().startsWith('#2');
   const getSiteDisplayName = (site: SacredSite) => (isZh ? site.name : site.localName || site.name);
-  const [region, setRegion] = useState<SacredRegion>('china');
+  const [region, setRegion] = useState<MapRegionFilter>('all');
   const [tradition, setTradition] = useState<FilterTradition>('all');
   const pilgrimage = useMemo(
     () => computePilgrimageProgress(stats, settings.selectedPilgrimageRouteId),
@@ -223,7 +163,7 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
   );
   const routePolylinePath = useMemo(() => {
     const coords = pilgrimage.stops
-      .filter((s) => s.site.region === region)
+      .filter((s) => region === 'all' || s.site.region === region)
       .map((s) => clampPoint(projectWorld(s.site), 22));
     if (coords.length < 2) return '';
     return coords.map((p, idx) => `${idx === 0 ? 'M' : 'L'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
@@ -233,16 +173,16 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
   const [selectedRite, setSelectedRite] = useState<SacredRite>('bow');
   const [checkIns, setCheckIns] = useState<SacredSiteCheckIn[]>([]);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [mapZoom, setMapZoom] = useState(DEFAULT_CHINA_MAP_ZOOM);
+  const [mapZoom, setMapZoom] = useState(DEFAULT_MAP_ZOOM);
   const [mapViewportWidth, setMapViewportWidth] = useState(0);
-  const mapScale = useSharedValue(DEFAULT_CHINA_MAP_ZOOM);
-  const savedMapScale = useSharedValue(DEFAULT_CHINA_MAP_ZOOM);
+  const mapScale = useSharedValue(DEFAULT_MAP_ZOOM);
+  const savedMapScale = useSharedValue(DEFAULT_MAP_ZOOM);
   const mapTranslateX = useSharedValue(0);
   const mapTranslateY = useSharedValue(0);
   const savedMapTranslateX = useSharedValue(0);
   const savedMapTranslateY = useSharedValue(0);
   const mapBoundsWidth = useSharedValue(360);
-  const mapBoundsHeight = useSharedValue(210);
+  const mapBoundsHeight = useSharedValue(200);
 
   const baseMapWidth = Math.max(320, mapViewportWidth || 360);
   const baseMapHeight = (baseMapWidth * MAP_HEIGHT) / MAP_WIDTH;
@@ -271,7 +211,7 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
   const filteredSites = useMemo(() => {
     const keyword = query.trim().toLowerCase();
     return SACRED_SITES.filter((site) => {
-      const matchesRegion = site.region === region;
+      const matchesRegion = region === 'all' || site.region === region;
       const matchesTradition = tradition === 'all' || site.tradition === tradition;
       const text = `${site.name} ${site.localName || ''} ${site.country} ${site.province || ''} ${site.city} ${site.address}`.toLowerCase();
       const matchesKeyword = !keyword || text.includes(keyword);
@@ -280,7 +220,12 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
   }, [query, region, tradition]);
 
   const sitesForCurrentMap = useMemo(
-    () => filteredSites.length > 0 ? filteredSites : SACRED_SITES.filter((site) => site.region === region),
+    () =>
+      filteredSites.length > 0
+        ? filteredSites
+        : region === 'all'
+          ? SACRED_SITES
+          : SACRED_SITES.filter((site) => site.region === region),
     [filteredSites, region]
   );
 
@@ -289,30 +234,15 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
     [sitesForCurrentMap]
   );
 
-  const mapFocusPoint = useMemo(
-    () => getMapFocusPoint(sitesForCurrentMap),
-    [sitesForCurrentMap]
-  );
-
   useEffect(() => {
-    const defaultZoom = region === 'china' ? DEFAULT_CHINA_MAP_ZOOM : MIN_MAP_ZOOM;
-    const focusX = (mapFocusPoint.x / MAP_WIDTH) * baseMapWidth;
-    const focusY = (mapFocusPoint.y / MAP_HEIGHT) * baseMapHeight;
-    const nextTranslateX = defaultZoom <= 1.01
-      ? 0
-      : clampMapTranslationValue(-(focusX - baseMapWidth / 2) * defaultZoom, baseMapWidth, defaultZoom);
-    const nextTranslateY = defaultZoom <= 1.01
-      ? 0
-      : clampMapTranslationValue(-(focusY - baseMapHeight / 2) * defaultZoom, baseMapHeight, defaultZoom);
-
-    mapScale.value = defaultZoom;
-    savedMapScale.value = defaultZoom;
-    mapTranslateX.value = nextTranslateX;
-    mapTranslateY.value = nextTranslateY;
-    savedMapTranslateX.value = nextTranslateX;
-    savedMapTranslateY.value = nextTranslateY;
-    setMapZoom(defaultZoom);
-  }, [baseMapHeight, baseMapWidth, mapFocusPoint.x, mapFocusPoint.y, region]);
+    mapScale.value = DEFAULT_MAP_ZOOM;
+    savedMapScale.value = DEFAULT_MAP_ZOOM;
+    mapTranslateX.value = 0;
+    mapTranslateY.value = 0;
+    savedMapTranslateX.value = 0;
+    savedMapTranslateY.value = 0;
+    setMapZoom(DEFAULT_MAP_ZOOM);
+  }, [baseMapHeight, baseMapWidth, region]);
 
   useEffect(() => {
     if (!filteredSites.some((site) => site.id === selectedId)) {
@@ -326,28 +256,32 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
     ? checkIns.find((item) => item.siteId === selectedSite.id && item.date === today)
     : undefined;
   const visitedSiteIds = new Set(checkIns.map((item) => item.siteId));
-  const regionCount = SACRED_SITES.filter((site) => site.region === region).length;
+  const regionCount =
+    region === 'all'
+      ? SACRED_SITES.length
+      : SACRED_SITES.filter((site) => site.region === region).length;
 
   const copy = {
-    title: isZh ? '地图' : 'Map',
-    subtitle: isZh ? '寺观道场朝礼地图' : 'Temple pilgrimage map',
-    search: isZh ? '搜索寺名、城市、国家' : 'Search temple, city, country',
-    all: isZh ? '全部' : 'All',
-    china: isZh ? '全国' : 'China',
-    global: isZh ? '全球' : 'Global',
-    checked: isZh ? '已打卡' : 'Checked in',
-    mapPoints: isZh ? '道场点位' : 'Sacred sites',
-    todayDone: isZh ? '今日已朝礼' : 'Done today',
-    checkIn: isZh ? '打卡祭拜' : 'Check in',
-    share: isZh ? '分享记录' : 'Share',
-    details: isZh ? '详情' : 'Details',
-    source: isZh ? '资料来源' : 'Source',
-    contact: isZh ? '联系' : 'Contact',
-    steward: isZh ? '主持/管理' : 'Abbot / steward',
-    focus: isZh ? '朝礼重点' : 'Pilgrimage focus',
-    etiquette: isZh ? '礼仪' : 'Etiquette',
-    records: isZh ? '最近打卡' : 'Recent check-ins',
-    noRecords: isZh ? '还没有寺观打卡' : 'No temple check-ins yet',
+    title: isZh ? '地图' : isEs ? 'Mapa' : 'Map',
+    subtitle: isZh ? '世界寺观道场朝礼地图' : isEs ? 'Mapa mundial de lugares sagrados' : 'World temple pilgrimage map',
+    search: isZh ? '搜索寺名、城市、国家' : isEs ? 'Buscar templo, ciudad, país' : 'Search temple, city, country',
+    all: isZh ? '全部' : isEs ? 'Todos' : 'All',
+    world: isZh ? '全球' : isEs ? 'Mundo' : 'World',
+    china: isZh ? '中国' : 'China',
+    global: isZh ? '海外' : isEs ? 'Exterior' : 'Overseas',
+    checked: isZh ? '已打卡' : isEs ? 'Visitados' : 'Checked in',
+    mapPoints: isZh ? '道场点位' : isEs ? 'Sitios sagrados' : 'Sacred sites',
+    todayDone: isZh ? '今日已朝礼' : isEs ? 'Visitado hoy' : 'Done today',
+    checkIn: isZh ? '打卡祭拜' : isEs ? 'Registrar visita' : 'Check in',
+    share: isZh ? '分享记录' : isEs ? 'Compartir' : 'Share',
+    details: isZh ? '详情' : isEs ? 'Detalles' : 'Details',
+    source: isZh ? '资料来源' : isEs ? 'Fuente' : 'Source',
+    contact: isZh ? '联系' : isEs ? 'Contacto' : 'Contact',
+    steward: isZh ? '主持/管理' : isEs ? 'Abad / encargado' : 'Abbot / steward',
+    focus: isZh ? '朝礼重点' : isEs ? 'Enfoque' : 'Pilgrimage focus',
+    etiquette: isZh ? '礼仪' : isEs ? 'Etiqueta' : 'Etiquette',
+    records: isZh ? '最近打卡' : isEs ? 'Visitas recientes' : 'Recent check-ins',
+    noRecords: isZh ? '还没有寺观打卡' : isEs ? 'Aún no hay visitas registradas' : 'No temple check-ins yet',
   };
 
   const handleSelectSite = (site: SacredSite) => {
@@ -402,37 +336,36 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
     const selectedPoint = selectedSite
       ? mapPointsById[selectedSite.id] || clampPoint(projectWorld(selectedSite))
       : null;
-    const markerZoom = Math.max(1, mapZoom);
-    const normalMarkerRadius = 8.5 / markerZoom;
-    const checkedMarkerRadius = 10 / markerZoom;
-    const selectedMarkerRadius = 13 / markerZoom;
-    const markerInnerRadius = 3 / markerZoom;
-    const selectedMarkerInnerRadius = 4.2 / markerZoom;
-    const selectedHaloRadius = 30 / markerZoom;
-    const selectedInnerHaloRadius = 20 / markerZoom;
-    const markerStrokeWidth = 3 / markerZoom;
-    const selectedMarkerStrokeWidth = 4 / markerZoom;
-    const selectedPointerOffsetTop = 18 / markerZoom;
-    const selectedPointerOffsetBottom = 35 / markerZoom;
-    const selectedPointerHalfWidth = 8 / markerZoom;
-    const labelZoom = Math.max(0.58, markerZoom * (baseMapWidth / MAP_WIDTH));
-    const labelBoundaryPadding = 8 / labelZoom;
+    const zoomScale = Math.pow(Math.max(1, mapZoom), 0.85);
+    const normalMarkerRadius = 3.5 / zoomScale;
+    const checkedMarkerRadius = 4.6 / zoomScale;
+    const selectedMarkerRadius = 6.2 / zoomScale;
+    const markerInnerRadius = 1.15 / zoomScale;
+    const selectedMarkerInnerRadius = 2.0 / zoomScale;
+    const selectedHaloRadius = 15 / zoomScale;
+    const selectedInnerHaloRadius = 9.5 / zoomScale;
+    const markerStrokeWidth = 1.05 / zoomScale;
+    const selectedMarkerStrokeWidth = 1.75 / zoomScale;
+    const selectedPointerOffsetTop = 8.5 / zoomScale;
+    const selectedPointerOffsetBottom = 16 / zoomScale;
+    const selectedPointerHalfWidth = 3.8 / zoomScale;
+    const labelBoundaryPadding = 6 / zoomScale;
     const mapContentStyle = {
       width: baseMapWidth,
       height: baseMapHeight,
     };
 
     const getLabelLayout = (name: string, index: number, isSelected: boolean) => {
-      const fontSize = (isSelected ? 18 : 16) / labelZoom;
-      const height = (isSelected ? 32 : 28) / labelZoom;
+      const fontSize = (isSelected ? 12 : 10.5) / zoomScale;
+      const height = (isSelected ? 22 : 19) / zoomScale;
       const width = Math.min(
-        (isSelected ? 190 : 172) / labelZoom,
+        (isSelected ? 148 : 132) / zoomScale,
         Math.max(
-          (isSelected ? 86 : 70) / labelZoom,
-          (name.length * (isSelected ? 17 : 15) + (isSelected ? 32 : 28)) / labelZoom
+          (isSelected ? 54 : 46) / zoomScale,
+          (name.length * (isSelected ? 10.5 : 9.2) + (isSelected ? 20 : 16)) / zoomScale
         )
       );
-      const gap = (isSelected ? 18 : 13) / labelZoom;
+      const gap = (isSelected ? 10 : 7.5) / zoomScale;
       const direction = index % 4;
       const offsetX = isSelected
         ? gap
@@ -451,10 +384,38 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
         offsetX,
         offsetY,
         fontSize,
-        radius: 8 / labelZoom,
-        borderWidth: (isSelected ? 2.2 : 1.6) / labelZoom,
-        textStrokeWidth: (isSelected ? 4.2 : 3.4) / labelZoom,
+        radius: 5.5 / zoomScale,
+        borderWidth: (isSelected ? 1.5 : 1.1) / zoomScale,
+        textStrokeWidth: (isSelected ? 2.6 : 2.2) / zoomScale,
       };
+    };
+
+    const applyZoom = (nextZoom: number, focusPoint?: { x: number; y: number } | null) => {
+      const clampedZoom = Math.max(MIN_MAP_ZOOM, Math.min(MAX_MAP_ZOOM, Number(nextZoom.toFixed(1))));
+      if (clampedZoom <= 1.01) {
+        mapScale.value = 1;
+        savedMapScale.value = 1;
+        mapTranslateX.value = 0;
+        mapTranslateY.value = 0;
+        savedMapTranslateX.value = 0;
+        savedMapTranslateY.value = 0;
+        setMapZoom(1);
+        return;
+      }
+
+      const target = focusPoint || selectedPoint;
+      const targetX = target ? (target.x / MAP_WIDTH) * baseMapWidth : baseMapWidth / 2;
+      const targetY = target ? (target.y / MAP_HEIGHT) * baseMapHeight : baseMapHeight / 2;
+      const nextTranslateX = clampMapTranslationValue(-(targetX - baseMapWidth / 2) * clampedZoom, baseMapWidth, clampedZoom);
+      const nextTranslateY = clampMapTranslationValue(-(targetY - baseMapHeight / 2) * clampedZoom, baseMapHeight, clampedZoom);
+
+      mapScale.value = clampedZoom;
+      savedMapScale.value = clampedZoom;
+      mapTranslateX.value = nextTranslateX;
+      mapTranslateY.value = nextTranslateY;
+      savedMapTranslateX.value = nextTranslateX;
+      savedMapTranslateY.value = nextTranslateY;
+      setMapZoom(clampedZoom);
     };
 
     const clampMapTranslation = (value: number, size: number, scale: number) => {
@@ -510,6 +471,7 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
       });
 
     const mapGesture = Gesture.Simultaneous(pinchGesture, panGesture);
+    const graticuleStroke = isDarkTheme ? '#7BA4B8' : '#5E869B';
 
     return (
       <Card style={styles.mapCard}>
@@ -517,7 +479,7 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
           <View>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{copy.subtitle}</Text>
             <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>
-              {copy.mapPoints} · {regionCount} {isZh ? '处地点' : 'sites'}
+              {copy.mapPoints} · {regionCount} {isZh ? '处地点' : isEs ? 'lugares' : 'sites'}
             </Text>
           </View>
           <View style={[styles.pill, { backgroundColor: colors.primary + '18' }]}>
@@ -526,148 +488,281 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
         </View>
 
         <View
-          style={[styles.mapViewport, { height: baseMapHeight }]}
+          style={[
+            styles.mapViewport,
+            {
+              height: baseMapHeight,
+              backgroundColor: isDarkTheme ? '#121A22' : '#F6F1E6',
+            },
+          ]}
           onLayout={(event) => setMapViewportWidth(event.nativeEvent.layout.width)}
         >
           <GestureDetector gesture={mapGesture}>
             <View style={styles.pinchLayer} collapsable={false}>
               <Animated.View style={[styles.mapTransformLayer, mapContentStyle, animatedMapStyle]}>
                 <Svg width={mapContentStyle.width} height={mapContentStyle.height} viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}>
-                      <Defs>
-                        <SvgLinearGradient id="mapSky" x1="0" y1="0" x2="1" y2="1">
-                          <Stop offset="0" stopColor={region === 'china' ? '#ECF6F2' : '#ECF3FF'} />
-                          <Stop offset="0.52" stopColor="#FFF7E8" />
-                          <Stop offset="1" stopColor={region === 'china' ? '#F8E8DE' : '#F0E9F7'} />
-                        </SvgLinearGradient>
-                      </Defs>
-                      <Rect x="0" y="0" width={MAP_WIDTH} height={MAP_HEIGHT} rx="32" fill="url(#mapSky)" />
-                      <G opacity="0.24">
-                        {[100, 200, 300, 400].map((y) => (
-                          <Path key={`h-${y}`} d={`M32 ${y} H688`} stroke="#8FA0AA" strokeWidth="1.2" />
-                        ))}
-                        {[120, 240, 360, 480, 600].map((x) => (
-                          <Path key={`v-${x}`} d={`M${x} 32 V388`} stroke="#8FA0AA" strokeWidth="1.2" />
-                        ))}
-                      </G>
-                      <G>
-                        {WORLD_LANDMASSES.map((path) => (
-                          <Path key={path} d={path} fill="#D6E2CC" stroke="#8DA883" strokeWidth="2.2" />
-                        ))}
-                        <Path d="M0 254 C92 282 184 266 276 288 C386 312 495 285 720 322" stroke="#87A8C7" strokeWidth="4" fill="none" opacity="0.16" />
-                        {routePolylinePath ? (
-                          <Path
-                            d={routePolylinePath}
-                            stroke="#C68B33"
-                            strokeWidth="2.4"
-                            strokeDasharray="6 4"
-                            fill="none"
-                            opacity="0.9"
-                          />
-                        ) : null}
-                      </G>
-                      {sitesForCurrentMap.map((site) => {
-                        const point = mapPointsById[site.id] || clampPoint(projectWorld(site));
-                        const isSelected = site.id === selectedSite?.id;
-                        const checked = visitedSiteIds.has(site.id);
-                        const traditionMeta = TRADITION_LABELS[site.tradition];
-                        return (
-                          <G key={site.id} onPress={() => handleSelectSite(site)}>
-                            {isSelected && (
-                              <>
-                                <Circle cx={point.x} cy={point.y} r={selectedHaloRadius} fill={traditionMeta.color} opacity="0.12" />
-                                <Circle cx={point.x} cy={point.y} r={selectedInnerHaloRadius} fill={traditionMeta.color} opacity="0.18" />
-                              </>
-                            )}
-                            <Circle
-                              cx={point.x}
-                              cy={point.y}
-                              r={isSelected ? selectedMarkerRadius : checked ? checkedMarkerRadius : normalMarkerRadius}
-                              fill={checked ? '#D0473C' : traditionMeta.color}
-                              stroke="#FFFFFF"
-                              strokeWidth={isSelected ? selectedMarkerStrokeWidth : markerStrokeWidth}
-                            />
-                            <Circle
-                              cx={point.x}
-                              cy={point.y}
-                              r={isSelected ? selectedMarkerInnerRadius : markerInnerRadius}
-                              fill="#FFFFFF"
-                              opacity={isSelected ? 0.95 : 0.75}
-                            />
-                          </G>
-                        );
-                      })}
-                      {selectedPoint && (
+                  <Defs>
+                    <SvgLinearGradient id="atlasBackdrop" x1="0" y1="0" x2="1" y2="1">
+                      <Stop offset="0" stopColor={isDarkTheme ? '#121A22' : '#F6F1E6'} />
+                      <Stop offset="1" stopColor={isDarkTheme ? '#18232E' : '#EFE7D8'} />
+                    </SvgLinearGradient>
+                    <RadialGradient id="oceanFill" cx="50%" cy="46%" rx="56%" ry="52%">
+                      <Stop offset="0" stopColor={isDarkTheme ? '#21394A' : '#DFEFF6'} />
+                      <Stop offset="0.62" stopColor={isDarkTheme ? '#182C3B' : '#C6DFEC'} />
+                      <Stop offset="1" stopColor={isDarkTheme ? '#12212D' : '#B2D0E2'} />
+                    </RadialGradient>
+                    <SvgLinearGradient id="landFill" x1="0" y1="0" x2="0" y2="1">
+                      <Stop offset="0" stopColor={isDarkTheme ? '#3C5646' : '#DFE9D2'} />
+                      <Stop offset="1" stopColor={isDarkTheme ? '#2D4337' : '#C6D8B6'} />
+                    </SvgLinearGradient>
+                    <ClipPath id="globeClip">
+                      <Path d={WORLD_GLOBE_PATH} />
+                    </ClipPath>
+                  </Defs>
+
+                  <Rect x="0" y="0" width={MAP_WIDTH} height={MAP_HEIGHT} rx="24" fill="url(#atlasBackdrop)" />
+
+                  <G clipPath="url(#globeClip)">
+                    <Path d={WORLD_GLOBE_PATH} fill="url(#oceanFill)" />
+
+                    <G opacity={isDarkTheme ? 0.2 : 0.22}>
+                      {WORLD_GRATICULE_LAT_PATHS.map((d, idx) => (
+                        <Path key={`lat-${idx}`} d={d} stroke={graticuleStroke} strokeWidth="0.7" fill="none" />
+                      ))}
+                      {WORLD_GRATICULE_LON_PATHS.map((d, idx) => (
+                        <Path key={`lon-${idx}`} d={d} stroke={graticuleStroke} strokeWidth="0.7" fill="none" />
+                      ))}
+                    </G>
+
+                    <G opacity="0.24">
+                      {WORLD_TROPIC_PATHS.map((d, idx) => (
+                        <Path key={`tropic-${idx}`} d={d} stroke={graticuleStroke} strokeWidth="0.7" strokeDasharray="3 4" fill="none" />
+                      ))}
+                    </G>
+
+                    <Path d={WORLD_EQUATOR_PATH} stroke={graticuleStroke} strokeWidth="0.9" strokeDasharray="5 4" fill="none" opacity="0.32" />
+
+                    <G opacity="0.35">
+                      {WORLD_LAND_PATHS.map((d, idx) => (
                         <Path
-                          d={`M${selectedPoint.x} ${selectedPoint.y + selectedPointerOffsetTop} L${selectedPoint.x - selectedPointerHalfWidth} ${selectedPoint.y + selectedPointerOffsetBottom} L${selectedPoint.x + selectedPointerHalfWidth} ${selectedPoint.y + selectedPointerOffsetBottom} Z`}
-                          fill={TRADITION_LABELS[selectedSite.tradition].color}
-                          opacity="0.9"
+                          key={`shelf-${idx}`}
+                          d={d}
+                          fill="none"
+                          stroke={isDarkTheme ? '#4A7B8C' : '#96C3D6'}
+                          strokeWidth="3.4"
+                          strokeLinejoin="round"
                         />
-                      )}
-                      {sitesForCurrentMap.map((site, index) => {
-                        const point = mapPointsById[site.id] || clampPoint(projectWorld(site));
-                        const isSelected = site.id === selectedSite?.id;
-                        if (!isSelected && mapZoom < SITE_LABEL_MIN_ZOOM) {
-                          return null;
-                        }
+                      ))}
+                    </G>
 
-                        const traditionMeta = TRADITION_LABELS[site.tradition];
-                        const siteDisplayName = getSiteDisplayName(site);
-                        const label = getLabelLayout(siteDisplayName, index, isSelected);
-                        const x = Math.max(
-                          labelBoundaryPadding,
-                          Math.min(MAP_WIDTH - label.width - labelBoundaryPadding, point.x + label.offsetX)
-                        );
-                        const y = Math.max(
-                          labelBoundaryPadding,
-                          Math.min(MAP_HEIGHT - label.height - labelBoundaryPadding, point.y + label.offsetY)
-                        );
-                        const textX = x + label.width / 2;
-                        const textY = y + label.height / 2 + label.fontSize * 0.34;
+                    <G>
+                      {WORLD_ANTARCTICA_PATHS.map((d, idx) => (
+                        <Path
+                          key={`ant-${idx}`}
+                          d={d}
+                          fill={isDarkTheme ? '#2A3D49' : '#EAF1EF'}
+                          stroke={isDarkTheme ? '#3E5563' : '#B9CCC8'}
+                          strokeWidth="0.75"
+                          strokeLinejoin="round"
+                        />
+                      ))}
+                    </G>
 
-                        return (
-                          <G key={`label-${site.id}`} onPress={() => handleSelectSite(site)} opacity={isSelected ? 1 : 0.96}>
-                            <Rect
-                              x={x}
-                              y={y}
-                              width={label.width}
-                              height={label.height}
-                              rx={label.radius}
-                              fill={isSelected ? '#FFF1C8' : '#FFFDF8'}
-                              stroke={traditionMeta.color}
-                              strokeWidth={label.borderWidth}
-                            />
-                            <SvgText
-                              x={textX}
-                              y={textY}
-                              textAnchor="middle"
-                              fontSize={label.fontSize}
-                              fontWeight="900"
-                              fill="#FFFFFF"
-                              stroke="#FFFFFF"
-                              strokeWidth={label.textStrokeWidth}
-                            >
-                              {siteDisplayName}
-                            </SvgText>
-                            <SvgText
-                              x={textX}
-                              y={textY}
-                              textAnchor="middle"
-                              fontSize={label.fontSize}
-                              fontWeight="900"
-                              fill="#101820"
-                            >
-                              {siteDisplayName}
-                            </SvgText>
-                          </G>
-                        );
-                      })}
+                    <G>
+                      {WORLD_LAND_PATHS.map((d, idx) => (
+                        <Path
+                          key={`land-${idx}`}
+                          d={d}
+                          fill="url(#landFill)"
+                          stroke={isDarkTheme ? '#6F9378' : '#719169'}
+                          strokeWidth="1.05"
+                          strokeLinejoin="round"
+                        />
+                      ))}
+                    </G>
+
+                    <G>
+                      {WORLD_LAKE_PATHS.map((d, idx) => (
+                        <Path
+                          key={`lake-${idx}`}
+                          d={d}
+                          fill={isDarkTheme ? '#1A2F3E' : '#C4DFEC'}
+                          stroke={isDarkTheme ? '#4E7284' : '#85AEC2'}
+                          strokeWidth="0.6"
+                          strokeLinejoin="round"
+                        />
+                      ))}
+                    </G>
+
+                    {routePolylinePath ? (
+                      <Path
+                        d={routePolylinePath}
+                        stroke="#C68B33"
+                        strokeWidth={2 / zoomScale}
+                        strokeDasharray="5 3.5"
+                        fill="none"
+                        opacity="0.9"
+                      />
+                    ) : null}
+                  </G>
+
+                  <Path
+                    d={WORLD_GLOBE_PATH}
+                    fill="none"
+                    stroke={isDarkTheme ? '#49687A' : '#89A3B0'}
+                    strokeWidth="1.4"
+                  />
+
+                  <G transform="translate(54, 344)" opacity="0.5">
+                    <Circle cx="0" cy="0" r="14" stroke={graticuleStroke} strokeWidth="0.8" fill="none" />
+                    <Path d="M0 -11 L2.6 -2.6 L11 0 L2.6 2.6 L0 11 L-2.6 2.6 L-11 0 L-2.6 -2.6 Z" fill={graticuleStroke} opacity="0.7" />
+                    <Path d="M0 -11 L2.6 -2.6 L0 0 L-2.6 -2.6 Z" fill="#C68B33" opacity="0.9" />
+                    <SvgText x="0" y="-16" textAnchor="middle" fontSize="6.5" fontWeight="800" fill={graticuleStroke}>
+                      N
+                    </SvgText>
+                  </G>
+
+                  {sitesForCurrentMap.map((site) => {
+                    const point = mapPointsById[site.id] || clampPoint(projectWorld(site));
+                    const isSelected = site.id === selectedSite?.id;
+                    const checked = visitedSiteIds.has(site.id);
+                    const traditionMeta = TRADITION_LABELS[site.tradition];
+                    return (
+                      <G key={site.id} onPress={() => handleSelectSite(site)}>
+                        <Circle
+                          cx={point.x}
+                          cy={point.y}
+                          r={Math.max(6 / zoomScale, normalMarkerRadius * 1.9)}
+                          fill="transparent"
+                        />
+                        {isSelected && (
+                          <>
+                            <Circle cx={point.x} cy={point.y} r={selectedHaloRadius} fill={traditionMeta.color} opacity="0.14" />
+                            <Circle cx={point.x} cy={point.y} r={selectedInnerHaloRadius} fill={traditionMeta.color} opacity="0.22" />
+                          </>
+                        )}
+                        <Circle
+                          cx={point.x}
+                          cy={point.y}
+                          r={isSelected ? selectedMarkerRadius : checked ? checkedMarkerRadius : normalMarkerRadius}
+                          fill={checked ? '#D0473C' : traditionMeta.color}
+                          stroke="#FFFFFF"
+                          strokeWidth={isSelected ? selectedMarkerStrokeWidth : markerStrokeWidth}
+                        />
+                        <Circle
+                          cx={point.x}
+                          cy={point.y}
+                          r={isSelected ? selectedMarkerInnerRadius : markerInnerRadius}
+                          fill="#FFFFFF"
+                          opacity={isSelected ? 0.95 : 0.78}
+                        />
+                      </G>
+                    );
+                  })}
+
+                  {selectedPoint && selectedSite && (
+                    <Path
+                      d={`M${selectedPoint.x} ${selectedPoint.y + selectedPointerOffsetTop} L${selectedPoint.x - selectedPointerHalfWidth} ${selectedPoint.y + selectedPointerOffsetBottom} L${selectedPoint.x + selectedPointerHalfWidth} ${selectedPoint.y + selectedPointerOffsetBottom} Z`}
+                      fill={TRADITION_LABELS[selectedSite.tradition].color}
+                      opacity="0.92"
+                    />
+                  )}
+
+                  {sitesForCurrentMap.map((site, index) => {
+                    const point = mapPointsById[site.id] || clampPoint(projectWorld(site));
+                    const isSelected = site.id === selectedSite?.id;
+                    if (!isSelected && mapZoom < SITE_LABEL_MIN_ZOOM) {
+                      return null;
+                    }
+
+                    const traditionMeta = TRADITION_LABELS[site.tradition];
+                    const siteDisplayName = getSiteDisplayName(site);
+                    const label = getLabelLayout(siteDisplayName, index, isSelected);
+                    const x = Math.max(
+                      labelBoundaryPadding,
+                      Math.min(MAP_WIDTH - label.width - labelBoundaryPadding, point.x + label.offsetX)
+                    );
+                    const y = Math.max(
+                      labelBoundaryPadding,
+                      Math.min(MAP_HEIGHT - label.height - labelBoundaryPadding, point.y + label.offsetY)
+                    );
+                    const textX = x + label.width / 2;
+                    const textY = y + label.height / 2 + label.fontSize * 0.34;
+
+                    return (
+                      <G key={`label-${site.id}`} onPress={() => handleSelectSite(site)} opacity={isSelected ? 1 : 0.96}>
+                        <Rect
+                          x={x}
+                          y={y}
+                          width={label.width}
+                          height={label.height}
+                          rx={label.radius}
+                          fill={isSelected ? '#FFF1C8' : '#FFFDF8'}
+                          stroke={traditionMeta.color}
+                          strokeWidth={label.borderWidth}
+                        />
+                        <SvgText
+                          x={textX}
+                          y={textY}
+                          textAnchor="middle"
+                          fontSize={label.fontSize}
+                          fontWeight="900"
+                          fill="#FFFFFF"
+                          stroke="#FFFFFF"
+                          strokeWidth={label.textStrokeWidth}
+                        >
+                          {siteDisplayName}
+                        </SvgText>
+                        <SvgText
+                          x={textX}
+                          y={textY}
+                          textAnchor="middle"
+                          fontSize={label.fontSize}
+                          fontWeight="900"
+                          fill="#101820"
+                        >
+                          {siteDisplayName}
+                        </SvgText>
+                      </G>
+                    );
+                  })}
                 </Svg>
               </Animated.View>
             </View>
           </GestureDetector>
 
-          <View style={styles.zoomBadge} pointerEvents="none">
-            <Text style={styles.zoomBadgeText}>{mapZoom.toFixed(1)}x</Text>
+          <View
+            style={[
+              styles.zoomControlBar,
+              {
+                backgroundColor: isDarkTheme ? 'rgba(20, 30, 40, 0.9)' : 'rgba(255, 255, 255, 0.94)',
+                borderColor: isDarkTheme ? 'rgba(130, 165, 185, 0.28)' : 'rgba(120, 133, 143, 0.2)',
+              },
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.zoomStepButton}
+              onPress={() => applyZoom(mapZoom <= 2 ? 1 : mapZoom / 1.8)}
+              accessibilityLabel={isZh ? '缩小地图' : 'Zoom out'}
+            >
+              <Text style={[styles.zoomStepText, { color: isDarkTheme ? '#E8F0F5' : '#24303A' }]}>−</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.zoomResetButton}
+              onPress={() => applyZoom(1)}
+              accessibilityLabel={isZh ? '重置为1x全局视图' : 'Reset to 1x world view'}
+            >
+              <Text style={[styles.zoomBadgeText, { color: isDarkTheme ? '#E8F0F5' : '#24303A' }]}>
+                {mapZoom.toFixed(1)}x
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.zoomStepButton}
+              onPress={() => applyZoom(mapZoom < 1.5 ? 2.5 : mapZoom * 1.8)}
+              accessibilityLabel={isZh ? '放大地图' : 'Zoom in'}
+            >
+              <Text style={[styles.zoomStepText, { color: isDarkTheme ? '#E8F0F5' : '#24303A' }]}>+</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -677,7 +772,9 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
             return (
               <View key={item} style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: meta.color }]} />
-                <Text style={[styles.legendText, { color: colors.textSecondary }]}>{meta[isZh ? 'zh' : 'en']}</Text>
+                <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+                  {meta[isZh ? 'zh' : 'en']}
+                </Text>
               </View>
             );
           })}
@@ -699,7 +796,7 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
         />
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-        {(['china', 'global'] as SacredRegion[]).map((item) => (
+        {(['all', 'china', 'global'] as MapRegionFilter[]).map((item) => (
           <TouchableOpacity
             key={item}
             style={[
@@ -709,7 +806,7 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
             onPress={() => setRegion(item)}
           >
             <Text style={[styles.filterChipText, { color: item === region ? '#FFFFFF' : colors.text }]}>
-              {item === 'china' ? copy.china : copy.global}
+              {item === 'all' ? copy.world : item === 'china' ? copy.china : copy.global}
             </Text>
           </TouchableOpacity>
         ))}
@@ -745,7 +842,7 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
           </View>
           <View style={styles.selectedTitleBlock}>
             <View style={styles.titleRow}>
-              <Text style={[styles.selectedName, { color: colors.text }]} numberOfLines={1}>{selectedSite.name}</Text>
+              <Text style={[styles.selectedName, { color: colors.text }]} numberOfLines={1}>{getSiteDisplayName(selectedSite)}</Text>
               {todaySiteCheckIn && (
                 <View style={[styles.todayBadge, { backgroundColor: colors.success + '18' }]}>
                   <Text style={[styles.todayBadgeText, { color: colors.success }]}>{copy.todayDone}</Text>
@@ -892,12 +989,14 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
           <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>
             {isZh
               ? `已行脚 ${pilgrimage.totalKm} km · 当前：${pilgrimage.currentStop.site.name}`
-              : `${pilgrimage.totalKm} km walked · At ${getSiteDisplayName(pilgrimage.currentStop.site)}`}
+              : isEs
+                ? `${pilgrimage.totalKm} km recorridos · En ${getSiteDisplayName(pilgrimage.currentStop.site)}`
+                : `${pilgrimage.totalKm} km walked · At ${getSiteDisplayName(pilgrimage.currentStop.site)}`}
           </Text>
         </View>
         <View style={[styles.pill, { backgroundColor: colors.warning + '22' }]}>
           <Text style={[styles.pillText, { color: colors.warning }]}>
-            {pilgrimage.unlockedStamps.length} {isZh ? '印章' : 'stamps'}
+            {pilgrimage.unlockedStamps.length} {isZh ? '印章' : isEs ? 'sellos' : 'stamps'}
           </Text>
         </View>
       </View>
@@ -921,7 +1020,9 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
                 if (firstSite) {
                   setSelectedId(firstSite);
                   const found = getSacredSiteById(firstSite);
-                  if (found) setRegion(found.region);
+                  if (found && region !== 'all' && region !== found.region) {
+                    setRegion(found.region);
+                  }
                 }
               }}
             >
@@ -972,7 +1073,9 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
               ]}
               onPress={() => {
                 setSelectedId(stop.site.id);
-                setRegion(stop.site.region);
+                if (region !== 'all' && region !== stop.site.region) {
+                  setRegion(stop.site.region);
+                }
                 if (stop.unlocked) {
                   void updateSettings({ selectedStampId: isPinned ? undefined : stop.stampId });
                 }
@@ -1000,7 +1103,11 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.text }]}>{copy.title}</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            {isZh ? '把清净的地点，变成每天可回看的修行足迹。' : 'Turn sacred visits into a calm practice record.'}
+            {isZh
+              ? '把清净的地点，变成每天可回看的修行足迹。'
+              : isEs
+                ? 'Convierte cada lugar sagrado en una huella tranquila de tu práctica.'
+                : 'Turn sacred visits into a calm practice record.'}
           </Text>
         </View>
 
@@ -1011,10 +1118,10 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
 
         <View style={styles.listHeader}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            {filteredSites.length} {isZh ? '处地点' : 'sites'}
+            {filteredSites.length} {isZh ? '处地点' : isEs ? 'lugares' : 'sites'}
           </Text>
           <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>
-            {isZh ? '点选后可查看详情' : 'Tap for details'}
+            {isZh ? '点选后可查看详情' : isEs ? 'Toca para ver detalles' : 'Tap for details'}
           </Text>
         </View>
 
@@ -1029,7 +1136,9 @@ export const TempleMapScreen: React.FC<{ embedded?: boolean }> = ({ embedded = f
         <View style={styles.detailOverlay}>
           <View style={[styles.detailSheet, { backgroundColor: colors.card }]}>
             <View style={styles.detailHeader}>
-              <Text style={[styles.detailTitle, { color: colors.text }]}>{selectedSite?.name}</Text>
+              <Text style={[styles.detailTitle, { color: colors.text }]}>
+                {selectedSite ? getSiteDisplayName(selectedSite) : ''}
+              </Text>
               <TouchableOpacity onPress={() => setDetailOpen(false)} style={styles.closeButton}>
                 <Text style={[styles.closeText, { color: colors.text }]}>×</Text>
               </TouchableOpacity>
@@ -1163,21 +1272,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  zoomBadge: {
+  zoomControlBar: {
     position: 'absolute',
     right: rs(10),
     top: vs(10),
-    minWidth: rs(52),
-    height: rs(34),
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: rs(18),
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    height: rs(32),
+    borderRadius: rs(16),
+    borderWidth: 1,
+    paddingHorizontal: rs(4),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 4,
+  },
+  zoomStepButton: {
+    width: rs(26),
+    height: rs(28),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  zoomStepText: {
+    fontSize: fs(15),
+    fontWeight: '800',
+    lineHeight: fs(17),
+  },
+  zoomResetButton: {
+    minWidth: rs(40),
+    height: rs(28),
+    paddingHorizontal: rs(4),
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   zoomBadgeText: {
     color: '#24303A',

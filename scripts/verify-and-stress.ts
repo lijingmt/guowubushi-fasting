@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import { performance } from 'node:perf_hooks';
 import {
   addLocalDays,
@@ -35,6 +37,13 @@ import {
 import { SOLAR_TERMS, getSeasonalNutritionGuide, getSolarTermInfo } from '../src/utils/solarTerm';
 import { PILGRIMAGE_ROUTES, calculatePilgrimageKm, computePilgrimageProgress } from '../src/utils/pilgrimage';
 import { SACRED_SITES } from '../src/data/sacredSites';
+import {
+  MAP_WIDTH,
+  MAP_HEIGHT,
+  projectLonLat,
+  WORLD_LAND_PATHS,
+  WORLD_LAKE_PATHS,
+} from '../src/data/worldMapPaths';
 import {
   computeWellnessSummary,
   parseAndValidateBackupPayload,
@@ -1085,6 +1094,38 @@ async function main() {
     for (const tier of Object.values(FASTING_TIERS)) {
       assert.ok(tier.nameEs && tier.windowEs && tier.descEs);
     }
+  });
+
+  await runSection('21. World map Natural Earth geometry, Robinson projection & 1x default view', () => {
+    assert.equal(MAP_WIDTH, 720);
+    assert.equal(MAP_HEIGHT, 400);
+    assert.ok(WORLD_LAND_PATHS.length >= 80, `Expected >= 80 land paths, got ${WORLD_LAND_PATHS.length}`);
+    assert.ok(WORLD_LAKE_PATHS.length >= 10, `Expected >= 10 lake paths, got ${WORLD_LAKE_PATHS.length}`);
+
+    const origin = projectLonLat(0, 0);
+    assert.equal(Math.round(origin.x), 360);
+    assert.equal(Math.round(origin.y), 200);
+
+    const landmarks: Array<[string, number, number]> = [
+      ['Beijing', 116.4074, 39.9042],
+      ['Kyoto', 135.7681, 35.0116],
+      ['New York', -74.006, 40.7128],
+      ['London', -0.1276, 51.5072],
+      ['Sydney', 151.2093, -33.8688],
+    ];
+    for (const [label, lon, lat] of landmarks) {
+      const pt = projectLonLat(lon, lat);
+      assert.ok(pt.x > 0 && pt.x < MAP_WIDTH, `${label} x out of bounds: ${pt.x}`);
+      assert.ok(pt.y > 0 && pt.y < MAP_HEIGHT, `${label} y out of bounds: ${pt.y}`);
+    }
+
+    const templeMapSrc = fs.readFileSync(
+      path.resolve(__dirname, '../src/screens/TempleMapScreen.tsx'),
+      'utf8'
+    );
+    assert.equal(templeMapSrc.includes('DEFAULT_CHINA_MAP_ZOOM = 20'), false, 'Must not force 20x default zoom');
+    assert.ok(templeMapSrc.includes('DEFAULT_MAP_ZOOM = MIN_MAP_ZOOM'), 'Default map zoom must be 1x');
+    assert.ok(templeMapSrc.includes("useState<MapRegionFilter>('all')"), 'Default region filter must show global world view');
   });
 
   console.log('\nALL VERIFICATION & STRESS TESTS PASSED');
