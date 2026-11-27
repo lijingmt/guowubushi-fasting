@@ -7,6 +7,10 @@ final class GuowuStoreKit: NSObject {
     "com.guowu.fasting.pro.monthly",
     "com.guowu.fasting.pro.yearly",
   ]
+  private let liteProductIds: Set<String> = [
+    "com.guowu.fasting.lite.monthly",
+    "com.guowu.fasting.lite.yearly",
+  ]
   private var updatesTask: Task<Void, Never>?
 
   override init() {
@@ -162,10 +166,14 @@ final class GuowuStoreKit: NSObject {
       }
     }
 
-    let isPro = activeProductIds.contains { proProductIds.contains($0) }
+    let hasPro = activeProductIds.contains { proProductIds.contains($0) }
+    let hasLite = activeProductIds.contains { liteProductIds.contains($0) }
+    let tier = hasPro ? "pro" : (hasLite ? "lite" : "free")
     let expVal: Any = maxExpirationMs ?? NSNull()
     return [
-      "isPro": isPro,
+      "tier": tier,
+      "isLite": hasPro || hasLite,
+      "isPro": hasPro,
       "activeProductIds": activeProductIds,
       "expiresAtMs": expVal,
     ]

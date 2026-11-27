@@ -412,10 +412,11 @@ export const StatsScreen: React.FC = () => {
                     if (locked) {
                       openProStore(
                         isZh
-                          ? `近 ${days} 日深度身心与腰围趋势对比为清修 Pro 功能`
+                          ? `近 ${days} 日深度身心与腰围趋势对比为全享 Pro 功能`
                           : isEs
                           ? `Tendencias de ${days} días requieren Guowu Pro.`
-                          : `${days}-day wellness & waist trend analytics require Guowu Pro.`
+                          : `${days}-day wellness & waist trend analytics require Guowu Pro.`,
+                        'pro'
                       );
                       return;
                     }

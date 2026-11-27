@@ -113,10 +113,11 @@ export const SundialCompassCard: React.FC<SundialCompassCardProps> = ({
       setShowTierModal(false);
       openProStore(
         isZh
-          ? '本月免费护航暂停券已使用 1 次，升级清修 Pro 可每月不限次数守护连胜'
+          ? '本月免费护航暂停券已使用 1 次，升级全享 Pro 可每月不限次数守护连胜'
           : isEs
           ? 'Ya usaste tu pase de pausa gratis de este mes. Mejora a Guowu Pro para tener pases ilimitados.'
-          : 'You used your 1 free Pause Pass this month. Upgrade to Guowu Pro for unlimited monthly passes.'
+          : 'You used your 1 free Pause Pass this month. Upgrade to Guowu Pro for unlimited monthly passes.',
+        'pro'
       );
       return;
     }

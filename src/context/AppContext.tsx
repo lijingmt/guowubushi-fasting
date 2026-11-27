@@ -107,8 +107,12 @@ import {
 } from '../services/iap';
 import {
   canUsePausePassThisMonth,
+  hasTierAccess,
   resolveEffectiveThemeSkin,
+  resolveSubscriptionTier,
   TEA_TIP_IDS,
+  type PaidTier,
+  type SubscriptionTier,
 } from '../utils/proCatalog';
 
 const DAILY_REMINDER_NOTIFICATION_ID_KEY = '@guowu_daily_reminder_notification_id';
@@ -244,15 +248,18 @@ interface AppContextType {
   consumeRepairCardForGift: () => Promise<boolean>;
   receiveRepairCardGifts: (count: number) => Promise<void>;
 
-  // Pro 会员与随喜奉茶
+  // Pro 分层会员与随喜奉茶
   proState: ProEntitlementState;
+  subscriptionTier: SubscriptionTier;
+  isLiteUnlocked: boolean;
   isProUnlocked: boolean;
   proProducts: StoreKitProductInfo[];
   proStoreVisible: boolean;
   proStoreHint: string | null;
+  proStorePreferredTier: PaidTier;
   proBusy: boolean;
   teaThankYouProductId: string | null;
-  openProStore: (hint?: string) => void;
+  openProStore: (hint?: string, preferredTier?: PaidTier) => void;
   closeProStore: () => void;
   dismissTeaThankYou: () => void;
   refreshProEntitlements: () => Promise<void>;
@@ -288,11 +295,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [proProducts, setProProducts] = useState<StoreKitProductInfo[]>([]);
   const [proStoreVisible, setProStoreVisible] = useState(false);
   const [proStoreHint, setProStoreHint] = useState<string | null>(null);
+  const [proStorePreferredTier, setProStorePreferredTier] = useState<PaidTier>('pro');
   const [proBusy, setProBusy] = useState(false);
   const [teaThankYouProductId, setTeaThankYouProductId] = useState<string | null>(null);
-  const isProUnlocked = Platform.OS === 'ios' ? proState.isPro : true;
+  const subscriptionTier: SubscriptionTier = Platform.OS === 'ios' ? proState.tier : 'pro';
+  const isLiteUnlocked = hasTierAccess(subscriptionTier, 'lite');
+  const isProUnlocked = hasTierAccess(subscriptionTier, 'pro');
 
-  // 根据主题设置 + 东方美学皮肤确定颜色（非 Pro 平滑回落默认青竹主题）
+  // 根据主题设置 + 东方美学皮肤确定颜色（未解锁雅致/全享时平滑回落默认青竹主题）
   const resolvedScheme: 'light' | 'dark' =
     settings.theme === 'auto'
       ? systemColorScheme === 'dark'
@@ -303,7 +313,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       : 'light';
   const colors: Colors = getThemeColors(
     resolvedScheme,
-    resolveEffectiveThemeSkin(settings.themeSkin || 'bamboo', isProUnlocked)
+    resolveEffectiveThemeSkin(settings.themeSkin || 'bamboo', isLiteUnlocked)
   );
 
   // 打卡
@@ -1533,8 +1543,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return () => sub.remove();
   }, []);
 
-  const openProStore = (hint?: string) => {
+  const openProStore = (hint?: string, preferredTier: PaidTier = 'pro') => {
     setProStoreHint(hint || null);
+    setProStorePreferredTier(preferredTier);
     setProStoreVisible(true);
     if (Platform.OS === 'ios' && proProducts.length === 0) {
       void fetchStoreKitProducts().then((items) => {
@@ -1573,13 +1584,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           setProStoreVisible(false);
           setTeaThankYouProductId(productId);
         } else {
+          const unlockedTier = resolveSubscriptionTier([productId]);
           setProStoreVisible(false);
           setProStoreHint(null);
           Alert.alert(
-            isZhLang ? '🪷 已解锁清修 Pro' : '🪷 Guowu Pro Unlocked',
-            isZhLang
-              ? '感谢支持！已解锁全部东方美学皮肤、节气日签、双轨混音、30/90日深析与无限护航暂停券。'
-              : 'Thank you! All themes, poster templates, dual sound mixer, 30/90d charts, and unlimited Pause Passes are now unlocked.'
+            unlockedTier === 'pro'
+              ? isZhLang
+                ? '🪷 已解锁禅境全享 Pro'
+                : '🪷 Guowu Pro Unlocked'
+              : isZhLang
+              ? '🎋 已解锁雅致清修 Lite'
+              : '🎋 Guowu Lite Unlocked',
+            unlockedTier === 'pro'
+              ? isZhLang
+                ? '感谢支持！已解锁全部皮肤日签、双轨混音、30/90日深析、无限暂停券及 iCloud 自动同步。'
+                : 'Thank you! All themes, posters, dual mixer, 30/90d charts, unlimited Pause Passes & iCloud sync are unlocked.'
+              : isZhLang
+              ? '感谢支持！已解锁全部东方美学皮肤、节气日签与双轨白噪音混音台。'
+              : 'Thank you! All Eastern skins, solar-term posters & dual ambient mixer are now unlocked.'
           );
         }
       } else if (result.status === 'pending') {
@@ -1622,11 +1644,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         );
         return;
       }
-      if (state.isPro) {
+      if (state.tier !== 'free') {
         setProStoreVisible(false);
         Alert.alert(
           isZhLang ? '✓ 恢复成功' : '✓ Restored',
-          isZhLang ? '已为您恢复「清修 Pro」订阅权益。' : 'Your Guowu Pro subscription has been restored.'
+          state.tier === 'pro'
+            ? isZhLang
+              ? '已为您恢复「禅境全享 Pro」订阅权益。'
+              : 'Your Guowu Pro subscription has been restored.'
+            : isZhLang
+            ? '已为您恢复「雅致清修 Lite」订阅权益。'
+            : 'Your Guowu Lite subscription has been restored.'
         );
       } else {
         Alert.alert(
@@ -1664,18 +1692,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       currentStreak: stats.currentStreak,
       hasCheckedToday,
       language,
-      themeSkin: resolveEffectiveThemeSkin(settings.themeSkin || 'bamboo', isProUnlocked),
+      themeSkin: resolveEffectiveThemeSkin(settings.themeSkin || 'bamboo', isLiteUnlocked),
     });
-  }, [settings.fastingTier, settings.themeSkin, isProUnlocked, activeFasting, stats.currentStreak, hasCheckedToday, language]);
+  }, [settings.fastingTier, settings.themeSkin, isLiteUnlocked, activeFasting, stats.currentStreak, hasCheckedToday, language]);
 
   useEffect(() => {
-    if (isLoading || !settings.iCloudAutoSync || Platform.OS !== 'ios') return;
+    if (isLoading || !isProUnlocked || !settings.iCloudAutoSync || Platform.OS !== 'ios') return;
     const timer = setTimeout(() => {
       void syncToICloud();
     }, 3500);
     return () => clearTimeout(timer);
   }, [
     isLoading,
+    isProUnlocked,
     settings.iCloudAutoSync,
     checkInRecords.length,
     fastingSessions.length,
@@ -1754,10 +1783,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         consumeRepairCardForGift,
         receiveRepairCardGifts,
         proState,
+        subscriptionTier,
+        isLiteUnlocked,
         isProUnlocked,
         proProducts,
         proStoreVisible,
         proStoreHint,
+        proStorePreferredTier,
         proBusy,
         teaThankYouProductId,
         openProStore,

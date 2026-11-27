@@ -39,6 +39,9 @@ import { PILGRIMAGE_ROUTES, calculatePilgrimageKm, computePilgrimageProgress } f
 import { SACRED_SITES } from '../src/data/sacredSites';
 import {
   ALL_IAP_PRODUCT_IDS,
+  LITE_MONTHLY_ID,
+  LITE_PRODUCT_FALLBACKS,
+  LITE_YEARLY_ID,
   PRO_MONTHLY_ID,
   PRO_PRODUCT_FALLBACKS,
   PRO_YEARLY_ID,
@@ -46,11 +49,13 @@ import {
   TEA_TIP_IDS,
   canUsePausePassThisMonth,
   getTeaSupporterBadge,
+  hasTierAccess,
   isProPosterStyle,
   isProSkin,
   isProWellnessWindow,
   resolveEffectivePosterStyle,
   resolveEffectiveThemeSkin,
+  resolveSubscriptionTier,
 } from '../src/utils/proCatalog';
 import {
   MAP_WIDTH,
@@ -1232,17 +1237,36 @@ async function main() {
     assert.ok(tide.insightEn.includes('Pericardium (Xu)'));
   });
 
-  await runSection('25. StoreKit 2 Pro Catalog IDs, description <= 55 chars & entitlement fallback guards', () => {
-    assert.equal(ALL_IAP_PRODUCT_IDS.length, 5);
+  await runSection('25. Tiered StoreKit 2 (Lite & Pro) IDs, <= 55 chars & entitlement guards', () => {
+    assert.equal(ALL_IAP_PRODUCT_IDS.length, 7);
     assert.equal(ALL_IAP_PRODUCT_IDS.includes('com.guowu.fasting.pro.lifetime' as any), false);
+    assert.ok(ALL_IAP_PRODUCT_IDS.includes(LITE_MONTHLY_ID));
+    assert.ok(ALL_IAP_PRODUCT_IDS.includes(LITE_YEARLY_ID));
     assert.ok(ALL_IAP_PRODUCT_IDS.includes(PRO_MONTHLY_ID));
     assert.ok(ALL_IAP_PRODUCT_IDS.includes(PRO_YEARLY_ID));
     assert.equal(TEA_TIP_IDS.length, 3);
 
-    for (const item of [...Object.values(PRO_PRODUCT_FALLBACKS), ...TEA_TIP_FALLBACKS]) {
+    for (const item of [
+      ...Object.values(LITE_PRODUCT_FALLBACKS),
+      ...Object.values(PRO_PRODUCT_FALLBACKS),
+      ...TEA_TIP_FALLBACKS,
+    ]) {
       assert.ok(item.descZh.length <= 55, `descZh too long for ${item.id}: ${item.descZh.length}`);
       assert.ok(item.descEn.length <= 55, `descEn too long for ${item.id}: ${item.descEn.length}`);
     }
+
+    assert.equal(resolveSubscriptionTier([]), 'free');
+    assert.equal(resolveSubscriptionTier([LITE_MONTHLY_ID]), 'lite');
+    assert.equal(resolveSubscriptionTier([LITE_YEARLY_ID]), 'lite');
+    assert.equal(resolveSubscriptionTier([PRO_MONTHLY_ID]), 'pro');
+    assert.equal(resolveSubscriptionTier([LITE_YEARLY_ID, PRO_MONTHLY_ID]), 'pro');
+
+    assert.equal(hasTierAccess('free', 'lite'), false);
+    assert.equal(hasTierAccess('free', 'pro'), false);
+    assert.equal(hasTierAccess('lite', 'lite'), true);
+    assert.equal(hasTierAccess('lite', 'pro'), false);
+    assert.equal(hasTierAccess('pro', 'lite'), true);
+    assert.equal(hasTierAccess('pro', 'pro'), true);
 
     assert.equal(isProSkin('bamboo'), false);
     assert.equal(isProSkin('celadon'), true);

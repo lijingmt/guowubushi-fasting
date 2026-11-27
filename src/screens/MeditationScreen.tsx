@@ -63,7 +63,7 @@ const MIXER_PRESETS: Array<{
 ];
 
 export const MeditationScreen = () => {
-  const { t, addPractice, stats, settings, checkInRecords, practiceRecords, colors, language, isProUnlocked, openProStore } = useApp();
+  const { t, addPractice, stats, settings, checkInRecords, practiceRecords, colors, language, isLiteUnlocked, openProStore } = useApp();
   const rl = useResponsiveLayout();
   const social = useSocial();
   const isZh = language === 'zh' || language === 'zh-Hant';
@@ -278,7 +278,7 @@ export const MeditationScreen = () => {
   ) => {
     try {
       await stopBackgroundSound();
-      const effectiveSoundB = isProUnlocked ? soundB : 'none';
+      const effectiveSoundB = isLiteUnlocked ? soundB : 'none';
       if (sound === 'none' && effectiveSoundB === 'none') return;
 
       const sessionId = audioSessionIdRef.current;
@@ -668,7 +668,7 @@ export const MeditationScreen = () => {
               </Text>
               <View style={styles.soundSelectorValue}>
                 <Text style={[styles.soundSelectorText, { color: colors.text }]}>
-                  {isProUnlocked && secondarySound !== 'none'
+                  {isLiteUnlocked && secondarySound !== 'none'
                     ? `${getSoundLabel(backgroundSound)} + ${getSoundLabel(secondarySound)}`
                     : getSoundLabel(backgroundSound)}
                 </Text>
@@ -847,7 +847,7 @@ export const MeditationScreen = () => {
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={{ fontSize: fs(11.5), fontWeight: '700', color: colors.textSecondary, marginBottom: vs(6) }}>
                 {isZh ? '一键禅意预设' : isEs ? 'Preajustes Rápidos' : 'Quick Presets'}
-                {!isProUnlocked ? ' (Pro 🔒)' : ''}
+                {!isLiteUnlocked ? ' (Lite 🔒)' : ''}
               </Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: rs(6), marginBottom: vs(12) }}>
                 {MIXER_PRESETS.map((preset) => (
@@ -863,14 +863,15 @@ export const MeditationScreen = () => {
                     }}
                     onPress={() => {
                       Haptics.selectionAsync();
-                      if (!isProUnlocked) {
+                      if (!isLiteUnlocked) {
                         setShowSoundPicker(false);
                         openProStore(
                           isZh
-                            ? '白噪音双轨混音台与禅意预设属于清修 Pro 订阅体验'
+                            ? '白噪音双轨混音台与禅意预设属于雅致版 Lite / 全享 Pro 体验'
                             : isEs
-                            ? 'Los preajustes duales requieren Guowu Pro.'
-                            : 'Dual-track mixer presets require Guowu Pro.'
+                            ? 'Los preajustes duales requieren Guowu Lite o Pro.'
+                            : 'Dual-track mixer presets require Guowu Lite or Pro.',
+                          'lite'
                         );
                         return;
                       }
@@ -939,7 +940,7 @@ export const MeditationScreen = () => {
 
               <Text style={{ fontSize: fs(12), fontWeight: '800', color: colors.text, marginTop: vs(10), marginBottom: vs(6) }}>
                 {isZh ? `叠加副音轨 · 音量 ${Math.round(secondaryVolume * 100)}%` : `Layer B · Vol ${Math.round(secondaryVolume * 100)}%`}
-                {!isProUnlocked ? ' (Pro 🔒)' : ''}
+                {!isLiteUnlocked ? ' (Lite 🔒)' : ''}
               </Text>
               <View style={{ flexDirection: 'row', gap: rs(6), marginBottom: vs(8) }}>
                 {VOLUME_STEPS.map((vol) => (
@@ -954,12 +955,13 @@ export const MeditationScreen = () => {
                     }}
                     onPress={() => {
                       Haptics.selectionAsync();
-                      if (!isProUnlocked) {
+                      if (!isLiteUnlocked) {
                         setShowSoundPicker(false);
                         openProStore(
                           isZh
-                            ? '白噪音双轨叠加与独立音量调节为清修 Pro 专属'
-                            : 'Dual-track ambient sound mixer requires Guowu Pro.'
+                            ? '白噪音双轨叠加与独立音量调节属于雅致版 Lite / 全享 Pro'
+                            : 'Dual-track ambient sound mixer requires Guowu Lite or Pro.',
+                          'lite'
                         );
                         return;
                       }
@@ -979,18 +981,19 @@ export const MeditationScreen = () => {
                   style={[
                     styles.soundOption,
                     { backgroundColor: colors.backgroundSecondary, padding: rs(11), marginBottom: vs(5) },
-                    isProUnlocked && secondarySound === sound && { backgroundColor: colors.primary + '20' },
+                    isLiteUnlocked && secondarySound === sound && { backgroundColor: colors.primary + '20' },
                   ]}
                   onPress={() => {
                     Haptics.selectionAsync();
-                    if (!isProUnlocked && sound !== 'none') {
+                    if (!isLiteUnlocked && sound !== 'none') {
                       setShowSoundPicker(false);
                       openProStore(
                         isZh
-                          ? '白噪音双轨混音台（如雨声 + 虫鸣）为清修 Pro 专属体验'
+                          ? '白噪音双轨混音台（如雨声 + 虫鸣）属于雅致版 Lite / 全享 Pro'
                           : isEs
-                          ? 'La segunda pista ambiental requiere Guowu Pro.'
-                          : 'Dual-track ambient sound mixer requires Guowu Pro.'
+                          ? 'La segunda pista ambiental requiere Guowu Lite o Pro.'
+                          : 'Dual-track ambient sound mixer requires Guowu Lite or Pro.',
+                        'lite'
                       );
                       return;
                     }
@@ -1001,7 +1004,7 @@ export const MeditationScreen = () => {
                   <Text style={[styles.soundOptionText, { color: colors.text, fontSize: fs(14) }]}>
                     {getSoundLabel(sound)}
                   </Text>
-                  {isProUnlocked && secondarySound === sound && (
+                  {isLiteUnlocked && secondarySound === sound && (
                     <Text style={[styles.soundOptionCheck, { color: colors.primary }]}>✓</Text>
                   )}
                 </TouchableOpacity>

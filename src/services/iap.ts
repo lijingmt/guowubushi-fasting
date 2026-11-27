@@ -4,6 +4,8 @@ import {
   ALL_IAP_PRODUCT_IDS,
   TEA_TIP_IDS,
   getCurrentYearMonth,
+  resolveSubscriptionTier,
+  type SubscriptionTier,
 } from '../utils/proCatalog';
 
 const PRO_STATE_KEY = '@guowu_pro_state';
@@ -20,6 +22,7 @@ export interface StoreKitProductInfo {
 }
 
 export interface ProEntitlementState {
+  tier: SubscriptionTier;
   isPro: boolean;
   activeProductIds: string[];
   expiresAtMs: number | null;
@@ -46,6 +49,7 @@ export interface NativePurchaseResult {
 }
 
 export const DEFAULT_PRO_STATE: ProEntitlementState = {
+  tier: 'free',
   isPro: false,
   activeProductIds: [],
   expiresAtMs: null,
@@ -58,11 +62,15 @@ interface NativeStoreKitModule {
   fetchProducts(productIds: string[]): Promise<StoreKitProductInfo[]>;
   purchase(productId: string): Promise<NativePurchaseResult>;
   getCurrentEntitlements(): Promise<{
+    tier?: SubscriptionTier;
+    isLite?: boolean;
     isPro: boolean;
     activeProductIds: string[];
     expiresAtMs?: number | null;
   }>;
   restorePurchases(): Promise<{
+    tier?: SubscriptionTier;
+    isLite?: boolean;
     isPro: boolean;
     activeProductIds: string[];
     expiresAtMs?: number | null;
@@ -82,11 +90,19 @@ export async function loadProState(): Promise<ProEntitlementState> {
     const raw = await AsyncStorage.getItem(PRO_STATE_KEY);
     if (!raw) return DEFAULT_PRO_STATE;
     const parsed = JSON.parse(raw) as Partial<ProEntitlementState>;
+    const activeIds = Array.isArray(parsed.activeProductIds) ? parsed.activeProductIds : [];
+    const tier: SubscriptionTier =
+      parsed.tier === 'pro' || parsed.tier === 'lite' || parsed.tier === 'free'
+        ? parsed.tier
+        : parsed.isPro
+        ? 'pro'
+        : resolveSubscriptionTier(activeIds);
     return {
       ...DEFAULT_PRO_STATE,
       ...parsed,
-      isPro: Boolean(parsed.isPro),
-      activeProductIds: Array.isArray(parsed.activeProductIds) ? parsed.activeProductIds : [],
+      tier,
+      isPro: tier === 'pro',
+      activeProductIds: activeIds,
       teaTipsCount: typeof parsed.teaTipsCount === 'number' ? parsed.teaTipsCount : 0,
     };
   } catch {
@@ -123,10 +139,15 @@ export async function syncNativeEntitlements(
   }
   try {
     const summary = await mod.getCurrentEntitlements();
+    const activeIds = Array.isArray(summary?.activeProductIds) ? summary.activeProductIds : [];
+    const derivedTier = resolveSubscriptionTier(activeIds);
+    const tier: SubscriptionTier =
+      summary?.tier === 'pro' || summary?.tier === 'lite' ? summary.tier : derivedTier;
     const next: ProEntitlementState = {
       ...base,
-      isPro: Boolean(summary?.isPro),
-      activeProductIds: Array.isArray(summary?.activeProductIds) ? summary.activeProductIds : [],
+      tier,
+      isPro: tier === 'pro',
+      activeProductIds: activeIds,
       expiresAtMs: typeof summary?.expiresAtMs === 'number' ? summary.expiresAtMs : null,
       lastCheckedAt: Date.now(),
     };
@@ -147,10 +168,15 @@ export async function restoreNativePurchases(
   }
   try {
     const summary = await mod.restorePurchases();
+    const activeIds = Array.isArray(summary?.activeProductIds) ? summary.activeProductIds : [];
+    const derivedTier = resolveSubscriptionTier(activeIds);
+    const tier: SubscriptionTier =
+      summary?.tier === 'pro' || summary?.tier === 'lite' ? summary.tier : derivedTier;
     const next: ProEntitlementState = {
       ...base,
-      isPro: Boolean(summary?.isPro),
-      activeProductIds: Array.isArray(summary?.activeProductIds) ? summary.activeProductIds : [],
+      tier,
+      isPro: tier === 'pro',
+      activeProductIds: activeIds,
       expiresAtMs: typeof summary?.expiresAtMs === 'number' ? summary.expiresAtMs : null,
       lastCheckedAt: Date.now(),
     };
@@ -195,10 +221,13 @@ export async function purchaseNativeProduct(
       return { result, state: next };
     }
 
+    const nextIds = Array.from(new Set([...base.activeProductIds, productId]));
+    const derivedTier = resolveSubscriptionTier(nextIds);
     const refreshed = await syncNativeEntitlements({
       ...base,
-      isPro: true,
-      activeProductIds: Array.from(new Set([...base.activeProductIds, productId])),
+      tier: derivedTier,
+      isPro: derivedTier === 'pro',
+      activeProductIds: nextIds,
       expiresAtMs:
         typeof result.expirationDateMs === 'number' ? result.expirationDateMs : base.expiresAtMs,
     });

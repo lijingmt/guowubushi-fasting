@@ -77,6 +77,8 @@ export const SettingsScreen: React.FC = () => {
     exportBackupJson,
     importBackupJson,
     proState,
+    subscriptionTier,
+    isLiteUnlocked,
     isProUnlocked,
     openProStore,
     restoreProPurchases,
@@ -355,17 +357,25 @@ export const SettingsScreen: React.FC = () => {
       {Platform.OS === 'ios' && (
         <>
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-            {isZh ? '清修 Pro 与随喜奉茶' : isEs ? 'Guowu Pro y Apoyo' : 'Guowu Pro & Tea Support'}
+            {isZh ? '清修会员与随喜奉茶' : isEs ? 'Membresía Guowu y Té' : 'Guowu Membership & Tea'}
           </Text>
           <Card>
             <SettingItem
               label={
                 isProUnlocked
-                  ? isZh ? '🪷 清修 Pro 生效中' : isEs ? '🪷 Guowu Pro Activo' : '🪷 Guowu Pro Active'
-                  : isZh ? '🪷 解锁清修 Pro（7 天免费试用）' : isEs ? '🪷 Guowu Pro (7 días gratis)' : '🪷 Unlock Guowu Pro (7-Day Trial)'
+                  ? isZh ? '🪷 禅境全享 Pro 生效中' : isEs ? '🪷 Guowu Pro Activo' : '🪷 Guowu Pro Active'
+                  : isLiteUnlocked
+                  ? isZh ? '🎋 雅致清修 Lite 生效中' : isEs ? '🎋 Guowu Lite Activo' : '🎋 Guowu Lite Active'
+                  : isZh ? '🪷 清修会员 · 雅致 / 全享 Pro' : isEs ? '🪷 Membresía Lite y Pro' : '🪷 Guowu Lite & Pro Plans'
               }
-              value={isProUnlocked ? (isZh ? '管理与茶礼' : 'Manage') : isZh ? '¥48/年起' : 'Skins · Stats'}
-              onPress={() => openProStore()}
+              value={
+                subscriptionTier === 'pro'
+                  ? isZh ? '管理与茶礼' : 'Manage'
+                  : subscriptionTier === 'lite'
+                  ? isZh ? '升级全享 Pro' : 'Upgrade Pro'
+                  : isZh ? '¥6/月起 · 7天试用' : 'Lite · Pro'
+              }
+              onPress={() => openProStore(undefined, isLiteUnlocked ? 'pro' : 'pro')}
             />
             <Divider />
             <SettingItem
@@ -585,7 +595,7 @@ export const SettingsScreen: React.FC = () => {
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             {THEME_SKINS.map((skin) => {
-              const locked = !isProUnlocked && isProSkin(skin.id);
+              const locked = !isLiteUnlocked && isProSkin(skin.id);
               const active = !locked && (settings.themeSkin || 'bamboo') === skin.id;
               return (
                 <TouchableOpacity
@@ -595,10 +605,11 @@ export const SettingsScreen: React.FC = () => {
                     if (locked) {
                       openProStore(
                         isZh
-                          ? `「${skin.nameZh}」属于清修 Pro 东方美学皮肤（可先 7 天免费试用）`
+                          ? `「${skin.nameZh}」属于雅致版 Lite / 全享 Pro 东方美学皮肤`
                           : isEs
-                          ? `El tema "${skin.nameEs}" es exclusivo de Guowu Pro.`
-                          : `"${skin.nameEn}" is included in Guowu Pro (7-day free trial).`
+                          ? `El tema "${skin.nameEs}" requiere Guowu Lite o Pro.`
+                          : `"${skin.nameEn}" is included in Guowu Lite & Pro.`,
+                        'lite'
                       );
                       return;
                     }
@@ -674,9 +685,14 @@ export const SettingsScreen: React.FC = () => {
               <View style={{ flex: 1, paddingRight: 10 }}>
                 <Text style={[styles.settingLabel, { color: colors.text }]}>
                   {isZh ? '☁️ iCloud 私有自动备份' : isEs ? '☁️ Copia en iCloud' : '☁️ iCloud Auto Backup'}
+                  {!isProUnlocked ? ' (Pro 🔒)' : ''}
                 </Text>
                 <Text style={[styles.settingDesc, { color: colors.textSecondary, marginTop: 2 }]}>
-                  {cloudSyncStatus.lastSyncedAt
+                  {!isProUnlocked
+                    ? isZh
+                      ? '全享 Pro 权益（本地 JSON 导出导入永久免费）'
+                      : 'Included in Guowu Pro (local JSON export stays free)'
+                    : cloudSyncStatus.lastSyncedAt
                     ? `${isZh ? '上次同步：' : 'Last synced: '}${new Date(cloudSyncStatus.lastSyncedAt).toLocaleString()}`
                     : isZh
                     ? '换机无感恢复所有打卡与记录'
@@ -684,32 +700,67 @@ export const SettingsScreen: React.FC = () => {
                 </Text>
               </View>
               <Switch
-                value={Boolean(settings.iCloudAutoSync)}
+                value={isProUnlocked && Boolean(settings.iCloudAutoSync)}
                 onValueChange={(val) => {
                   Haptics.selectionAsync();
+                  if (!isProUnlocked) {
+                    openProStore(
+                      isZh
+                        ? 'Apple iCloud 私有自动备份与云恢复属于全享 Pro 权益（可先 7 天免费试用）'
+                        : isEs
+                        ? 'La copia automática en iCloud requiere Guowu Pro.'
+                        : 'Private iCloud Auto-Backup requires Guowu Pro (7-day free trial).',
+                      'pro'
+                    );
+                    return;
+                  }
                   void updateSettings({ iCloudAutoSync: val });
                   if (val) {
                     void syncToICloud();
                   }
                 }}
                 trackColor={{ false: colors.divider, true: colors.primary + '80' }}
-                thumbColor={settings.iCloudAutoSync ? colors.primary : colors.textLight}
+                thumbColor={isProUnlocked && settings.iCloudAutoSync ? colors.primary : colors.textLight}
               />
             </View>
             <Divider />
             <SettingItem
-              label={isZh ? '⬆️ 立即同步至 iCloud' : isEs ? '⬆️ Sincronizar a iCloud' : '⬆️ Sync to iCloud Now'}
+              label={
+                (isZh ? '⬆️ 立即同步至 iCloud' : isEs ? '⬆️ Sincronizar a iCloud' : '⬆️ Sync to iCloud Now') +
+                (!isProUnlocked ? ' (Pro 🔒)' : '')
+              }
               onPress={async () => {
                 Haptics.selectionAsync();
+                if (!isProUnlocked) {
+                  openProStore(
+                    isZh
+                      ? 'iCloud 私有同步属于全享 Pro 权益（本地 JSON 备份永久免费）'
+                      : 'iCloud sync requires Guowu Pro (local JSON backup stays free).',
+                    'pro'
+                  );
+                  return;
+                }
                 const res = await syncToICloud();
                 Alert.alert('iCloud', res.message);
               }}
             />
             <Divider />
             <SettingItem
-              label={isZh ? '⬇️ 从 iCloud 恢复备份' : isEs ? '⬇️ Restaurar de iCloud' : '⬇️ Restore from iCloud'}
+              label={
+                (isZh ? '⬇️ 从 iCloud 恢复备份' : isEs ? '⬇️ Restaurar de iCloud' : '⬇️ Restore from iCloud') +
+                (!isProUnlocked ? ' (Pro 🔒)' : '')
+              }
               onPress={async () => {
                 Haptics.selectionAsync();
+                if (!isProUnlocked) {
+                  openProStore(
+                    isZh
+                      ? '从 iCloud 恢复备份属于全享 Pro 权益'
+                      : 'iCloud restore requires Guowu Pro.',
+                    'pro'
+                  );
+                  return;
+                }
                 const res = await restoreFromICloud();
                 Alert.alert('iCloud', res.message);
               }}

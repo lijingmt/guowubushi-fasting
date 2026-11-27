@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
@@ -14,14 +14,19 @@ import * as Haptics from 'expo-haptics';
 import { useApp } from '../context/AppContext';
 import { isChineseLanguage } from '../utils/date';
 import {
+  ALL_SUBSCRIPTION_FALLBACKS,
   APPLE_EULA_URL,
   APPLE_MANAGE_SUBS_URL,
+  LITE_MONTHLY_ID,
+  LITE_PRODUCT_FALLBACKS,
+  LITE_YEARLY_ID,
   PRIVACY_POLICY_URL,
   PRO_MONTHLY_ID,
   PRO_PRODUCT_FALLBACKS,
   PRO_YEARLY_ID,
   TEA_TIP_FALLBACKS,
   getTeaSupporterBadge,
+  type PaidTier,
 } from '../utils/proCatalog';
 import { fs, rs, vs } from '../theme/responsive';
 
@@ -30,10 +35,12 @@ export const ProStoreModal: React.FC = () => {
     colors,
     language,
     proState,
+    subscriptionTier,
     isProUnlocked,
     proProducts,
     proStoreVisible,
     proStoreHint,
+    proStorePreferredTier,
     proBusy,
     teaThankYouProductId,
     closeProStore,
@@ -44,48 +51,94 @@ export const ProStoreModal: React.FC = () => {
 
   const isZh = isChineseLanguage(language);
   const isEs = language === 'es';
+  const [activeTierTab, setActiveTierTab] = useState<PaidTier>('pro');
   const [selectedPlanId, setSelectedPlanId] = useState<string>(PRO_YEARLY_ID);
+
+  useEffect(() => {
+    if (proStoreVisible) {
+      const targetTier: PaidTier = proStorePreferredTier === 'lite' ? 'lite' : 'pro';
+      setActiveTierTab(targetTier);
+      setSelectedPlanId(targetTier === 'lite' ? LITE_YEARLY_ID : PRO_YEARLY_ID);
+    }
+  }, [proStoreVisible, proStorePreferredTier]);
+
+  const handleSwitchTier = (tier: PaidTier) => {
+    Haptics.selectionAsync();
+    setActiveTierTab(tier);
+    setSelectedPlanId(tier === 'lite' ? LITE_YEARLY_ID : PRO_YEARLY_ID);
+  };
 
   const findProduct = (id: string) => proProducts.find((p) => p.id === id);
 
   const getPriceText = (id: string) => {
     const live = findProduct(id);
     if (live?.displayPrice) return live.displayPrice;
-    const fb = PRO_PRODUCT_FALLBACKS[id] || TEA_TIP_FALLBACKS.find((t) => t.id === id);
+    const fb =
+      ALL_SUBSCRIPTION_FALLBACKS[id] ||
+      TEA_TIP_FALLBACKS.find((t) => t.id === id);
     if (!fb) return '--';
     return isZh ? fb.fallbackPriceZh : fb.fallbackPriceEn;
   };
 
-  const selectedFallback = PRO_PRODUCT_FALLBACKS[selectedPlanId] || PRO_PRODUCT_FALLBACKS[PRO_YEARLY_ID];
+  const currentPlanIds =
+    activeTierTab === 'lite'
+      ? [LITE_YEARLY_ID, LITE_MONTHLY_ID]
+      : [PRO_YEARLY_ID, PRO_MONTHLY_ID];
+  const currentFallbacks =
+    activeTierTab === 'lite' ? LITE_PRODUCT_FALLBACKS : PRO_PRODUCT_FALLBACKS;
+  const selectedFallback =
+    ALL_SUBSCRIPTION_FALLBACKS[selectedPlanId] ||
+    PRO_PRODUCT_FALLBACKS[PRO_YEARLY_ID];
   const selectedLive = findProduct(selectedPlanId);
   const selectedHasTrial =
     selectedPlanId === PRO_YEARLY_ID && (selectedLive ? selectedLive.hasFreeTrial : true);
 
   const supporterBadge = getTeaSupporterBadge(proState.teaTipsCount);
 
-  const features = isZh
+  const liteFeatures = isZh
     ? [
         '🎨 宋瓷天青 / 敦煌泥金 / 水墨清秋 3 套东方美学皮肤',
-        '🏮 4 套二十四节气限定日签模板与名山印章全搭配',
-        '🌧️ 打坐双轨氛围混音台（主音+环境副音叠播+预设）',
-        '📊 近 30 日 / 90 日身心体感与腰围趋势深度对比',
-        '🛡️ 护航暂停券每月不限次数（免费版每月 1 次）',
+        '🏮 4 套二十四节气限定日签模板与名山印章自由搭配',
+        '🌧️ 打坐双轨氛围混音台（主音+环境副音叠播+禅意预设）',
       ]
     : isEs
     ? [
-        '🎨 3 temas orientales exclusivos (Celadón, Dunhuang, Tinta)',
+        '🎨 3 temas orientales (Celadón, Dunhuang, Tinta)',
         '🏮 4 estilos de póster Zen de los 24 términos solares',
         '🌧️ Mezclador dual ambiental con preajustes para meditación',
-        '📊 Tendencias avanzadas de bienestar y cintura (30 y 90 días)',
-        '🛡️ Pases de pausa ilimitados al mes (1 gratis/mes en básico)',
       ]
     : [
-        '🎨 3 exclusive Eastern themes (Celadon, Dunhuang Gold, Ink)',
-        '🏮 4 Solar-Term Zen Poster templates + all pilgrimage seals',
+        '🎨 3 Eastern themes (Celadon, Dunhuang Gold, Ink)',
+        '🏮 4 Solar-Term Zen Poster templates + pilgrimage seals',
         '🌧️ Dual-track ambient sound mixer + quick presets',
-        '📊 30-day & 90-day wellness & waist trend analytics',
-        '🛡️ Unlimited monthly Pause Passes (free includes 1/month)',
       ];
+
+  const proFeatures = isZh
+    ? [
+        '✨ 包含「雅致清修 Lite」全部皮肤、日签与双轨混音',
+        '📊 近 30 日 / 90 日身心体感与腰围趋势深度对比',
+        '🛡️ 护航暂停券每月不限次数（免费版每月 1 次）',
+        '☁️ Apple iCloud 私有自动备份与换机一键恢复',
+      ]
+    : isEs
+    ? [
+        '✨ Incluye todo lo de Guowu Lite (temas, pósters y mezclador)',
+        '📊 Tendencias avanzadas de bienestar y cintura (30 y 90 días)',
+        '🛡️ Pases de pausa ilimitados al mes (1 gratis en básico)',
+        '☁️ Copia privada automática y restauración en iCloud',
+      ]
+    : [
+        '✨ Everything in Guowu Lite (themes, posters & mixer)',
+        '📊 30-day & 90-day wellness & waist trend analytics',
+        '🛡️ Unlimited monthly Pause Passes (free includes 1/mo)',
+        '☁️ Private iCloud Auto-Backup & cross-device restore',
+      ];
+
+  const features = activeTierTab === 'lite' ? liteFeatures : proFeatures;
+
+  const alreadyOwnsDisplayedTier =
+    subscriptionTier === 'pro' ||
+    (subscriptionTier === 'lite' && activeTierTab === 'lite');
 
   const handleSubscribe = async () => {
     if (proBusy) return;
@@ -123,10 +176,10 @@ export const ProStoreModal: React.FC = () => {
             <View style={styles.headerRow}>
               <Text style={[styles.headerTitle, { color: colors.text }]}>
                 {isZh
-                  ? '清修 Pro · 支持与进阶'
+                  ? '清修会员 · 分层定制与奉茶'
                   : isEs
-                  ? 'Guowu Pro · Edición Zen'
-                  : 'Guowu Pro · Mindful Upgrade'}
+                  ? 'Membresía Guowu · Planes y Apoyo'
+                  : 'Guowu Membership · Lite & Pro'}
               </Text>
               <TouchableOpacity
                 style={[styles.closeBtn, { backgroundColor: colors.backgroundSecondary }]}
@@ -149,10 +202,10 @@ export const ProStoreModal: React.FC = () => {
               >
                 <Text style={[styles.pledgeText, { color: colors.primary }]}>
                   {isZh
-                    ? '🪷 核心断食打卡、打坐、Apple Health / iCloud 与小组件永久免费，零开屏广告'
+                    ? '🪷 核心断食打卡、打坐、Apple Health、小组件与本地导出永久免费，零广告'
                     : isEs
-                    ? '🪷 Registro diario, temporizador, Health/iCloud y widgets son 100% gratis y sin anuncios'
-                    : '🪷 Core fasting tracker, timer, Health/iCloud & widgets stay free forever with zero ads'}
+                    ? '🪷 Núcleo, temporizador, Health, widgets y respaldo JSON son 100% gratis'
+                    : '🪷 Core fasting tracker, timer, Health, widgets & local export stay free forever'}
                 </Text>
               </View>
 
@@ -169,7 +222,7 @@ export const ProStoreModal: React.FC = () => {
 
               {Platform.OS === 'ios' && (
                 <>
-                  {isProUnlocked ? (
+                  {subscriptionTier !== 'free' && (
                     <View
                       style={[
                         styles.activeBox,
@@ -177,7 +230,9 @@ export const ProStoreModal: React.FC = () => {
                       ]}
                     >
                       <Text style={[styles.activeTitle, { color: colors.success }]}>
-                        {isZh ? '✓ 清修 Pro 生效中' : isEs ? '✓ Guowu Pro Activo' : '✓ Guowu Pro Active'}
+                        {isProUnlocked
+                          ? isZh ? '✓ 禅境全享 Pro 生效中' : isEs ? '✓ Guowu Pro Activo' : '✓ Guowu Pro Active'
+                          : isZh ? '✓ 雅致清修 Lite 生效中' : isEs ? '✓ Guowu Lite Activo' : '✓ Guowu Lite Active'}
                       </Text>
                       {proState.expiresAtMs ? (
                         <Text style={[styles.activeMeta, { color: colors.textSecondary }]}>
@@ -186,6 +241,13 @@ export const ProStoreModal: React.FC = () => {
                             : `Renews / ends ${new Date(proState.expiresAtMs).toLocaleDateString()}`}
                         </Text>
                       ) : null}
+                      {!isProUnlocked && (
+                        <Text style={[styles.activeMeta, { color: colors.primary, fontWeight: '700' }]}>
+                          {isZh
+                            ? '可随时升级「全享版 Pro」解锁 30/90日深析与 iCloud 云备份'
+                            : 'Upgrade below anytime for 30/90d trends & iCloud backup'}
+                        </Text>
+                      )}
                       <TouchableOpacity
                         style={[styles.manageBtn, { borderColor: colors.success }]}
                         onPress={() => Linking.openURL(APPLE_MANAGE_SUBS_URL)}
@@ -195,51 +257,99 @@ export const ProStoreModal: React.FC = () => {
                         </Text>
                       </TouchableOpacity>
                     </View>
-                  ) : (
+                  )}
+
+                  {!isProUnlocked && (
                     <>
-                      <View style={styles.planRow}>
-                        {[PRO_YEARLY_ID, PRO_MONTHLY_ID].map((planId) => {
-                          const fb = PRO_PRODUCT_FALLBACKS[planId];
-                          const selected = selectedPlanId === planId;
-                          const badge = isZh ? fb.badgeZh : isEs ? fb.badgeEs : fb.badgeEn;
+                      {/* 分层切换：雅致版 Lite vs 全享版 Pro */}
+                      <View
+                        style={[
+                          styles.tierSwitcher,
+                          { backgroundColor: colors.backgroundSecondary, borderColor: colors.border },
+                        ]}
+                      >
+                        {(['lite', 'pro'] as const).map((tierKey) => {
+                          const selected = activeTierTab === tierKey;
                           return (
                             <TouchableOpacity
-                              key={planId}
+                              key={tierKey}
                               style={[
-                                styles.planCard,
-                                {
-                                  backgroundColor: selected
-                                    ? colors.primary + '16'
-                                    : colors.backgroundSecondary,
-                                  borderColor: selected ? colors.primary : colors.border,
-                                },
+                                styles.tierTabBtn,
+                                selected && { backgroundColor: colors.primary },
                               ]}
-                              onPress={() => {
-                                Haptics.selectionAsync();
-                                setSelectedPlanId(planId);
-                              }}
+                              onPress={() => handleSwitchTier(tierKey)}
                               activeOpacity={0.85}
                             >
-                              {badge ? (
-                                <View style={[styles.planBadge, { backgroundColor: colors.primary }]}>
-                                  <Text style={styles.planBadgeText}>{badge}</Text>
-                                </View>
-                              ) : (
-                                <View style={{ height: vs(18) }} />
-                              )}
-                              <Text style={[styles.planTitle, { color: colors.text }]}>
-                                {isZh ? fb.titleZh : isEs ? fb.titleEs : fb.titleEn}
+                              <Text
+                                style={[
+                                  styles.tierTabTitle,
+                                  { color: selected ? '#FFFFFF' : colors.text },
+                                ]}
+                              >
+                                {tierKey === 'lite'
+                                  ? isZh ? '🎋 雅致版 Lite' : '🎋 Lite'
+                                  : isZh ? '🪷 全享版 Pro · 推荐' : '🪷 Pro · Full'}
                               </Text>
-                              <Text style={[styles.planPrice, { color: colors.primary }]}>
-                                {getPriceText(planId)}
-                              </Text>
-                              <Text style={[styles.planSub, { color: colors.textSecondary }]}>
-                                {isZh ? fb.periodLabelZh : isEs ? fb.periodLabelEs : fb.periodLabelEn}
+                              <Text
+                                style={[
+                                  styles.tierTabSub,
+                                  { color: selected ? 'rgba(255,255,255,0.88)' : colors.textSecondary },
+                                ]}
+                              >
+                                {tierKey === 'lite'
+                                  ? isZh ? '皮肤/日签/混音 · ¥6/月起' : `${getPriceText(LITE_YEARLY_ID)}/yr`
+                                  : isZh ? '含全套+深析+iCloud · 7天试用' : `${getPriceText(PRO_YEARLY_ID)}/yr`}
                               </Text>
                             </TouchableOpacity>
                           );
                         })}
                       </View>
+
+                      {!alreadyOwnsDisplayedTier && (
+                        <View style={styles.planRow}>
+                          {currentPlanIds.map((planId) => {
+                            const fb = currentFallbacks[planId];
+                            const selected = selectedPlanId === planId;
+                            const badge = isZh ? fb.badgeZh : isEs ? fb.badgeEs : fb.badgeEn;
+                            return (
+                              <TouchableOpacity
+                                key={planId}
+                                style={[
+                                  styles.planCard,
+                                  {
+                                    backgroundColor: selected
+                                      ? colors.primary + '16'
+                                      : colors.backgroundSecondary,
+                                    borderColor: selected ? colors.primary : colors.border,
+                                  },
+                                ]}
+                                onPress={() => {
+                                  Haptics.selectionAsync();
+                                  setSelectedPlanId(planId);
+                                }}
+                                activeOpacity={0.85}
+                              >
+                                {badge ? (
+                                  <View style={[styles.planBadge, { backgroundColor: colors.primary }]}>
+                                    <Text style={styles.planBadgeText}>{badge}</Text>
+                                  </View>
+                                ) : (
+                                  <View style={{ height: vs(18) }} />
+                                )}
+                                <Text style={[styles.planTitle, { color: colors.text }]}>
+                                  {isZh ? fb.titleZh : isEs ? fb.titleEs : fb.titleEn}
+                                </Text>
+                                <Text style={[styles.planPrice, { color: colors.primary }]}>
+                                  {getPriceText(planId)}
+                                </Text>
+                                <Text style={[styles.planSub, { color: colors.textSecondary }]}>
+                                  {isZh ? fb.periodLabelZh : isEs ? fb.periodLabelEs : fb.periodLabelEn}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      )}
                     </>
                   )}
 
@@ -250,7 +360,9 @@ export const ProStoreModal: React.FC = () => {
                     ]}
                   >
                     <Text style={[styles.featuresHeading, { color: colors.text }]}>
-                      {isZh ? '清修 Pro 包含以下 5 项进阶体验' : isEs ? 'Incluye 5 funciones Pro' : 'Includes 5 Local Pro Perks'}
+                      {activeTierTab === 'lite'
+                        ? isZh ? '🎋 雅致版 Lite 包含以下 3 项美学静心体验' : isEs ? 'Incluye 3 funciones Lite' : 'Guowu Lite Aesthetics'
+                        : isZh ? '🪷 全享版 Pro 包含以下全套 4 大进阶权益' : isEs ? 'Incluye todo Guowu Pro' : 'Guowu Pro Complete Suite'}
                     </Text>
                     {features.map((line, i) => (
                       <Text key={i} style={[styles.featureItem, { color: colors.textSecondary }]}>
@@ -259,7 +371,7 @@ export const ProStoreModal: React.FC = () => {
                     ))}
                   </View>
 
-                  {!isProUnlocked && (
+                  {!alreadyOwnsDisplayedTier && (
                     <TouchableOpacity
                       style={[styles.subscribeBtn, { backgroundColor: colors.primary }]}
                       onPress={handleSubscribe}
@@ -297,7 +409,7 @@ export const ProStoreModal: React.FC = () => {
               )}
 
               {/* 随喜奉茶 */}
-              <View style={[styles.teaDividerRow]}>
+              <View style={styles.teaDividerRow}>
                 <View style={[styles.teaDividerLine, { backgroundColor: colors.divider }]} />
                 <Text style={[styles.teaDividerLabel, { color: colors.textSecondary }]}>
                   {isZh
@@ -347,10 +459,10 @@ export const ProStoreModal: React.FC = () => {
                 <View style={[styles.legalBox, { borderColor: colors.divider }]}>
                   <Text style={[styles.legalText, { color: colors.textLight }]}>
                     {isZh
-                      ? '自动续期说明：确认购买（或试用期满后）将通过 Apple ID 账户扣款。订阅结束前 24 小时内将自动续费；您可随时前往 iPhone「设置 → Apple ID → 订阅」管理或取消。本订阅仅提供当前周期内本地 Pro 功能使用权，不包含终身或永久云端承诺。'
+                      ? '自动续期说明：确认购买（或试用期满后）将通过 Apple ID 账户扣款。订阅结束前 24 小时内将自动续费；您可随时前往 iPhone「设置 → Apple ID → 订阅」管理或取消。本订阅仅提供当前周期内本地进阶功能使用权，不包含终身或永久云端承诺。'
                       : isEs
                       ? 'El pago se carga a tu Apple ID al confirmar. Se renueva automáticamente salvo cancelación 24h antes en Ajustes → Apple ID → Suscripciones. Sin compromiso vitalicio.'
-                      : 'Payment is charged to your Apple ID account. Subscriptions auto-renew unless cancelled at least 24 hours before period end in iPhone Settings → Apple ID → Subscriptions. Billing unlocks local Pro features for the selected period only (no lifetime obligation).'}
+                      : 'Payment is charged to your Apple ID account. Subscriptions auto-renew unless cancelled at least 24 hours before period end in iPhone Settings → Apple ID → Subscriptions. Billing unlocks selected features for the current period only (no lifetime obligation).'}
                   </Text>
                   <View style={styles.legalLinksRow}>
                     <TouchableOpacity onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>
@@ -435,7 +547,7 @@ const styles = StyleSheet.create({
     marginBottom: vs(10),
   },
   headerTitle: {
-    fontSize: fs(18),
+    fontSize: fs(17.5),
     fontWeight: '800',
   },
   closeBtn: {
@@ -457,10 +569,10 @@ const styles = StyleSheet.create({
     marginBottom: vs(10),
   },
   pledgeText: {
-    fontSize: fs(12),
+    fontSize: fs(11.5),
     fontWeight: '700',
     textAlign: 'center',
-    lineHeight: fs(17),
+    lineHeight: fs(16.5),
   },
   hintBanner: {
     borderRadius: rs(10),
@@ -482,12 +594,13 @@ const styles = StyleSheet.create({
     marginBottom: vs(12),
   },
   activeTitle: {
-    fontSize: fs(16),
+    fontSize: fs(15.5),
     fontWeight: '800',
   },
   activeMeta: {
-    fontSize: fs(12),
+    fontSize: fs(11.5),
     marginTop: vs(4),
+    textAlign: 'center',
   },
   manageBtn: {
     marginTop: vs(10),
@@ -499,6 +612,30 @@ const styles = StyleSheet.create({
   manageBtnText: {
     fontSize: fs(12),
     fontWeight: '700',
+  },
+  tierSwitcher: {
+    flexDirection: 'row',
+    borderRadius: rs(14),
+    borderWidth: 1,
+    padding: rs(4),
+    gap: rs(6),
+    marginBottom: vs(10),
+  },
+  tierTabBtn: {
+    flex: 1,
+    borderRadius: rs(10),
+    paddingVertical: vs(8),
+    paddingHorizontal: rs(6),
+    alignItems: 'center',
+  },
+  tierTabTitle: {
+    fontSize: fs(12.5),
+    fontWeight: '800',
+  },
+  tierTabSub: {
+    fontSize: fs(10),
+    marginTop: vs(2),
+    textAlign: 'center',
   },
   planRow: {
     flexDirection: 'row',

@@ -1,9 +1,19 @@
 import type { PosterStyleId, ThemeSkinId } from '../types';
 
+export type SubscriptionTier = 'free' | 'lite' | 'pro';
+export type PaidTier = 'lite' | 'pro';
+
+export const LITE_MONTHLY_ID = 'com.guowu.fasting.lite.monthly';
+export const LITE_YEARLY_ID = 'com.guowu.fasting.lite.yearly';
 export const PRO_MONTHLY_ID = 'com.guowu.fasting.pro.monthly';
 export const PRO_YEARLY_ID = 'com.guowu.fasting.pro.yearly';
 
+export const LITE_SUBSCRIPTION_IDS = [LITE_YEARLY_ID, LITE_MONTHLY_ID] as const;
 export const PRO_SUBSCRIPTION_IDS = [PRO_YEARLY_ID, PRO_MONTHLY_ID] as const;
+export const ALL_SUBSCRIPTION_IDS = [
+  ...PRO_SUBSCRIPTION_IDS,
+  ...LITE_SUBSCRIPTION_IDS,
+] as const;
 
 export const TEA_TIP_6_ID = 'com.guowu.fasting.tip.tea6';
 export const TEA_TIP_18_ID = 'com.guowu.fasting.tip.tea18';
@@ -11,7 +21,10 @@ export const TEA_TIP_68_ID = 'com.guowu.fasting.tip.tea68';
 
 export const TEA_TIP_IDS = [TEA_TIP_6_ID, TEA_TIP_18_ID, TEA_TIP_68_ID] as const;
 
-export const ALL_IAP_PRODUCT_IDS = [...PRO_SUBSCRIPTION_IDS, ...TEA_TIP_IDS] as const;
+export const ALL_IAP_PRODUCT_IDS = [
+  ...ALL_SUBSCRIPTION_IDS,
+  ...TEA_TIP_IDS,
+] as const;
 
 export const APPLE_EULA_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
 export const PRIVACY_POLICY_URL = 'https://github.com/lijingmt/guowubushi-fasting/blob/main/PRIVACY_POLICY.md';
@@ -19,6 +32,7 @@ export const APPLE_MANAGE_SUBS_URL = 'https://apps.apple.com/account/subscriptio
 
 export interface ProductCatalogFallback {
   id: string;
+  tier?: PaidTier;
   titleZh: string;
   titleEn: string;
   titleEs: string;
@@ -36,9 +50,48 @@ export interface ProductCatalogFallback {
   badgeEs?: string;
 }
 
+export const LITE_PRODUCT_FALLBACKS: Record<string, ProductCatalogFallback> = {
+  [LITE_YEARLY_ID]: {
+    id: LITE_YEARLY_ID,
+    tier: 'lite',
+    titleZh: '雅致清修 年卡',
+    titleEn: 'Guowu Lite Yearly',
+    titleEs: 'Guowu Lite Anual',
+    descZh: '年度雅致：解锁全部东方皮肤、节气日签与双轨混音。',
+    descEn: 'Yearly themes, Zen posters & dual ambient mixer.',
+    descEs: 'Temas, pósters Zen y mezclador dual por un año.',
+    fallbackPriceZh: '¥28',
+    fallbackPriceEn: '$3.99',
+    periodLabelZh: '1 年 · 约 ¥2.3/月',
+    periodLabelEn: '1 Year',
+    periodLabelEs: '1 Año',
+    icon: '🎋',
+    badgeZh: '雅致性价比 · 省 61%',
+    badgeEn: 'Save 61%',
+    badgeEs: 'Ahorra 61%',
+  },
+  [LITE_MONTHLY_ID]: {
+    id: LITE_MONTHLY_ID,
+    tier: 'lite',
+    titleZh: '雅致清修 月卡',
+    titleEn: 'Guowu Lite Monthly',
+    titleEs: 'Guowu Lite Mensual',
+    descZh: '月度雅致：解锁东方美学皮肤、节气日签与双轨混音。',
+    descEn: 'Monthly themes, Zen posters & dual sound mixer.',
+    descEs: 'Temas, pósters Zen y mezclador dual al mes.',
+    fallbackPriceZh: '¥6',
+    fallbackPriceEn: '$0.99',
+    periodLabelZh: '1 个月 · 轻量入门',
+    periodLabelEn: '1 Month',
+    periodLabelEs: '1 Mes',
+    icon: '🍃',
+  },
+};
+
 export const PRO_PRODUCT_FALLBACKS: Record<string, ProductCatalogFallback> = {
   [PRO_YEARLY_ID]: {
     id: PRO_YEARLY_ID,
+    tier: 'pro',
     titleZh: '清修 Pro 年卡',
     titleEn: 'Guowu Pro Yearly',
     titleEs: 'Guowu Pro Anual',
@@ -57,6 +110,7 @@ export const PRO_PRODUCT_FALLBACKS: Record<string, ProductCatalogFallback> = {
   },
   [PRO_MONTHLY_ID]: {
     id: PRO_MONTHLY_ID,
+    tier: 'pro',
     titleZh: '清修 Pro 月卡',
     titleEn: 'Guowu Pro Monthly',
     titleEs: 'Guowu Pro Mensual',
@@ -70,6 +124,11 @@ export const PRO_PRODUCT_FALLBACKS: Record<string, ProductCatalogFallback> = {
     periodLabelEs: '1 Mes',
     icon: '🌙',
   },
+};
+
+export const ALL_SUBSCRIPTION_FALLBACKS: Record<string, ProductCatalogFallback> = {
+  ...LITE_PRODUCT_FALLBACKS,
+  ...PRO_PRODUCT_FALLBACKS,
 };
 
 export const TEA_TIP_FALLBACKS: ProductCatalogFallback[] = [
@@ -113,6 +172,26 @@ export const TEA_TIP_FALLBACKS: ProductCatalogFallback[] = [
 
 export const FREE_MONTHLY_PAUSE_PASS_LIMIT = 1;
 
+export function resolveSubscriptionTier(activeProductIds: readonly string[]): SubscriptionTier {
+  if (activeProductIds.some((id) => (PRO_SUBSCRIPTION_IDS as readonly string[]).includes(id))) {
+    return 'pro';
+  }
+  if (activeProductIds.some((id) => (LITE_SUBSCRIPTION_IDS as readonly string[]).includes(id))) {
+    return 'lite';
+  }
+  return 'free';
+}
+
+export function hasTierAccess(
+  currentTier: SubscriptionTier,
+  requiredTier: PaidTier
+): boolean {
+  if (requiredTier === 'lite') {
+    return currentTier === 'lite' || currentTier === 'pro';
+  }
+  return currentTier === 'pro';
+}
+
 export function isProSkin(skin: ThemeSkinId | undefined): boolean {
   return skin === 'celadon' || skin === 'dunhuang' || skin === 'ink';
 }
@@ -127,9 +206,9 @@ export function isProWellnessWindow(days: 7 | 30 | 90): boolean {
 
 export function resolveEffectiveThemeSkin(
   skin: ThemeSkinId | undefined,
-  isProUnlocked: boolean
+  hasLiteOrProAccess: boolean
 ): ThemeSkinId {
-  if (!skin || (isProSkin(skin) && !isProUnlocked)) {
+  if (!skin || (isProSkin(skin) && !hasLiteOrProAccess)) {
     return 'bamboo';
   }
   return skin;
@@ -137,9 +216,9 @@ export function resolveEffectiveThemeSkin(
 
 export function resolveEffectivePosterStyle(
   style: PosterStyleId | undefined,
-  isProUnlocked: boolean
+  hasLiteOrProAccess: boolean
 ): PosterStyleId {
-  if (!style || (isProPosterStyle(style) && !isProUnlocked)) {
+  if (!style || (isProPosterStyle(style) && !hasLiteOrProAccess)) {
     return 'xuan_paper';
   }
   return style;

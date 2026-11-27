@@ -37,7 +37,7 @@ export const HomeScreen: React.FC = () => {
     dailyTasks,
     growthProfile,
     recordShareAction,
-    isProUnlocked,
+    isLiteUnlocked,
     openProStore,
   } = useApp();
 
@@ -267,7 +267,7 @@ export const HomeScreen: React.FC = () => {
       stats={stats}
       language={language}
       selectedStampId={settings.selectedStampId}
-      posterStyle={resolveEffectivePosterStyle(settings.posterStyle || 'xuan_paper', isProUnlocked)}
+      posterStyle={resolveEffectivePosterStyle(settings.posterStyle || 'xuan_paper', isLiteUnlocked)}
     />
   );
 
@@ -689,7 +689,7 @@ export const HomeScreen: React.FC = () => {
               contentContainerStyle={{ gap: rs(6), paddingHorizontal: rs(4) }}
             >
               {POSTER_STYLES.map((st) => {
-                const locked = !isProUnlocked && isProPosterStyle(st.id);
+                const locked = !isLiteUnlocked && isProPosterStyle(st.id);
                 const active = !locked && (settings.posterStyle || 'xuan_paper') === st.id;
                 return (
                   <TouchableOpacity
@@ -700,10 +700,11 @@ export const HomeScreen: React.FC = () => {
                         setShowShareCardModal(false);
                         openProStore(
                           isZh
-                            ? `切换「${st.nameZh}」等 3 套限定节气日签需清修 Pro`
+                            ? `切换「${st.nameZh}」等 3 套限定节气日签需雅致版 Lite / 全享 Pro`
                             : isEs
-                            ? `El estilo "${st.nameEs}" requiere Guowu Pro.`
-                            : `Unlock "${st.nameEn}" and all Solar-Term poster styles with Pro.`
+                            ? `El estilo "${st.nameEs}" requiere Guowu Lite o Pro.`
+                            : `Unlock "${st.nameEn}" and all Solar-Term poster styles with Lite or Pro.`,
+                          'lite'
                         );
                         return;
                       }
