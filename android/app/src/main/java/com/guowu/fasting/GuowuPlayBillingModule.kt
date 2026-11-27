@@ -86,6 +86,7 @@ class GuowuPlayBillingModule(private val reactCtx: ReactApplicationContext) :
             .enableOneTimeProducts()
             .build()
         )
+        .enableAutoServiceReconnection()
         .build()
       billingClient = created
       return created
@@ -151,9 +152,9 @@ class GuowuPlayBillingModule(private val reactCtx: ReactApplicationContext) :
       .build()
     val latch = CountDownLatch(1)
     var found: List<ProductDetails> = emptyList()
-    client.queryProductDetailsAsync(params) { billingResult, list ->
+    client.queryProductDetailsAsync(params) { billingResult, queryProductDetailsResult ->
       if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
-        found = list
+        found = queryProductDetailsResult.productDetailsList ?: emptyList()
       }
       latch.countDown()
     }

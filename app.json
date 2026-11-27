@@ -44,7 +44,7 @@
     },
     "android": {
       "package": "com.guowu.fasting",
-      "versionCode": 31,
+      "versionCode": 32,
       "icon": "./assets/icon.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
