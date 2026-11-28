@@ -311,7 +311,7 @@ export const ProStoreModal: React.FC = () => {
                                 ]}
                               >
                                 {tierKey === 'lite'
-                                  ? isZh ? '皮肤/日签/混音 · ¥6/月起' : `${getPriceText(LITE_YEARLY_ID)}/yr`
+                                  ? isZh ? `皮肤/日签/混音 · ${getPriceText(LITE_MONTHLY_ID)}/月` : `${getPriceText(LITE_YEARLY_ID)}/yr`
                                   : isZh ? '含全套+深析+iCloud · 7天试用' : `${getPriceText(PRO_YEARLY_ID)}/yr`}
                               </Text>
                             </TouchableOpacity>

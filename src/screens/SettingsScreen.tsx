@@ -374,7 +374,7 @@ export const SettingsScreen: React.FC = () => {
                   ? isZh ? '管理与茶礼' : 'Manage'
                   : subscriptionTier === 'lite'
                   ? isZh ? '升级全享 Pro' : 'Upgrade Pro'
-                  : isZh ? '¥6/月起 · 7天试用' : 'Lite · Pro'
+                  : isZh ? '雅致 / 全享 · 7天试用' : 'Lite · Pro'
               }
               onPress={() => openProStore(undefined, isLiteUnlocked ? 'pro' : 'pro')}
             />
